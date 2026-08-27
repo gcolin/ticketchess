@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MAVEN_OPTS: -Xmx2048m
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: "25"
+          distribution: temurin
+          cache: maven
+
+      - name: Package fat JAR
+        run: mvn -B -ntp package -P pack -DskipTests
+
+      - name: Upload fat JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ticket-chess-pack
+          path: target/*-fat.jar
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Package WAR
+        run: mvn -B -ntp package -P war -DskipTests
+
+      - name: Upload WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ticket-chess-war
+          path: target/*.war
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach packages to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            target/*-fat.jar \
+            target/*.war \
+            --clobber

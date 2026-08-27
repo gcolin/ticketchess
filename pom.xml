@@ -20,20 +20,20 @@
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<lucene.version>10.3.2</lucene.version>
+		<lucene.version>10.5.1</lucene.version>
 		<h2.version>2.4.240</h2.version>
-		<jackcess.version>4.0.10</jackcess.version>
+		<jackcess.version>4.0.11</jackcess.version>
 		<postgresql.version>42.7.10</postgresql.version>
-		<hikaricp.version>7.0.2</hikaricp.version>
-		<logback.version>1.5.31</logback.version>
+		<hikaricp.version>7.1.0</hikaricp.version>
+		<logback.version>1.6.3</logback.version>
 		<slf4j.version>2.0.17</slf4j.version>
-		<json.version>20251224</json.version>
-		<commonmark.version>0.22.0</commonmark.version>
+		<json.version>20260814</json.version>
+		<commonmark.version>0.30.0</commonmark.version>
 		<stripe.version>31.3.0</stripe.version>
 		<angus-mail.version>2.0.5</angus-mail.version>
 		<jjwt.version>0.13.0</jjwt.version>
-		<mockito.version>5.21.0</mockito.version>
-		<playwright.version>1.59.0</playwright.version>
+		<mockito.version>5.23.0</mockito.version>
+		<playwright.version>1.62.0</playwright.version>
 		<caffeine.version>3.2.4</caffeine.version>
 		<jte.version>3.2.4</jte.version>
 		<maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
@@ -52,7 +52,7 @@
 			<dependency>
 				<groupId>org.eclipse.jetty.ee11</groupId>
 				<artifactId>jetty-ee11</artifactId>
-				<version>12.1.7</version>
+				<version>12.1.12</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -77,6 +77,17 @@
 	            <type>pom</type>
 	            <scope>import</scope>
 	        </dependency>
+			<!-- Jetty BOM pins logback-core 1.5.x; keep it aligned with logback-classic. -->
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-core</artifactId>
+				<version>${logback.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-classic</artifactId>
+				<version>${logback.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>
@@ -185,7 +196,7 @@
 		<dependency>
 			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-core</artifactId>
-			<version>7.2.5.Final</version>
+			<version>7.4.6.Final</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.ben-manes.caffeine</groupId>
@@ -224,12 +235,12 @@
 		<dependency>
 			<groupId>com.github.librepdf</groupId>
 			<artifactId>openpdf</artifactId>
-			<version>2.0.4</version>
+			<version>3.0.5</version>
 		</dependency>
 		<dependency>
 		  <groupId>org.jsoup</groupId>
 		  <artifactId>jsoup</artifactId>
-		  <version>1.22.2</version>
+		  <version>1.23.1</version>
 		</dependency>
 
 	</dependencies>
@@ -280,7 +291,7 @@
 					<plugin>
 						<groupId>org.jacoco</groupId>
 						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>0.8.14</version>
+						<version>0.8.15</version>
 						<executions>
 							<!-- Active l’agent pour les tests -->
 							<execution>
@@ -309,7 +320,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.5.1</version>
+						<version>3.6.2</version>
 						<executions>
 							<execution>
 								<phase>package</phase>
@@ -353,7 +364,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-war-plugin</artifactId>
-						<version>3.4.0</version>
+						<version>3.5.1</version>
 						<executions>
 							<execution>
 								<id>default-war</id>
@@ -409,7 +420,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.11.0</version>
+				<version>3.15.0</version>
 				<configuration>
 					<source>25</source>
 					<target>25</target>
@@ -418,7 +429,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.5.4</version>
+				<version>3.5.6</version>
 				<configuration>
 					<excludedGroups>${excludedGroups}</excludedGroups>
 				</configuration>
@@ -426,7 +437,7 @@
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>
 				<artifactId>spotless-maven-plugin</artifactId>
-				<version>3.4.0</version>
+				<version>3.10.0</version>
 				<!--mvn spotless:apply-->
 				<configuration>
 					<java>
