@@ -3,20 +3,38 @@ package com.github.gcolin.platform;
 import static org.mockito.Mockito.mock;
 
 import jakarta.servlet.ServletContext;
+import java.nio.file.Path;
 import java.util.Properties;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ConfigTest {
 
+    @TempDir
+    Path tempConfigDir;
+
     private Config config;
+    private String previousConfigDir;
 
     @BeforeEach
     void setUp() {
+        previousConfigDir = System.getProperty("CONFIG_DIR");
+        System.setProperty("CONFIG_DIR", tempConfigDir.toAbsolutePath().toString());
         ServletContext servletContext = mock(ServletContext.class);
         config = new Config();
         config.init(servletContext);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (previousConfigDir == null) {
+            System.clearProperty("CONFIG_DIR");
+        } else {
+            System.setProperty("CONFIG_DIR", previousConfigDir);
+        }
     }
 
     @Test
