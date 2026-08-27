@@ -25,7 +25,7 @@
 		<jackcess.version>4.0.10</jackcess.version>
 		<postgresql.version>42.7.10</postgresql.version>
 		<hikaricp.version>7.1.0</hikaricp.version>
-		<logback.version>1.5.31</logback.version>
+		<logback.version>1.6.3</logback.version>
 		<slf4j.version>2.0.17</slf4j.version>
 		<json.version>20260814</json.version>
 		<commonmark.version>0.22.0</commonmark.version>
