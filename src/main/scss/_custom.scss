@@ -1,0 +1,75 @@
+// ♟️ Titres
+h1, h2, h3, h4 {
+  letter-spacing: .5px;
+}
+
+// 🟤 Bouton principal
+.btn {
+  box-shadow: 0 4px 12px rgba(122, 74, 46, .35);
+}
+
+// 🧾 Cards génériques et tournoi
+.card {
+  background-color: #fff;
+  border: 1px solid #e0d0bc;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(43, 27, 20, .08);
+  transition: all .2s ease;
+
+  &:hover {
+    border-color: #d6c2ad;
+    box-shadow: 0 8px 20px rgba(43, 27, 20, .12);
+  }
+}
+
+.card-tournament {
+  background: linear-gradient(135deg, #fff 0%, #fffbf7 100%);
+  border-left: 5px solid $primary;
+  border: 1px solid #e0d0bc;
+  border-left: 5px solid $primary;
+  transition: transform .2s ease, box-shadow .2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(122, 74, 46, .15);
+    border-color: #d6c2ad;
+  }
+}
+
+.card-header {
+  background-color: #f9f5f0;
+  border-color: #e0d0bc;
+  border-bottom: 2px solid #d6c2ad;
+}
+
+.card-footer {
+  background-color: #f9f5f0;
+  border-color: #e0d0bc;
+}
+
+// 📝 Formulaire inscription
+.form-control, .form-select {
+  border-radius: .75rem;
+}
+
+// ♜ Badge cadence
+.badge-time-control {
+  background-color: $dark;
+  color: $light;
+  font-weight: 500;
+  letter-spacing: .05em;
+}
+
+// 🦄 Logo watermark discret
+.chess-watermark {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  opacity: .08;
+  width: 120px;
+}
+
+table th {
+    background: $primary !important;
+    color: $light !important;
+}

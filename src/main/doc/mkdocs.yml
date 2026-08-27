@@ -1,0 +1,29 @@
+site_name: Ticketchess Documentation
+site_description: Documentation utilisateur et guides operationnels Ticketchess
+site_dir: site
+docs_dir: .
+use_directory_urls: false
+
+theme:
+  name: mkdocs
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - javascripts/mermaid-init.js
+
+nav:
+  - Accueil: index.md
+  - Manuel utilisateur: MANUEL_UTILISATEUR.md
+  - Manuel utilisateur (1 page): MANUEL_UTILISATEUR_1PAGE.md
+  - Checklist benevoles guichet: CHECKLIST_BENEVOLES_GUICHET.md

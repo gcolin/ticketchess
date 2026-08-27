@@ -1,0 +1,160 @@
+# Compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+*.csv
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+.m2/
+
+# Gradle
+.gradle
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+bin/
+tmp/
+node_modules/
+tomcat.8080/
+*.mdb
+*.ldb
+.factorypath
+package-lock.json
+
+# IDE - VS Code
+.vscode/
+*.code-workspace
+
+# IDE - NetBeans
+nbproject/
+.nb-gradle/
+nbbuild/
+nb-configuration.xml
+
+# IDE - Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.#*
+*.war
+
+# OS-specific
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+
+# Config locale / production (ne jamais committer)
+/params.properties
+/params_prod.properties
+/params_*.properties
+!params.properties.example
+!src/test/resources/params.properties
+
+# Uploaded bank details
+/rib.pdf
+/logo.png
+/logo.jpg
+/logo.jpeg
+/logo.webp
+/background.png
+/background.jpg
+/background.jpeg
+/background.webp
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+
+# Generated files
+*.generated.java
+*.generated.class
+jte-classes/
+__pycache__/
+*.pyc
+
+# Local build artifacts
+dist/
+lucene/
+
+mariadb_data/
+src/docker/config/
+
+payment-logs/
+int/
+emails/
+/.apt_generated/
+/.apt_generated_tests/
+
+db.sql
+h2/
+.aider*
+/venv/
+
+# Fichier binaire local
+/vc
+
+# Scripts locaux de déploiement / reset (ne jamais committer)
+/resetTest.ps1
+/resetTest.sh
+/sendToPi.ps1
+/sendToPi.sh
+/testToProd.ps1
+/testToProd.sh

@@ -1,0 +1,35 @@
+// Palette de couleurs
+$primary:   #7f553d; // brun bois
+$secondary: #E8D8C3; // beige clair
+$success:   #3F6F52; // vert feutré
+$danger:    #8C2F2F; // bordeaux
+$warning:   #D4A24C; // or doux
+$info:      #4F6D7A; // bleu ardoise
+$light:     #fcfaf6; // ivoire
+$dark:      #2d1d15; // brun foncé
+
+// 🖋️ Typographie
+$font-family-sans-serif: "Inter", "Segoe UI", Roboto, sans-serif;
+$headings-font-weight: 600;
+$body-color: #2B1B14;
+$body-bg: #fcfaf6;
+
+// 🧱 Bordures & radius
+$border-radius: .75rem;
+$border-radius-lg: 1rem;
+$border-radius-sm: .5rem;
+
+// 🔘 Boutons
+$btn-font-weight: 500;
+$btn-border-radius: .75rem;
+
+// 📋 Formulaires
+$input-bg: #FFF;
+$input-border-color: #D6C2AD;
+$input-focus-border-color: $primary;
+$input-focus-box-shadow: 0 0 0 .15rem rgba(122, 74, 46, .25);
+
+// 🃏 Cards
+$card-bg: #FFF;
+$card-border-color: #E0D0BC;
+$card-box-shadow: 0 6px 20px rgba(43, 27, 20, .08);

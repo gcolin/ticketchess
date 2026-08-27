@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="420" viewBox="0 0 980 420">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a" />
+    </marker>
+    <style>
+      .step { fill: #eef6ff; stroke: #1d4ed8; stroke-width: 2; rx: 10; ry: 10; }
+      .num { font: 700 16px 'Segoe UI', Tahoma, sans-serif; fill: #1e3a8a; }
+      .txt { font: 14px 'Segoe UI', Tahoma, sans-serif; fill: #0f172a; }
+      .line { stroke: #0f172a; stroke-width: 2.2; marker-end: url(#arrow); }
+      .title { font: 700 20px 'Segoe UI', Tahoma, sans-serif; fill: #0f172a; }
+    </style>
+  </defs>
+
+  <text class="title" x="20" y="34">Parcours d'inscription</text>
+
+  <rect class="step" x="20" y="60" width="280" height="80"/>
+  <text class="num" x="38" y="90">1</text>
+  <text class="txt" x="70" y="90">Ouvrir la page du tournoi</text>
+  <text class="txt" x="70" y="112">et cliquer sur S'inscrire</text>
+
+  <rect class="step" x="350" y="60" width="280" height="80"/>
+  <text class="num" x="368" y="90">2</text>
+  <text class="txt" x="400" y="90">Saisir Licence ou nom</text>
+  <text class="txt" x="400" y="112">puis cliquer sur Rechercher</text>
+
+  <rect class="step" x="680" y="60" width="280" height="80"/>
+  <text class="num" x="698" y="90">3</text>
+  <text class="txt" x="730" y="90">Cliquer sur + Selectionner</text>
+  <text class="txt" x="730" y="112">sur la bonne ligne joueur</text>
+
+  <rect class="step" x="350" y="210" width="280" height="110"/>
+  <text class="num" x="368" y="242">4</text>
+  <text class="txt" x="400" y="242">Verifier Mes tournois:</text>
+  <text class="txt" x="400" y="264">- joueur present dans la liste</text>
+  <text class="txt" x="400" y="286">- statut Non paye ou Paye</text>
+
+  <line class="line" x1="300" y1="100" x2="350" y2="100"/>
+  <line class="line" x1="630" y1="100" x2="680" y2="100"/>
+  <line class="line" x1="820" y1="140" x2="560" y2="210"/>
+</svg>

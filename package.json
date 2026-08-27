@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "sass": "^1.97.3"
+  },
+  "scripts": {
+    "build:css": "sass src/main/scss/main.scss src/main/resources/webapp/css/theme.css --style=expanded",
+    "watch:css": "sass --watch src/main/scss/main.scss src/main/resources/webapp/css/theme.css",
+    "docs:install": "python -m pip install mkdocs",
+    "docs:serve": "python -m mkdocs serve --config-file src/main/doc/mkdocs.yml",
+    "docs:build": "python -m mkdocs build --config-file src/main/doc/mkdocs.yml"
+  }
+}

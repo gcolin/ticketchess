@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="340" viewBox="0 0 980 340">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#111827" />
+    </marker>
+    <style>
+      .box { fill: #fff7ed; stroke: #c2410c; stroke-width: 2; rx: 10; ry: 10; }
+      .title { font: 700 20px 'Segoe UI', Tahoma, sans-serif; fill: #111827; }
+      .txt { font: 14px 'Segoe UI', Tahoma, sans-serif; fill: #1f2937; }
+      .num { font: 700 16px 'Segoe UI', Tahoma, sans-serif; fill: #9a3412; }
+      .line { stroke: #111827; stroke-width: 2.2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <text class="title" x="20" y="34">Parcours de desinscription</text>
+
+  <rect class="box" x="20" y="70" width="220" height="90"/>
+  <text class="num" x="38" y="104">1</text>
+  <text class="txt" x="66" y="104">Ouvrir Mes tournois</text>
+  <text class="txt" x="66" y="128">et trouver le joueur</text>
+
+  <rect class="box" x="280" y="70" width="220" height="90"/>
+  <text class="num" x="298" y="104">2</text>
+  <text class="txt" x="326" y="104">Cliquer sur</text>
+  <text class="txt" x="326" y="128">Se desinscrire</text>
+
+  <rect class="box" x="540" y="70" width="220" height="90"/>
+  <text class="num" x="558" y="104">3</text>
+  <text class="txt" x="586" y="104">Confirmer</text>
+  <text class="txt" x="586" y="128">Etes-vous sur ?</text>
+
+  <rect class="box" x="800" y="70" width="160" height="90"/>
+  <text class="num" x="818" y="104">4</text>
+  <text class="txt" x="846" y="104">Statut</text>
+  <text class="txt" x="846" y="128">mis a jour</text>
+
+  <line class="line" x1="240" y1="115" x2="280" y2="115"/>
+  <line class="line" x1="500" y1="115" x2="540" y2="115"/>
+  <line class="line" x1="760" y1="115" x2="800" y2="115"/>
+
+  <rect x="20" y="220" width="940" height="90" fill="#f9fafb" stroke="#d1d5db"/>
+  <text class="txt" x="40" y="252">Conseil: si la desinscription est impossible, contactez l'organisateur.</text>
+  <text class="txt" x="40" y="278">Certaines regles de tournoi peuvent bloquer l'annulation a l'approche de l'evenement.</text>
+</svg>

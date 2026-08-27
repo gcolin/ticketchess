@@ -1,0 +1,25 @@
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             version="3.0">
+    <persistence-unit name="myPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <class>com.github.gcolin.event.Event</class>
+        <class>com.github.gcolin.event.EventInfo</class>
+        <class>com.github.gcolin.player.CustomPlayer</class>
+        <class>com.github.gcolin.payment.Payment</class>
+        <class>com.github.gcolin.registration.PlayerPendingSubscription</class>
+        <class>com.github.gcolin.registration.PlayerSubscription</class>
+        <class>com.github.gcolin.registration.PlayerSubscriptionOption</class>
+        <class>com.github.gcolin.membership.Membership</class>
+        <class>com.github.gcolin.membership.MembershipOption</class>
+        <class>com.github.gcolin.membership.MembershipOptionSubscription</class>
+        <class>com.github.gcolin.event.EventGroup</class>
+        <class>com.github.gcolin.notification.Notification</class>
+        <class>com.github.gcolin.event.EventOption</class>
+        <class>com.github.gcolin.event.EventCollectionOption</class>
+        <class>com.github.gcolin.auth.UserAuthorization</class>
+        <class>com.github.gcolin.event.EventCollection</class>
+        <class>com.github.gcolin.membership.License</class>
+        <class>com.github.gcolin.membership.LicensePrice</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+    </persistence-unit>
+</persistence>

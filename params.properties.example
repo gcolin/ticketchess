@@ -1,0 +1,70 @@
+# ============================================================
+# Configuration Ticket Chess — modèle
+# Copier ce fichier vers params.properties et adapter les valeurs.
+# Ne jamais committer params.properties (fichier local / production).
+# ============================================================
+
+# Configuration Email
+mail.USER_NAME=contact@example.com
+# Si absent, les emails sont écrits dans ./emails (mode test local)
+#mail.PASSWORD=
+
+# Administrateurs (emails séparés par des virgules)
+admins=admin@example.com
+
+# Notifications d'adhésion club
+membership.notif.emails=
+
+# Configuration Application
+title=Mon club d'échecs
+org.name=Mon club d'échecs
+org.email=contact@example.com
+org.address=1 rue Example, 00000 Ville, France
+org.hosting.address=
+baseurl=http://localhost:8080
+contact.url=https://example.com/contact
+# URL du dépôt source (obligatoire pour la conformité AGPL en production)
+source.url=https://github.com/gcolin/ticketchess
+# RIB (PDF), logo et fond : Administration > Organisation
+
+# Configuration Stripe (Paiements)
+stripe.public=
+#stripe.secret=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+stripe.keyprefix=
+stripe.simuled=true
+
+# Mode développement local : true active /auth-sim (connexion admin sans OAuth).
+# En production : false + OAuth obligatoire + jwt.key personnalisé.
+testmode=false
+
+# Configuration Authentification (utilisé uniquement si testmode=true et OAuth absent)
+auth.USER_EMAIL=test@test.com
+auth.USER_NAME=Test User
+jwt.key=change-me-in-production-use-a-long-random-string
+
+# Configuration OAuth / OpenID Connect (Keycloak, Google, ...)
+#oauth.clientId=your-client-id
+#oauth.clientSecret=your-client-secret
+#oauth.authorizationUrl=https://oauth.example.org/realms/master/protocol/openid-connect/auth
+#oauth.tokenUrl=https://oauth.example.org/realms/master/protocol/openid-connect/token
+#oauth.logoutUrl=https://oauth.example.org/realms/master/protocol/openid-connect/logout
+#oauth.accountUrl=https://oauth.example.org/realms/master/account
+#oauth.scope=openid email profile
+# Anciennes clés keycloak.* encore lues si oauth.clientId est absent
+#keycloak.CLIENT_ID=ticket
+#keycloak.CLIENT_SECRET=your-client-secret
+#keycloak.url=https://oauth.example.org/realms/master/protocol/openid-connect/auth
+
+# Configuration Base de Données
+#db.host=localhost:5432
+#db.name=ticketchess
+#db.user=ticket_user
+#db.pass=
+#db.type=postgres
+
+# Initialisation H2 depuis un dump PostgreSQL (optionnel, développement local)
+db.h2.loadPostgresDump=false
+#db.h2.reloadPostgresDump=false
+#db.h2.postgresDumpFile=./db.sql
+
+pendingQueueOffset=0

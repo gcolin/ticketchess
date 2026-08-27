@@ -1,0 +1,16 @@
+# Reproduces the GitHub Actions CI environment (Java 25 + Maven + Playwright).
+FROM maven:3.9-eclipse-temurin-25
+
+ENV MAVEN_OPTS="-Xmx2048m"
+WORKDIR /workspace
+
+# Cache Playwright browser + OS deps (rebuilt when pom.xml changes).
+COPY pom.xml .
+RUN mvn -B -q dependency:resolve dependency:resolve-plugins \
+    && mvn -B -q exec:java \
+        -Dexec.mainClass=com.microsoft.playwright.CLI \
+        -Dexec.classpathScope=test \
+        -Dexec.args="install --with-deps chromium"
+
+# Default: test job from .github/workflows/ci.yml
+CMD ["mvn", "-B", "clean", "verify", "-P", "integration"]

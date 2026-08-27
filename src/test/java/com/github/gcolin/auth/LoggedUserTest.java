@@ -1,0 +1,105 @@
+package com.github.gcolin.auth;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.gcolin.payment.DebtService;
+import com.github.gcolin.platform.Caches;
+import com.github.gcolin.platform.Config;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Set;
+import javax.crypto.SecretKey;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
+
+public class LoggedUserTest {
+
+    private LoggedUser loggedUser;
+    private Caches caches;
+    private DebtService debtService;
+    private HttpServletRequest request;
+    private Config config;
+    private UserAuthorizationDao userAuthorizationDao;
+
+    @BeforeEach
+    void setUp() {
+        caches = Mockito.mock(Caches.class);
+        debtService = Mockito.mock(DebtService.class);
+        request = Mockito.mock(HttpServletRequest.class);
+        config = Mockito.mock(Config.class);
+        userAuthorizationDao = Mockito.mock(UserAuthorizationDao.class);
+
+        loggedUser = new LoggedUser();
+        LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);
+        loggedUser.initFromCookies();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testGetDebtUsesCacheAndDebtService() {
+        Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+
+        Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+        Mockito.when(debtCache.getIfPresent("bob@example.com")).thenReturn(null);
+        Mockito.when(debtService.calculateDebt("bob@example.com")).thenReturn(42.5);
+
+        loggedUser.setEmail("bob@example.com");
+
+        Assertions.assertEquals(42.5, loggedUser.getDebt());
+        Mockito.verify(debtCache).put("bob@example.com", 42.5);
+    }
+
+    @Test
+    public void testGetDebtReturnsZeroWhenEmailMissing() {
+        Assertions.assertEquals(0.0, loggedUser.getDebt());
+    }
+
+    @SuppressWarnings("unchecked")
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testInitFromCookiesWithValidAdminToken(boolean isAdmin) {
+        SecretKey keys =
+                Keys.hmacShaKeyFor("9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b".getBytes());
+
+        Set<String> admins = isAdmin ? Set.of("alice@example.com") : Collections.emptySet();
+        Mockito.when(config.getKeys()).thenReturn(keys);
+        Mockito.when(config.getAdmins()).thenReturn(admins);
+
+        String jwt = Jwts.builder()
+                .subject("alice@example.com")
+                .issuer("Alice")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
+                .signWith(config.getKeys())
+                .compact();
+
+        Cookie[] cookies = {new Cookie("remember_me", jwt)};
+        Mockito.when(request.getCookies()).thenReturn(cookies);
+
+        HttpSession session = Mockito.mock(HttpSession.class);
+        Mockito.when(request.getSession()).thenReturn(session);
+
+        Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+        Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+
+        loggedUser = new LoggedUser();
+        LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);
+        loggedUser.initFromCookies();
+
+        Assertions.assertTrue(loggedUser.isLogged());
+        Assertions.assertEquals(isAdmin, loggedUser.isAdmin());
+        Assertions.assertEquals("alice@example.com", loggedUser.getEmail());
+        Assertions.assertEquals("Alice", loggedUser.getUsername());
+        Mockito.verify(debtCache).invalidateAll();
+        Mockito.verify(session).setAttribute("auth.email", "alice@example.com");
+        Mockito.verify(session).setAttribute("auth.admin", isAdmin);
+    }
+}

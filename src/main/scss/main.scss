@@ -1,0 +1,10 @@
+// Variables custom (doivent être définies avant Bootstrap)
+@import "variables";
+
+// Composants Bootstrap
+@import "../../../node_modules/bootstrap/scss/bootstrap";
+
+// Styles custom (overrides après Bootstrap)
+@import "_custom.scss";
+
+

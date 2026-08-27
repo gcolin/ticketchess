@@ -1,0 +1,48 @@
+Ticket Chess
+Copyright (C) 2026 Gael Colin
+
+This product bundles third-party open-source software. See LICENSE for Ticket Chess
+itself (AGPL-3.0). The components below are distributed under their respective licenses.
+
+================================================================================
+Apache License 2.0
+================================================================================
+
+- Apache Lucene (org.apache.lucene) — https://lucene.apache.org/
+- Jackcess (com.healthmarketscience.jackcess) — https://jackcess.sourceforge.net/
+- Hibernate ORM (org.hibernate.orm) — https://hibernate.org/
+- Jetty (org.eclipse.jetty) — https://jetty.org/
+- Jersey (org.glassfish.jersey) — https://projects.eclipse.org/projects/ee4j.jersey
+- PostgreSQL JDBC Driver (org.postgresql) — https://jdbc.postgresql.org/
+- HikariCP (com.zaxxer) — https://github.com/brettwooldridge/HikariCP
+- Caffeine (com.github.ben-manes.caffeine) — https://github.com/ben-manes/caffeine
+- Angus Mail (org.eclipse.angus) — https://eclipse-ee4j.github.io/angus-mail/
+- JJWT (io.jsonwebtoken) — https://github.com/jwtk/jjwt
+- Mockito (org.mockito) — https://github.com/mockito/mockito
+- Playwright Java (com.microsoft.playwright) — https://playwright.dev/java/
+- OpenPDF (com.github.librepdf) — https://github.com/LibrePDF/OpenPDF
+
+================================================================================
+MIT License
+================================================================================
+
+- jsoup (org.jsoup) — https://jsoup.org/
+- JTE (gg.jte) — https://jte.gg/
+
+================================================================================
+Eclipse Public License 2.0 / LGPL (runtime components)
+================================================================================
+
+- H2 Database (com.h2database) — https://h2database.com/
+- JUnit Jupiter (org.junit.jupiter) — https://junit.org/
+
+================================================================================
+Other
+================================================================================
+
+- Stripe Java SDK (com.stripe) — MIT — https://github.com/stripe/stripe-java
+- org.json (org.json) — JSON License — https://github.com/stleary/JSON-java
+- CommonMark Java (org.commonmark) — BSD 2-Clause — https://github.com/commonmark/commonmark-java
+- Logback / SLF4J — EPL-1.0 / MIT — https://logback.qos.ch/ / https://www.slf4j.org/
+
+For exact versions, see dependency declarations in pom.xml.

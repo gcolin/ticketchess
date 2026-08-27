@@ -1,0 +1,439 @@
+package com.github.gcolin.membership;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.github.gcolin.membership.Membership;
+import com.github.gcolin.membership.MembershipOption;
+import com.github.gcolin.membership.MembershipOptionSubscription;
+import com.github.gcolin.membership.MembershipStatus;
+import com.github.gcolin.membership.MembershipDao;
+import com.github.gcolin.membership.MembershipOptionDao;
+import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
+import jakarta.ws.rs.core.UriInfo;
+import java.lang.reflect.Field;
+import java.net.URI;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+import com.github.gcolin.platform.JteHtml;
+
+class MembershipApiTest {
+
+    // --- list ---
+
+    @Test
+    void listShouldReturnMembershipsSortedByIdDescAndGroupSubscriptions() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        MembershipOptionDao membershipOptionDao = mock(MembershipOptionDao.class);
+
+        Membership m1 = new Membership();
+        m1.setId(1);
+        Membership m2 = new Membership();
+        m2.setId(5);
+
+        when(membershipDao.all()).thenReturn(new ArrayList<>(List.of(m1, m2)));
+        when(subscriptionDao.all()).thenReturn(List.of());
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "membershipOptionDao", membershipOptionDao);
+
+        JteHtml html = api.list();
+        Map<String, Object> model = html.getModel();
+
+        assertEquals("membership/membership.jte", html.getTemplate());
+        @SuppressWarnings("unchecked")
+        List<Membership> memberships = (List<Membership>) model.get("memberships");
+        // sorted descending by id: 5, 1
+        assertEquals(5, memberships.get(0).getId());
+        assertEquals(1, memberships.get(1).getId());
+    }
+
+    @Test
+    void listShouldGroupSubscriptionsByMembershipId() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        MembershipOptionDao membershipOptionDao = mock(MembershipOptionDao.class);
+
+        Membership m = new Membership();
+        m.setId(3);
+
+        MembershipOptionSubscription sub = new MembershipOptionSubscription();
+        sub.setMembership(m);
+
+        when(membershipDao.all()).thenReturn(new ArrayList<>(List.of(m)));
+        when(subscriptionDao.all()).thenReturn(List.of(sub));
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "membershipOptionDao", membershipOptionDao);
+
+        JteHtml html = api.list();
+        @SuppressWarnings("unchecked")
+        Map<String, List<MembershipOptionSubscription>> subscriptionsByMembership =
+                (Map<String, List<MembershipOptionSubscription>>) html.getModel().get("membershipSubscriptions");
+
+        assertTrue(subscriptionsByMembership.containsKey("3"));
+        assertEquals(1, subscriptionsByMembership.get("3").size());
+    }
+
+    // --- createPage ---
+
+    @Test
+    void createPageShouldReturnEmptyMembershipWithStatuses() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        inject(api, "membershipDao", mock(MembershipDao.class));
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+
+        JteHtml html = api.createPage();
+        Map<String, Object> model = html.getModel();
+
+        assertEquals("membership/membershipNew.jte", html.getTemplate());
+        assertTrue(model.get("membership") instanceof Membership);
+        MembershipStatus[] statuses = (MembershipStatus[]) model.get("statuses");
+        assertEquals(MembershipStatus.values().length, statuses.length);
+    }
+
+    // --- create ---
+
+    @Test
+    void createShouldPersistMembershipAndRedirect() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
+
+        Response response = api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", 42, "APPROVED", 1500);
+
+        assertEquals(303, response.getStatus());
+        verify(membershipDao).persist(any(Membership.class));
+    }
+
+    @Test
+    void createShouldDefaultNullClubRefAndAmountCentsToZero() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        List<Membership> captured = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(inv -> {
+            captured.add(inv.getArgument(0));
+            return null;
+        }).when(membershipDao).persist(any(Membership.class));
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
+
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", null, null, null);
+
+        assertEquals(1, captured.size());
+        assertEquals(0, captured.get(0).getClubRef());
+        assertEquals(0, captured.get(0).getAmountCents());
+        assertEquals(MembershipStatus.PENDING_APPROVAL, captured.get(0).getStatus());
+    }
+
+    // --- editPage ---
+
+    @Test
+    void editPageShouldReturnEditTemplateWithMembership() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        MembershipOptionDao membershipOptionDao = mock(MembershipOptionDao.class);
+
+        Membership m = new Membership();
+        m.setId(10);
+
+        when(membershipDao.find(10)).thenReturn(m);
+        when(subscriptionDao.all()).thenReturn(List.of());
+        when(membershipOptionDao.all()).thenReturn(List.of());
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "membershipOptionDao", membershipOptionDao);
+
+        JteHtml html = api.editPage(10);
+        Map<String, Object> model = html.getModel();
+
+        assertEquals("membership/membershipEdit.jte", html.getTemplate());
+        assertEquals(m, model.get("membership"));
+    }
+
+    @Test
+    void editPageShouldThrowNotFoundWhenMembershipMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        when(membershipDao.find(99)).thenReturn(null);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+
+        assertThrows(NotFoundException.class, () -> api.editPage(99));
+    }
+
+    // --- update ---
+
+    @Test
+    void updateShouldMergeAndRedirect() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        Membership m = new Membership();
+        m.setId(5);
+        when(membershipDao.find(5)).thenReturn(m);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
+
+        Response response = api.update(5, "user@test.com", "B99", "Smith", "Jane", "1990-05-05", 7, "PAID", 2000);
+
+        assertEquals(303, response.getStatus());
+        verify(membershipDao).merge(m);
+    }
+
+    @Test
+    void updateShouldThrowNotFoundWhenMembershipMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        when(membershipDao.find(77)).thenReturn(null);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+
+        assertThrows(NotFoundException.class,
+                () -> api.update(77, "u", "n", "l", "f", "d", 1, "APPROVED", 100));
+    }
+
+    // --- addOption ---
+
+    @Test
+    void addOptionShouldPersistSubscriptionAndRedirect() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionDao optionDao = mock(MembershipOptionDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+
+        Membership m = new Membership();
+        m.setId(3);
+        m.setNrFfe("A111");
+        MembershipOption opt = new MembershipOption();
+        opt.setId(7);
+
+        when(membershipDao.find(3)).thenReturn(m);
+        when(optionDao.find(7)).thenReturn(opt);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionDao", optionDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "uriInfo", mockUriInfoMultiPath(URI.create("http://localhost:8080/membership/3/edit")));
+
+        Response response = api.addOption(3, 7);
+
+        assertEquals(303, response.getStatus());
+        verify(subscriptionDao).persist(any(MembershipOptionSubscription.class));
+    }
+
+    @Test
+    void addOptionShouldThrowNotFoundWhenMembershipMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        when(membershipDao.find(1)).thenReturn(null);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+
+        assertThrows(NotFoundException.class, () -> api.addOption(1, 2));
+    }
+
+    @Test
+    void addOptionShouldThrowNotFoundWhenOptionMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionDao optionDao = mock(MembershipOptionDao.class);
+
+        Membership m = new Membership();
+        m.setId(1);
+        when(membershipDao.find(1)).thenReturn(m);
+        when(optionDao.find(99)).thenReturn(null);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionDao", optionDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+
+        assertThrows(NotFoundException.class, () -> api.addOption(1, 99));
+    }
+
+    // --- removeOption ---
+
+    @Test
+    void removeOptionShouldRemoveAndRedirect() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        MembershipDao membershipDao = mock(MembershipDao.class);
+
+        Membership m = new Membership();
+        m.setId(4);
+
+        MembershipOptionSubscription sub = new MembershipOptionSubscription();
+        sub.setId(8);
+        sub.setMembership(m);
+
+        when(subscriptionDao.find(8)).thenReturn(sub);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "uriInfo", mockUriInfoMultiPath(URI.create("http://localhost:8080/membership/4/edit")));
+
+        Response response = api.removeOption(4, 8);
+
+        assertEquals(303, response.getStatus());
+        verify(subscriptionDao).remove(8);
+    }
+
+    @Test
+    void removeOptionShouldThrowNotFoundWhenSubscriptionMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        when(subscriptionDao.find(55)).thenReturn(null);
+
+        inject(api, "membershipDao", mock(MembershipDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+
+        assertThrows(NotFoundException.class, () -> api.removeOption(1, 55));
+    }
+
+    @Test
+    void removeOptionShouldThrowBadRequestWhenMembershipMismatch() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+
+        Membership wrong = new Membership();
+        wrong.setId(999);
+
+        MembershipOptionSubscription sub = new MembershipOptionSubscription();
+        sub.setId(10);
+        sub.setMembership(wrong);
+
+        when(subscriptionDao.find(10)).thenReturn(sub);
+
+        inject(api, "membershipDao", mock(MembershipDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+
+        assertThrows(BadRequestException.class, () -> api.removeOption(1, 10));
+    }
+
+    @Test
+    void exportCsvShouldIncludeMembershipsAndOptions() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+
+        Membership membership = new Membership();
+        membership.setId(42);
+        membership.setUser("user@test.com");
+        membership.setNrFfe("A12345");
+        membership.setLastname("Dupont");
+        membership.setFirstname("Jean");
+        membership.setBirthDate("2000-01-01");
+        membership.setStatus(MembershipStatus.PAID);
+        membership.setCreatedAt(LocalDateTime.of(2026, 1, 1, 10, 0));
+        membership.setUpdatedAt(LocalDateTime.of(2026, 2, 1, 12, 30));
+
+        MembershipOption option = new MembershipOption();
+        option.setOptionValue("Licence adulte");
+
+        MembershipOptionSubscription subscription = new MembershipOptionSubscription();
+        subscription.setMembership(membership);
+        subscription.setMembershipOption(option);
+
+        when(membershipDao.all()).thenReturn(List.of(membership));
+        when(subscriptionDao.all()).thenReturn(List.of(subscription));
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+
+        Response response = api.exportCsv();
+        String csv = (String) response.getEntity();
+
+        assertEquals("attachment; filename=memberships.csv", response.getHeaderString("Content-Disposition"));
+        assertTrue(csv.startsWith("id;User;Nr FFE;Nom;Prénom;Date de naissance;Status;Options;Created;Updated\n"));
+        assertTrue(csv.contains("42;\"user@test.com\";\"A12345\";\"Dupont\";\"Jean\";\"2000-01-01\";\"PAID\";\"Licence adulte\";"));
+    }
+
+    // --- helpers ---
+
+    private static UriInfo mockUriInfo(URI target) {
+        UriInfo uriInfo = mock(UriInfo.class);
+        UriBuilder uriBuilder = mock(UriBuilder.class);
+        when(uriInfo.getBaseUriBuilder()).thenReturn(uriBuilder);
+        when(uriBuilder.path(any(String.class))).thenReturn(uriBuilder);
+        when(uriBuilder.build()).thenReturn(target);
+        return uriInfo;
+    }
+
+    private static UriInfo mockUriInfoMultiPath(URI target) {
+        UriInfo uriInfo = mock(UriInfo.class);
+        UriBuilder uriBuilder = mock(UriBuilder.class);
+        when(uriInfo.getBaseUriBuilder()).thenReturn(uriBuilder);
+        when(uriBuilder.path(any(String.class))).thenReturn(uriBuilder);
+        when(uriBuilder.build()).thenReturn(target);
+        return uriInfo;
+    }
+
+    private static void inject(Object target, String fieldName, Object value) throws Exception {
+        Class<?> clazz = target.getClass();
+        while (clazz != null) {
+            try {
+                Field field = clazz.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(target, value);
+                return;
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(fieldName + " not found in " + target.getClass().getName());
+    }
+}

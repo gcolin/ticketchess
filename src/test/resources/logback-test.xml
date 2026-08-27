@@ -1,0 +1,19 @@
+<configuration>
+
+  <logger name="com.zaxxer.hikari" level="WARN"/>
+  <logger name="org.eclipse.jetty" level="INFO"/>
+  <logger name="org.hibernate" level="INFO"/>
+  <logger name="org.jboss" level="INFO"/>
+  <logger name="org.apache.lucene" level="INFO"/>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} | %-5level | %logger | %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="DEBUG">
+    <appender-ref ref="STDOUT" />
+  </root>
+
+</configuration>

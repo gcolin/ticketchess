@@ -1,0 +1,368 @@
+@param String contextPath
+@param String i18ntitle
+@param com.github.gcolin.platform.Messages msg
+@param com.github.gcolin.notification.Notifications notifications
+@param String page
+@param com.github.gcolin.platform.Page pageConfig
+@param com.github.gcolin.platform.StateService state
+@param String success
+@param String title
+@param com.github.gcolin.auth.LoggedUser user
+@param Object collection
+@param com.github.gcolin.event.Event event
+@param java.util.List<com.github.gcolin.event.EventCollection> eventCollections
+@param com.github.gcolin.event.EventGroup eventGroup
+@param com.github.gcolin.membership.License license
+@param com.github.gcolin.membership.Membership membership
+@param java.util.List<com.github.gcolin.membership.Membership> memberships
+@param com.github.gcolin.membership.MembershipOption option
+@param java.util.List<com.github.gcolin.membership.MembershipOption> options
+@param Object p
+@param com.github.gcolin.payment.Payment payment
+@param java.util.List<com.github.gcolin.payment.Payment> payments
+@param java.util.List<com.github.gcolin.player.Player> players
+@param Object statistics
+@param java.util.List<String> users
+!{i18ntitle = msg.get("page.admin");}
+!{title = i18ntitle;}
+!{page = "admin";}
+@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
+<html>
+  <body class="d-flex flex-column min-vh-100 bg-chess-overlay">
+    @template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
+    <main class="container flex-fill">
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
+          <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
+          <li class="breadcrumb-item active" aria-current="page">${msg.get("menu.admin")}</li>
+        </ol>
+      </nav>
+
+      @if("cacheCleared".equals(success))
+        <div class="alert alert-success mb-3" role="alert">${msg.get("admin.cacheCleared")}</div>
+      @endif
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <h1 class="mb-2">${msg.get("page.admin")}</h1>
+          <p class="text-body-secondary mb-0">${msg.get("help.adminHub")}</p>
+        </div>
+      </div>
+
+      @if(user.hasPermission("EVENT_CREATE") || user.hasPermission("EVENT_EDIT"))
+        <section class="mb-4 bg-white p-3 rounded-3">
+          <h2 class="h4 mb-3">${msg.get("admin.section.event")}</h2>
+          <div class="row g-3">
+            @if(user.hasPermission("EVENT_CREATE"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" id="newevent" href="${contextPath}/event/new">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-calendar-plus fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("event.new")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.eventNewDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.hasPermission("EVENT_EDIT"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/eventgroup">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-diagram-3 fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.eventGroup")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.eventGroupDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/eventcollection">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-collection fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.eventCollections")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.eventCollectionsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/notification">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-bell fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.notifications")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.notificationsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/playersubscription-admin">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-person-check fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.playerSubscriptionsAdmin")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.playerSubscriptionsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.canManagePayments())
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/payment">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-credit-card fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.payments")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.paymentsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+          </div>
+        </section>
+      @endif
+
+      @if(user.hasPermission("EVENT_EDIT") || user.hasPermission("ADMIN_PANEL") || user.hasPermission("USER_IMPERSONATE"))
+        <section class="mb-4 bg-white p-3 rounded-3">
+          <h2 class="h4 mb-3">${msg.get("admin.section.users")}</h2>
+          <div class="row g-3">
+            @if(user.hasPermission("EVENT_EDIT"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/customplayer">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-people fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.players")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.playersDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.hasPermission("ADMIN_PANEL"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/database/manual-players">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-person-plus fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.databasePlayers")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.databasePlayersDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/database">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-database fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.database")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.databaseDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/logged-users">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-person-lines-fill fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.loggedUsers")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.loggedUsersDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.hasPermission("USER_IMPERSONATE"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/logas">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-incognito fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.logas")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.logasDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.hasPermission("ADMIN_PANEL"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/user-authorization">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-shield-lock fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.userAuthorizations")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.userAuthorizationsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+          </div>
+        </section>
+      @endif
+
+      @if(user.hasPermission("EVENT_EDIT") || user.hasPermission("ADMIN_PANEL"))
+        <section class="mb-4 bg-white p-3 rounded-3">
+          <h2 class="h4 mb-3">${msg.get("admin.section.membership")}</h2>
+          <div class="row g-3">
+            @if(user.hasPermission("EVENT_EDIT"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/membership">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-person-vcard fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.memberships")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.membershipsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.hasPermission("ADMIN_PANEL"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/membership-option-admin">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-toggles fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.membershipOptions")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.membershipOptionsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/license-admin">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-card-list fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.licenses")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.licensesDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+          </div>
+        </section>
+      @endif
+
+      @if(user.hasPermission("ADMIN_PANEL") || user.hasPermission("MAIL_SEND"))
+        <section class="mb-4 bg-white p-3 rounded-3">
+          <h2 class="h4 mb-3">${msg.get("admin.section.system")}</h2>
+          <div class="row g-3">
+            @if(user.hasPermission("ADMIN_PANEL"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/admin/org">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-bank fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("page.adminOrg")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.ribDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/admin/clear-cache">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-arrow-clockwise fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("action.clearCache")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.clearCacheDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/dashboard">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-speedometer2 fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.dashboard")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.dashboardDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/statistics">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-bar-chart fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.statistics")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.statisticsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+            @if(user.hasPermission("MAIL_SEND"))
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/admin/mail">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-envelope fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("page.adminMail")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.mailDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            @endif
+          </div>
+        </section>
+      @endif
+    </main>
+    @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
+  </body>
+</html>

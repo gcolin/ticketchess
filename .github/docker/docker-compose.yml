@@ -1,0 +1,23 @@
+services:
+  ci-test:
+    build:
+      context: ../..
+      dockerfile: .github/docker/Dockerfile.ci
+    image: ticketchess-ci
+    volumes:
+      - ../..:/workspace
+      - maven_cache:/root/.m2
+    working_dir: /workspace
+    command: mvn -B clean verify -P integration
+
+  ci-package:
+    image: ticketchess-ci
+    profiles: [package]
+    volumes:
+      - ../..:/workspace
+      - maven_cache:/root/.m2
+    working_dir: /workspace
+    command: mvn -B package -P pack,war -DskipTests
+
+volumes:
+  maven_cache:
