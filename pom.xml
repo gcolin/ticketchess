@@ -26,7 +26,7 @@
 		<postgresql.version>42.7.10</postgresql.version>
 		<hikaricp.version>7.0.2</hikaricp.version>
 		<logback.version>1.5.31</logback.version>
-		<slf4j.version>2.0.17</slf4j.version>
+		<slf4j.version>2.0.18</slf4j.version>
 		<json.version>20251224</json.version>
 		<commonmark.version>0.22.0</commonmark.version>
 		<stripe.version>31.3.0</stripe.version>
