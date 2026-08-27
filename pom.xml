@@ -22,7 +22,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<lucene.version>10.3.2</lucene.version>
 		<h2.version>2.4.240</h2.version>
-		<jackcess.version>4.0.10</jackcess.version>
+		<jackcess.version>4.0.11</jackcess.version>
 		<postgresql.version>42.7.10</postgresql.version>
 		<hikaricp.version>7.0.2</hikaricp.version>
 		<logback.version>1.5.31</logback.version>
