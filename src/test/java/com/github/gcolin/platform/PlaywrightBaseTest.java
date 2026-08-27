@@ -24,9 +24,13 @@ public abstract class PlaywrightBaseTest {
     protected static final String BASE_URL = "http://localhost:8080";
     protected int port;
     private String previousConfigDir;
+    private String previousTestProperty;
+    private String previousLoadtestProperty;
 
     @BeforeEach
     public void setup() throws Exception {
+        previousTestProperty = System.getProperty("test");
+        previousLoadtestProperty = System.getProperty("loadtest");
         System.setProperty("test", "true");
         System.setProperty("loadtest", "true");
         previousConfigDir = System.getProperty("CONFIG_DIR");
@@ -83,10 +87,16 @@ public abstract class PlaywrightBaseTest {
             server.destroy();
         }
         AppContext.shutdown();
-        if (previousConfigDir != null) {
-            System.setProperty("CONFIG_DIR", previousConfigDir);
+        restoreProperty("CONFIG_DIR", previousConfigDir);
+        restoreProperty("test", previousTestProperty);
+        restoreProperty("loadtest", previousLoadtestProperty);
+    }
+
+    private static void restoreProperty(String key, String value) {
+        if (value == null) {
+            System.clearProperty(key);
         } else {
-            System.clearProperty("CONFIG_DIR");
+            System.setProperty(key, value);
         }
     }
 }
