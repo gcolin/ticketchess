@@ -29,7 +29,7 @@
 		<slf4j.version>2.0.17</slf4j.version>
 		<json.version>20251224</json.version>
 		<commonmark.version>0.22.0</commonmark.version>
-		<stripe.version>31.3.0</stripe.version>
+		<stripe.version>33.3.0</stripe.version>
 		<angus-mail.version>2.0.5</angus-mail.version>
 		<jjwt.version>0.13.0</jjwt.version>
 		<mockito.version>5.21.0</mockito.version>
