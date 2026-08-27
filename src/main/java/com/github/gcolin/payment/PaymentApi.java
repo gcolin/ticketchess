@@ -781,18 +781,18 @@ public class PaymentApi {
     }
 
     private byte[] generateInvoicePdf(Payment payment, List<PlayerSubscription> subs) throws Exception {
-        com.lowagie.text.Document document =
-                new com.lowagie.text.Document(com.lowagie.text.PageSize.A4, 50, 50, 60, 60);
+        org.openpdf.text.Document document =
+                new org.openpdf.text.Document(org.openpdf.text.PageSize.A4, 50, 50, 60, 60);
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        com.lowagie.text.pdf.PdfWriter.getInstance(document, baos);
+        org.openpdf.text.pdf.PdfWriter.getInstance(document, baos);
         document.open();
 
-        com.lowagie.text.Font titleFont =
-                new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 18, com.lowagie.text.Font.BOLD);
-        com.lowagie.text.Font headerFont =
-                new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 11, com.lowagie.text.Font.BOLD);
-        com.lowagie.text.Font normalFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 10);
-        com.lowagie.text.Font smallFont = new com.lowagie.text.Font(com.lowagie.text.Font.HELVETICA, 9);
+        org.openpdf.text.Font titleFont =
+                new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 18, org.openpdf.text.Font.BOLD);
+        org.openpdf.text.Font headerFont =
+                new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 11, org.openpdf.text.Font.BOLD);
+        org.openpdf.text.Font normalFont = new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 10);
+        org.openpdf.text.Font smallFont = new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 9);
 
         String sellerName = Config.configured(properties, "invoice.seller.name", "org.name");
         String sellerAddress1 = Config.configured(properties, "invoice.seller.address1", "org.address");
@@ -821,8 +821,8 @@ public class PaymentApi {
         String vatNotice = Config.configured(properties, "invoice.vat.notice", null);
         String footerContact = Config.configured(properties, "invoice.footer", "org.name");
 
-        document.add(new com.lowagie.text.Paragraph("Reçu n° " + invoiceNumber, titleFont));
-        document.add(new com.lowagie.text.Paragraph(" "));
+        document.add(new org.openpdf.text.Paragraph("Reçu n° " + invoiceNumber, titleFont));
+        document.add(new org.openpdf.text.Paragraph(" "));
 
         addLineIfNotBlank(document, normalFont, sellerName);
         addLineIfNotBlank(document, normalFont, sellerAddress1);
@@ -845,7 +845,7 @@ public class PaymentApi {
                         isBlank(sellerSiret) ? "" : "SIRET: " + sellerSiret,
                         isBlank(sellerRna) ? "" : "RNA: " + sellerRna));
         addLineIfNotBlank(document, smallFont, sellerPrefecture);
-        document.add(new com.lowagie.text.Paragraph(" "));
+        document.add(new org.openpdf.text.Paragraph(" "));
 
         String client = loggerUser.getUsername();
         if (!subs.isEmpty()) {
@@ -856,9 +856,9 @@ public class PaymentApi {
             }
         }
 
-        document.add(new com.lowagie.text.Paragraph("Client : " + client, normalFont));
+        document.add(new org.openpdf.text.Paragraph("Client : " + client, normalFont));
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        document.add(new com.lowagie.text.Paragraph(
+        document.add(new org.openpdf.text.Paragraph(
                 "Date : "
                         + (payment.getUpdatedAt() != null
                                 ? payment.getUpdatedAt().toLocalDate().format(formatter)
@@ -866,23 +866,23 @@ public class PaymentApi {
                                         ? payment.getCreatedAt().toLocalDate().format(formatter)
                                         : "-"),
                 normalFont));
-        document.add(new com.lowagie.text.Paragraph("Email : " + payment.getUserEmail(), normalFont));
-        document.add(new com.lowagie.text.Paragraph(
+        document.add(new org.openpdf.text.Paragraph("Email : " + payment.getUserEmail(), normalFont));
+        document.add(new org.openpdf.text.Paragraph(
                 paymentMethodLabel + " : " + translatePaymentType(payment.getType()), normalFont));
-        document.add(new com.lowagie.text.Paragraph("Statut : " + paymentStatusLabel, normalFont));
-        document.add(new com.lowagie.text.Paragraph(" "));
+        document.add(new org.openpdf.text.Paragraph("Statut : " + paymentStatusLabel, normalFont));
+        document.add(new org.openpdf.text.Paragraph(" "));
 
         if (!subs.isEmpty()) {
-            com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(3);
+            org.openpdf.text.pdf.PdfPTable table = new org.openpdf.text.pdf.PdfPTable(3);
             table.setWidthPercentage(100);
             table.setWidths(new float[] {40f, 40f, 20f});
 
-            com.lowagie.text.pdf.PdfPCell c1 =
-                    new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase("Tournoi", headerFont));
-            com.lowagie.text.pdf.PdfPCell c2 =
-                    new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase("Joueur", headerFont));
-            com.lowagie.text.pdf.PdfPCell c3 =
-                    new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase("Montant", headerFont));
+            org.openpdf.text.pdf.PdfPCell c1 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Tournoi", headerFont));
+            org.openpdf.text.pdf.PdfPCell c2 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Joueur", headerFont));
+            org.openpdf.text.pdf.PdfPCell c3 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Montant", headerFont));
             c1.setBackgroundColor(new java.awt.Color(220, 220, 220));
             c2.setBackgroundColor(new java.awt.Color(220, 220, 220));
             c3.setBackgroundColor(new java.awt.Color(220, 220, 220));
@@ -901,18 +901,18 @@ public class PaymentApi {
                 String price = sub.getAmountCents() != null
                         ? String.format("%.2f €", ServiceUtils.toEuros(sub.getAmountCents()))
                         : "-";
-                table.addCell(new com.lowagie.text.Phrase(eventName, normalFont));
-                table.addCell(new com.lowagie.text.Phrase(playerInfo, normalFont));
-                table.addCell(new com.lowagie.text.Phrase(price, normalFont));
+                table.addCell(new org.openpdf.text.Phrase(eventName, normalFont));
+                table.addCell(new org.openpdf.text.Phrase(playerInfo, normalFont));
+                table.addCell(new org.openpdf.text.Phrase(price, normalFont));
             }
             document.add(table);
-            document.add(new com.lowagie.text.Paragraph(" "));
+            document.add(new org.openpdf.text.Paragraph(" "));
         }
 
         String totalStr = payment.getAmountCents() != null
                 ? String.format("%.2f €", ServiceUtils.toEuros(payment.getAmountCents()))
                 : (payment.getAmount() != null ? String.format("%.2f €", payment.getAmount()) : "-");
-        document.add(new com.lowagie.text.Paragraph("Montant payé : " + totalStr, headerFont));
+        document.add(new org.openpdf.text.Paragraph("Montant payé : " + totalStr, headerFont));
         addLineIfNotBlank(document, smallFont, vatNotice);
         addLineIfNotBlank(document, smallFont, footerContact);
 
@@ -920,10 +920,10 @@ public class PaymentApi {
         return baos.toByteArray();
     }
 
-    private static void addLineIfNotBlank(com.lowagie.text.Document document, com.lowagie.text.Font font, String value)
-            throws com.lowagie.text.DocumentException {
+    private static void addLineIfNotBlank(org.openpdf.text.Document document, org.openpdf.text.Font font, String value)
+            throws org.openpdf.text.DocumentException {
         if (!isBlank(value)) {
-            document.add(new com.lowagie.text.Paragraph(value, font));
+            document.add(new org.openpdf.text.Paragraph(value, font));
         }
     }
 
