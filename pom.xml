@@ -20,7 +20,7 @@
 		<maven.compiler.source>25</maven.compiler.source>
 		<maven.compiler.target>25</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<lucene.version>10.3.2</lucene.version>
+		<lucene.version>10.5.1</lucene.version>
 		<h2.version>2.4.240</h2.version>
 		<jackcess.version>4.0.10</jackcess.version>
 		<postgresql.version>42.7.10</postgresql.version>
