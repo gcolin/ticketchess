@@ -52,7 +52,7 @@
 			<dependency>
 				<groupId>org.eclipse.jetty.ee11</groupId>
 				<artifactId>jetty-ee11</artifactId>
-				<version>12.1.7</version>
+				<version>12.1.12</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
