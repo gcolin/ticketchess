@@ -5,12 +5,13 @@ ENV MAVEN_OPTS="-Xmx2048m"
 WORKDIR /workspace
 
 # Cache Playwright browser + OS deps (rebuilt when pom.xml changes).
+# Do not use exec:java: the pom sets mainClass to Main, which starts Jetty and hangs.
 COPY pom.xml .
-RUN mvn -B -q dependency:resolve dependency:resolve-plugins \
-    && mvn -B -q exec:java \
-        -Dexec.mainClass=com.microsoft.playwright.CLI \
-        -Dexec.classpathScope=test \
-        -Dexec.args="install --with-deps chromium"
+RUN version=$(sed -n 's/.*<playwright.version>\([^<]*\)<\/playwright.version>.*/\1/p' pom.xml | head -n1) \
+    && mvn -B -q org.apache.maven.plugins:maven-dependency-plugin:3.8.1:copy \
+        -Dartifact="com.microsoft.playwright:playwright:${version}" \
+        -DoutputDirectory=/opt/playwright \
+    && java -cp "/opt/playwright/*" com.microsoft.playwright.CLI install --with-deps chromium
 
 # Default: test job from .github/workflows/ci.yml
 CMD ["mvn", "-B", "clean", "verify", "-P", "integration"]
