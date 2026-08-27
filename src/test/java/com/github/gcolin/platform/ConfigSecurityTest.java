@@ -7,9 +7,41 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ConfigSecurityTest {
+
+    @TempDir
+    Path tempConfigDir;
+
+    private String previousTestProperty;
+    private String previousConfigDir;
+
+    @BeforeEach
+    void isolateFromSharedJvmState() {
+        previousTestProperty = System.getProperty("test");
+        previousConfigDir = System.getProperty("CONFIG_DIR");
+        System.clearProperty("test");
+        System.setProperty("CONFIG_DIR", tempConfigDir.toAbsolutePath().toString());
+    }
+
+    @AfterEach
+    void restoreSharedJvmState() {
+        restoreProperty("test", previousTestProperty);
+        restoreProperty("CONFIG_DIR", previousConfigDir);
+    }
+
+    private static void restoreProperty(String key, String value) {
+        if (value == null) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, value);
+        }
+    }
 
     @Test
     void shouldAllowTestModeWithoutOauth() {
