@@ -47,5 +47,6 @@ public class EventCollectionDao extends AbstractDao<EventCollection> {
         eventCollection.setMaxSubscribe(
                 eventCollectionOptionDao.get().findIntOptionValue(eventCollection.getId(), EventCollectionOptionType.MAX_SUBSCRIPTIONS));
         eventCollection.setNbSubscriptions((int) playerSubscriptionDao.get().countByEventCollection(eventCollection.getId()));
+        eventCollection.setEventCount((int) countLinkedEvents(eventCollection.getId()));
     }
 }

@@ -59,11 +59,6 @@
           </div>
 
           <div class="col-12 col-md-6">
-            <label for="membership_clubref" class="form-label">${msg.get("admin.membership.clubRef")}</label>
-            <input id="membership_clubref" type="number" name="clubRef" class="form-control" required>
-          </div>
-
-          <div class="col-12 col-md-6">
             <label for="membership_amount" class="form-label">${msg.get("admin.membership.amountCents")}</label>
             <input id="membership_amount" type="number" name="amountCents" class="form-control" min="0" required>
           </div>

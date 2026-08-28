@@ -11,9 +11,11 @@
 @param com.github.gcolin.membership.MembershipOptionType[] optionTypes
 @param java.util.List<com.github.gcolin.membership.License> licenses
 @param com.github.gcolin.membership.MembershipOption option
+@param Integer seasonId
 !{i18ntitle = option.getId() != null ? msg.get("page.membershipOptionEdit") : msg.get("page.membershipOptionNew");}
 !{title = i18ntitle;}
 !{page = "admin";}
+!{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 
@@ -27,22 +29,25 @@
       <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
         <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
         <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-        <li class="breadcrumb-item"><a href="${contextPath}/membership-option-admin">${msg.get("breadcrumb.membershipOptions")}</a></li>
+        <li class="breadcrumb-item"><a href="${contextPath}/membership-option-admin${seasonParam}">${msg.get("breadcrumb.membershipOptions")}</a></li>
         <li class="breadcrumb-item active" aria-current="page">${i18ntitle}</li>
       </ol>
     </nav>
 
     <div class="bg-body rounded p-3">
       <form method="post" action="${option.getId() != null ? contextPath + "/membership-option-admin/" + option.getId() : contextPath + "/membership-option-admin"}">
+        @if(seasonId != null)
+          <input type="hidden" name="seasonId" value="${seasonId}">
+        @endif
         <div class="row g-3">
           <div class="col-12 col-md-6">
             <label for="opt_type" class="form-label">Type</label>
             <select id="opt_type" name="optionType" class="form-select" required>
               @for(var optType : optionTypes)
                 @if(option.getOptionType() != null && option.getOptionType() == optType)
-                <option value="${optType.name()}" selected>${optType.name()}</option>
+                <option value="${optType.name()}" selected>${msg.get("membershipOptionType." + optType)}</option>
                 @else
-                <option value="${optType.name()}">${optType.name()}</option>
+                <option value="${optType.name()}">${msg.get("membershipOptionType." + optType)}</option>
                 @endif
               @endfor
             </select>
@@ -77,19 +82,9 @@
             <select id="opt_access_rule" name="accessRule" class="form-select">
               @for(var accessRule : accessRules)
                 @if(option.getAccessRule() != null && option.getAccessRule() == accessRule)
-                <option value="${accessRule.name()}" selected>
-                  @if(accessRule.name().equals("ALL"))Tous@endif
-                  @if(accessRule.name().equals("YOUNG_ONLY"))Young uniquement@endif
-                  @if(accessRule.name().equals("NON_YOUNG_ONLY"))Non young uniquement@endif
-                  @if(accessRule.name().equals("ADMIN"))Admin uniquement@endif
-                </option>
+                <option value="${accessRule.name()}" selected>${msg.get("membershipOptionAccessRule." + accessRule)}</option>
                 @else
-                <option value="${accessRule.name()}">
-                  @if(accessRule.name().equals("ALL"))Tous@endif
-                  @if(accessRule.name().equals("YOUNG_ONLY"))Young uniquement@endif
-                  @if(accessRule.name().equals("NON_YOUNG_ONLY"))Non young uniquement@endif
-                  @if(accessRule.name().equals("ADMIN"))Admin uniquement@endif
-                </option>
+                <option value="${accessRule.name()}">${msg.get("membershipOptionAccessRule." + accessRule)}</option>
                 @endif
               @endfor
             </select>
@@ -97,7 +92,7 @@
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <a class="btn btn-outline-secondary" href="${contextPath}/membership-option-admin">Annuler</a>
+          <a class="btn btn-outline-secondary" href="${contextPath}/membership-option-admin${seasonParam}">Annuler</a>
           <button type="submit" class="btn btn-primary">${option.getId() != null ? "Enregistrer" : "Créer"}</button>
         </div>
       </form>

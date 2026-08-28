@@ -1,5 +1,6 @@
 package com.github.gcolin.event;
 
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.Event;
 import com.github.gcolin.event.EventCollection;
 import com.github.gcolin.event.EventCollectionOptionType;
@@ -71,19 +72,37 @@ public class EventDao extends AbstractDao<Event> {
     }
 
     public List<Event> findByStatus(EventStatus status) {
-        TypedQuery<Event> query = em.createQuery(
-                "SELECT e FROM Event e where e.status = :status and e.eventGroup is null order by e.startDate ASC, e.name ASC",
-                Event.class);
+        return findByStatus(status, SeasonScope.all());
+    }
+
+    public List<Event> findByStatus(EventStatus status, SeasonScope scope) {
+        String jpql =
+                "SELECT e FROM Event e where e.status = :status and e.eventGroup is null";
+        if (scope.isFiltered()) {
+            jpql += " and e.startDate >= :seasonStart and e.startDate <= :seasonEnd";
+        }
+        jpql += " order by e.startDate ASC, e.name ASC";
+        TypedQuery<Event> query = em.createQuery(jpql, Event.class);
         query.setParameter("status", status);
+        bindSeasonScope(query, scope);
         return query.getResultList();
     }
 
     public List<Event> findByStatus(EventStatus status, EventGroup eventGroup) {
-        TypedQuery<Event> query = em.createQuery(
-                "SELECT e FROM Event e where e.status = :status and e.eventGroup = :eventGroup order by e.startDate ASC, e.name DESC",
-                Event.class);
+        return findByStatus(status, eventGroup, SeasonScope.all());
+    }
+
+    public List<Event> findByStatus(EventStatus status, EventGroup eventGroup, SeasonScope scope) {
+        String jpql =
+                "SELECT e FROM Event e where e.status = :status and e.eventGroup = :eventGroup";
+        if (scope.isFiltered()) {
+            jpql += " and e.startDate >= :seasonStart and e.startDate <= :seasonEnd";
+        }
+        jpql += " order by e.startDate ASC, e.name DESC";
+        TypedQuery<Event> query = em.createQuery(jpql, Event.class);
         query.setParameter("status", status);
         query.setParameter("eventGroup", eventGroup);
+        bindSeasonScope(query, scope);
         return query.getResultList();
     }
 
@@ -194,7 +213,6 @@ public class EventDao extends AbstractDao<Event> {
             String rondesStr,
             String cadence,
             String pairing,
-            String clubRefStr,
             String eventMaxSubscriptionsStr) {
         Event event = new Event();
         event.setName(name);
@@ -228,7 +246,6 @@ public class EventDao extends AbstractDao<Event> {
         eventOptionDao.get().setOption(event.getId(), EventOptionType.ROUNDS, rondesStr != null ? rondesStr : "");
         eventOptionDao.get().setOption(event.getId(), EventOptionType.CADENCE, cadence != null ? cadence : "");
         eventOptionDao.get().setOption(event.getId(), EventOptionType.PAIRING, pairing != null ? pairing : "");
-        eventOptionDao.get().setOption(event.getId(), EventOptionType.CLUB_REF, clubRefStr != null ? clubRefStr : "");
         eventOptionDao.get().setOption(
                 event.getId(),
                 EventOptionType.MAX_SUBSCRIPTIONS,
@@ -279,22 +296,60 @@ public class EventDao extends AbstractDao<Event> {
         eventCollection.setNbSubscriptions((int) playerSubscriptionDao.get().countByEventCollection(eventCollection.getId()));
     }
 
+    public List<Event> findAllForAdmin() {
+        return findAllForAdmin(SeasonScope.all());
+    }
+
+    public List<Event> findAllForAdmin(SeasonScope scope) {
+        String jpql = "SELECT e FROM Event e "
+                + "LEFT JOIN FETCH e.eventGroup "
+                + "LEFT JOIN FETCH e.eventCollection ";
+        if (scope.isFiltered()) {
+            jpql += "WHERE e.startDate >= :seasonStart AND e.startDate <= :seasonEnd ";
+        }
+        jpql += "ORDER BY e.startDate ASC, e.name ASC";
+        TypedQuery<Event> query = em.createQuery(jpql, Event.class);
+        bindSeasonScope(query, scope);
+        return query.getResultList();
+    }
+
     public List<Event> findClosestEvents(int limit) {
-        TypedQuery<Event> query = em.createQuery(
-                "SELECT e FROM Event e WHERE e.startDate > CURRENT_TIMESTAMP " + "ORDER BY e.startDate ASC",
-                Event.class);
+        return findClosestEvents(limit, SeasonScope.all());
+    }
+
+    public List<Event> findClosestEvents(int limit, SeasonScope scope) {
+        String jpql = "SELECT e FROM Event e WHERE e.startDate > CURRENT_TIMESTAMP";
+        if (scope.isFiltered()) {
+            jpql += " AND e.startDate >= :seasonStart AND e.startDate <= :seasonEnd";
+        }
+        jpql += " ORDER BY e.startDate ASC";
+        TypedQuery<Event> query = em.createQuery(jpql, Event.class);
+        bindSeasonScope(query, scope);
         query.setMaxResults(limit);
         return query.getResultList();
     }
 
     public List<Object[]> findTopEventsByParticipants(int limit) {
-        TypedQuery<Object[]> query = em.createQuery(
-                "SELECT e, COUNT(ps) as participantCount FROM Event e "
-                        + "LEFT JOIN e.subscriptions ps "
-                        + "GROUP BY e.id "
-                        + "ORDER BY participantCount DESC",
-                Object[].class);
+        return findTopEventsByParticipants(limit, SeasonScope.all());
+    }
+
+    public List<Object[]> findTopEventsByParticipants(int limit, SeasonScope scope) {
+        String jpql = "SELECT e, COUNT(ps) as participantCount FROM Event e "
+                + "LEFT JOIN e.subscriptions ps ";
+        if (scope.isFiltered()) {
+            jpql += "WHERE e.startDate >= :seasonStart AND e.startDate <= :seasonEnd ";
+        }
+        jpql += "GROUP BY e.id ORDER BY participantCount DESC";
+        TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
+        bindSeasonScope(query, scope);
         query.setMaxResults(limit);
         return query.getResultList();
+    }
+
+    private void bindSeasonScope(TypedQuery<?> query, SeasonScope scope) {
+        if (scope.isFiltered()) {
+            query.setParameter("seasonStart", scope.getStart());
+            query.setParameter("seasonEnd", scope.getEnd());
+        }
     }
 }

@@ -1,6 +1,8 @@
 package com.github.gcolin.membership;
 
 import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionAccessRule;
 import com.github.gcolin.membership.MembershipOptionType;
@@ -14,9 +16,11 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.util.HashMap;
@@ -34,30 +38,36 @@ public class MembershipOptionAdminApi {
     @Inject
     private LicenseDao licenseDao;
 
+    @Inject
+    private ClubSeasonFilter clubSeasonFilter;
+
     @Context
     UriInfo uriInfo;
 
     @GET
-    public JteHtml list() {
+    public JteHtml list(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         Map<String, Object> model = new HashMap<>();
-        model.put("options", membershipOptionDao.all());
+        model.put("options", membershipOptionDao.all(scope));
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "membership/membershipOption.jte");
     }
 
     @GET
     @Path("new")
-    public JteHtml createPage() {
+    public JteHtml createPage(@QueryParam("seasonId") Integer seasonId) {
         Map<String, Object> model = new HashMap<>();
         model.put("option", new MembershipOption());
         model.put("optionTypes", MembershipOptionType.values());
         model.put("accessRules", MembershipOptionAccessRule.values());
         model.put("licenses", licenseDao.all());
+        model.put("seasonId", clubSeasonFilter.effectiveSeasonId(seasonId));
         return new JteHtml(model, "membership/membershipOptionEdit.jte");
     }
 
     @GET
     @Path("{id}/edit")
-    public JteHtml editPage(@PathParam("id") Integer id) {
+    public JteHtml editPage(@PathParam("id") Integer id, @QueryParam("seasonId") Integer seasonId) {
         MembershipOption option = membershipOptionDao.find(id);
         if (option == null) {
             return new JteHtml(Map.of(
@@ -70,6 +80,7 @@ public class MembershipOptionAdminApi {
         model.put("optionTypes", MembershipOptionType.values());
         model.put("accessRules", MembershipOptionAccessRule.values());
         model.put("licenses", licenseDao.all());
+        model.put("seasonId", clubSeasonFilter.effectiveSeasonId(seasonId));
         return new JteHtml(model, "membership/membershipOptionEdit.jte");
     }
 
@@ -80,7 +91,8 @@ public class MembershipOptionAdminApi {
             @FormParam("optionValue") String optionValue,
             @FormParam("amountCents") Integer amountCents,
             @FormParam("accessRule") String accessRule,
-            @FormParam("licenseId") Integer licenseId) {
+            @FormParam("licenseId") Integer licenseId,
+            @FormParam("seasonId") Integer seasonId) {
         MembershipOption option = new MembershipOption();
         option.setOptionType(MembershipOptionType.valueOf(optionType));
         option.setOptionValue(optionValue);
@@ -90,8 +102,7 @@ public class MembershipOptionAdminApi {
             option.setLicense(licenseDao.find(licenseId));
         }
         membershipOptionDao.persist(option);
-        URI redirect = uriInfo.getBaseUriBuilder().path("membership-option-admin").build();
-        return Response.seeOther(redirect).build();
+        return Response.seeOther(listUri(seasonId)).build();
     }
 
     @POST
@@ -103,7 +114,8 @@ public class MembershipOptionAdminApi {
             @FormParam("optionValue") String optionValue,
             @FormParam("amountCents") Integer amountCents,
             @FormParam("accessRule") String accessRule,
-            @FormParam("licenseId") Integer licenseId) {
+            @FormParam("licenseId") Integer licenseId,
+            @FormParam("seasonId") Integer seasonId) {
         MembershipOption option = membershipOptionDao.find(id);
         if (option == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
@@ -118,16 +130,22 @@ public class MembershipOptionAdminApi {
             option.setLicense(null);
         }
         membershipOptionDao.merge(option);
-        URI redirect = uriInfo.getBaseUriBuilder().path("membership-option-admin").build();
-        return Response.seeOther(redirect).build();
+        return Response.seeOther(listUri(seasonId)).build();
     }
 
     @POST
     @Path("{id}/delete")
-    public Response delete(@PathParam("id") Integer id) {
+    public Response delete(@PathParam("id") Integer id, @FormParam("seasonId") Integer seasonId) {
         membershipOptionDao.remove(id);
-        URI redirect = uriInfo.getBaseUriBuilder().path("membership-option-admin").build();
-        return Response.seeOther(redirect).build();
+        return Response.seeOther(listUri(seasonId)).build();
+    }
+
+    private URI listUri(Integer seasonId) {
+        UriBuilder builder = uriInfo.getBaseUriBuilder().path("membership-option-admin");
+        if (seasonId != null) {
+            builder.queryParam("seasonId", seasonId);
+        }
+        return builder.build();
     }
 
     private MembershipOptionAccessRule parseAccessRule(String accessRule) {

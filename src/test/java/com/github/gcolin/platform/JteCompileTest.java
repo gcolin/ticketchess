@@ -156,6 +156,9 @@ class JteCompileTest {
         model.put("pendingRows", List.of());
         model.put("options", List.of());
         model.put("licenses", List.of());
+        model.put("season", new com.github.gcolin.club.ClubSeason());
+        model.put("seasons", List.of());
+        model.put("seasonId", null);
         model.put("membership", new com.github.gcolin.membership.Membership());
         model.put("license", new com.github.gcolin.membership.License());
         model.put("price", new com.github.gcolin.membership.LicensePrice());
@@ -219,6 +222,7 @@ class JteCompileTest {
         model.put("currentStatus", "NOT_PAID");
         model.put("isNew", false);
         model.put("clubRegisterEnabled", false);
+        model.put("clubSeasonName", "2026/2027");
         model.put("rowCount", 0);
         model.put("replaceableCount", 0);
         model.put("pendingRowCount", 0);

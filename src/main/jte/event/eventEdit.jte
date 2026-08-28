@@ -271,11 +271,6 @@
                                 <input id="event_maxsubscriptions" type="number" name="maxSubscriptions"
                                        value="${eventOptions.get("MAX_SUBSCRIPTIONS") != null ? eventOptions.get("MAX_SUBSCRIPTIONS") : ""}" class="form-control" min="1">
                             </div>
-                            <div class="col-md-3 mb-3">
-                                <label class="form-label">${msg.get("event.clubRef")}</label>
-                                <input id="event_clubref" type="number" name="clubRef"
-                                       value="${eventOptions.get("CLUB_REF") != null ? eventOptions.get("CLUB_REF") : ""}" class="form-control">
-                            </div>
                         </div>
 
                         <!-- Submit -->
@@ -305,13 +300,21 @@
                         <input type="hidden" name="eventId" value="${event.getId()}">
                         <input type="hidden" name="descriptionOnly" value="true">
                         <!-- Event Description -->
-                        <div class="mb-3">
-                            <label class="form-label">
-                                ${msg.get("event.description")}
-                            </label>
+                        <div class="row mb-3">
+                            <div class="col-lg-6 mb-3 mb-lg-0">
+                                <label class="form-label" for="event_description">
+                                    ${msg.get("event.description")}
+                                </label>
 !{placeholder = msg.get("event.descriptionplaceholder");}
-                            <textarea id="event_description" name="description" class="form-control" rows="20"
-                                placeholder="${placeholder}">@if(eventInfo != null && eventInfo.getDescription() != null)${eventInfo.getDescription()}@endif</textarea>
+                                <textarea id="event_description" name="description" class="form-control" rows="20"
+                                    placeholder="${placeholder}">@if(eventInfo != null && eventInfo.getDescription() != null)${eventInfo.getDescription()}@endif</textarea>
+                            </div>
+                            <div class="col-lg-6">
+                                <label class="form-label" for="event_description_preview">
+                                    ${msg.get("mail.preview")}
+                                </label>
+                                <div id="event_description_preview" class="border rounded p-3 bg-body-secondary" style="min-height: 420px; overflow: auto;"></div>
+                            </div>
                         </div>
 
                         <!-- Submit -->
@@ -399,5 +402,47 @@
     </div>
 </div>
 @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
+@if(event.getId() != null)
+<script>
+(function () {
+  var descriptionEl = document.getElementById('event_description');
+  var previewEl = document.getElementById('event_description_preview');
+  if (!descriptionEl || !previewEl) {
+    return;
+  }
+
+  var timer = null;
+
+  function updatePreview() {
+    var formData = new URLSearchParams();
+    formData.append('description', descriptionEl.value || '');
+
+    fetch('${contextPath}/event/${event.getId()}/description/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString()
+    })
+    .then(function (response) { return response.text(); })
+    .then(function (html) {
+      previewEl.innerHTML = html;
+    });
+  }
+
+  function scheduleUpdate() {
+    clearTimeout(timer);
+    timer = setTimeout(updatePreview, 400);
+  }
+
+  descriptionEl.addEventListener('input', scheduleUpdate);
+
+  var descriptionTab = document.getElementById('profile-tab');
+  if (descriptionTab) {
+    descriptionTab.addEventListener('shown.bs.tab', updatePreview);
+  }
+
+  updatePreview();
+})();
+</script>
+@endif
 </body>
 </html>

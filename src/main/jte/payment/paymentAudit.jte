@@ -8,9 +8,13 @@
 @param String title
 @param com.github.gcolin.auth.LoggedUser user
 @param java.util.List<java.util.Map<String, Object>> mismatches
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = "Audit des paiements";}
 !{title = i18ntitle;}
 !{page = "payments";}
+!{if (seasons == null) seasons = java.util.List.of();}
+!{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 
@@ -30,6 +34,10 @@
     </nav>
 
     <div class="mb-2 bg-body rounded px-3 py-2">
+      <form method="get" action="${contextPath}/payment/audit" class="row g-2 align-items-end mb-3">
+        @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="audit_season", autoSubmit=true)
+      </form>
+
       <h5 class="mb-3">Audit des montants</h5>
 
       @if(mismatches != null && !mismatches.isEmpty())
@@ -110,6 +118,9 @@
                   <td>
                     @if(mismatch.get("subs") != null && !((java.util.List<?>) mismatch.get("subs")).isEmpty() && mismatch.get("payment") != null)
                       <form method="post" action="${contextPath}/payment/audit/fix/${((com.github.gcolin.payment.Payment) mismatch.get("payment")).getId()}">
+                        @if(seasonId != null)
+                          <input type="hidden" name="seasonId" value="${seasonId}">
+                        @endif
                         <button type="submit" class="btn btn-warning btn-sm">Corriger</button>
                       </form>
                     @endif

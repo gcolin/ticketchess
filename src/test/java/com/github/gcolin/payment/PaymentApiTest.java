@@ -5,12 +5,19 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
+
 import com.github.gcolin.event.Event;
+import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
@@ -45,14 +52,24 @@ class PaymentApiTest {
         p.setId(1L);
 
         PagedList<Payment> paged = new PagedList<>(List.of(p), 0, 30);
-        when(paymentDao.page(0, 25)).thenReturn(paged);
+        when(paymentDao.page(eq(0), eq(25), any(SeasonScope.class))).thenReturn(paged);
         when(subDao.findByPaymentId(1)).thenReturn(List.of());
+
+        ClubSeasonFilter clubSeasonFilter = mock(ClubSeasonFilter.class);
+        when(clubSeasonFilter.resolve(null)).thenReturn(SeasonScope.all());
+        doAnswer(invocation -> {
+            Map<String, Object> model = invocation.getArgument(0);
+            model.put("seasons", List.of());
+            model.put("seasonId", invocation.getArgument(1));
+            return null;
+        }).when(clubSeasonFilter).addToModel(any(), any());
 
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
         inject(api, "find", mock(Find.class));
+        inject(api, "clubSeasonFilter", clubSeasonFilter);
 
-        JteHtml html = api.page(0, 25, "");
+        JteHtml html = api.page(0, 25, "", null);
         Map<String, Object> model = html.getModel();
 
         assertEquals("payment/payments.jte", html.getTemplate());
@@ -203,11 +220,15 @@ class PaymentApiTest {
         payment.setUpdatedAt(LocalDateTime.of(2026, 5, 2, 10, 0));
         payment.setStripeSessionId("sess_1");
 
-        when(paymentDao.all()).thenReturn(List.of(payment));
+        when(paymentDao.all(any(SeasonScope.class))).thenReturn(List.of(payment));
+
+        ClubSeasonFilter clubSeasonFilter = mock(ClubSeasonFilter.class);
+        when(clubSeasonFilter.resolve(null)).thenReturn(SeasonScope.all());
 
         inject(api, "paymentService", paymentDao);
+        inject(api, "clubSeasonFilter", clubSeasonFilter);
 
-        Response response = api.exportCsv();
+        Response response = api.exportCsv(null);
         String csv = (String) response.getEntity();
 
         assertEquals(200, response.getStatus());
@@ -245,16 +266,20 @@ class PaymentApiTest {
         player.setFirstname("Ada");
         player.setName("Lovelace");
 
-        when(paymentDao.all()).thenReturn(List.of(p1, p2));
+        when(paymentDao.all(any(SeasonScope.class))).thenReturn(List.of(p1, p2));
         when(subDao.findByPaymentId(1)).thenReturn(List.of());
         when(subDao.findByPaymentId(2)).thenReturn(List.of(sub));
         when(find.player("LIC1", null)).thenReturn(player);
 
+        ClubSeasonFilter clubSeasonFilter = mock(ClubSeasonFilter.class);
+        when(clubSeasonFilter.resolve(null)).thenReturn(SeasonScope.all());
+
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
         inject(api, "find", find);
+        inject(api, "clubSeasonFilter", clubSeasonFilter);
 
-        Response response = api.exportCsvDetails();
+        Response response = api.exportCsvDetails(null);
         String csv = (String) response.getEntity();
 
         assertEquals(200, response.getStatus());
@@ -273,16 +298,45 @@ class PaymentApiTest {
 
         PagedList<Payment> paged = new PagedList<>(List.of(payment), 0, 1);
 
-        when(paymentDao.page(0, 50)).thenReturn(paged);
+        when(paymentDao.page(eq(0), eq(50), any(SeasonScope.class))).thenReturn(paged);
         when(paymentDao.detachAll(paged.getElements())).thenReturn(paged.getElements());
 
-        inject(api, "paymentService", paymentDao);
+        ClubSeasonFilter clubSeasonFilter = mock(ClubSeasonFilter.class);
+        when(clubSeasonFilter.resolve(null)).thenReturn(SeasonScope.all());
 
-        PagedList<Payment> result = api.export(0, 50);
+        inject(api, "paymentService", paymentDao);
+        inject(api, "clubSeasonFilter", clubSeasonFilter);
+
+        PagedList<Payment> result = api.export(0, 50, null);
 
         assertSame(paged, result);
         assertEquals(1, result.getElements().size());
         verify(paymentDao).detachAll(paged.getElements());
+    }
+
+    @Test
+    void exportAccountingPdfShouldUseSelectedSeason() throws Exception {
+        PaymentApi api = new PaymentApi();
+        PaymentDao paymentDao = mock(PaymentDao.class);
+        ClubSeasonFilter seasonFilter = mock(ClubSeasonFilter.class);
+        EventPaymentsReportService reportService = mock(EventPaymentsReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        when(seasonFilter.resolve(4)).thenReturn(scope);
+        when(paymentDao.findPaid(scope)).thenReturn(List.of());
+        when(reportService.generateForAccounting(List.of(), scope)).thenReturn(pdf);
+
+        inject(api, "paymentService", paymentDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "eventPaymentsReportService", reportService);
+
+        Response response = api.exportAccountingPdf(4);
+
+        assertEquals(200, response.getStatus());
+        assertSame(pdf, response.getEntity());
+        assertTrue(response.getHeaderString("Content-Disposition").startsWith("attachment; filename=journal-recettes-"));
+        verify(paymentDao).findPaid(scope);
     }
 
     @Test

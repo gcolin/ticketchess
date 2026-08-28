@@ -295,7 +295,7 @@ public class EventMailApi {
                 .issuer(event.getName())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                .signWith(config.getKeys())
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                 .compact();
             String loginUrl = uriInfo.getBaseUri() + "login?jwt=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8);
             mail.setLoginUrl(loginUrl);

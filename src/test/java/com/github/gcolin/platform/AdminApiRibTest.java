@@ -74,14 +74,14 @@ class AdminApiRibTest {
         AdminApi api = new AdminApi();
         RibService ribService = mock(RibService.class);
         inject(api, "ribService", ribService);
-        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?success=ribUploaded&tab=files")));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?success=ribUploaded&tab=files#files")));
 
         InputStream file = new ByteArrayInputStream("%PDF-1.4".getBytes(StandardCharsets.US_ASCII));
         Response response = api.uploadRib(file);
 
         verify(ribService).save(file);
-        assertEquals(303, response.getStatus());
-        assertEquals(URI.create("http://localhost:8080/admin/org?success=ribUploaded&tab=files"), response.getLocation());
+        assertEquals(200, response.getStatus());
+        assertEquals("/admin/org?success=ribUploaded&tab=files#files", readRedirect(response));
     }
 
     @Test
@@ -92,12 +92,12 @@ class AdminApiRibTest {
                 .when(ribService)
                 .save(org.mockito.ArgumentMatchers.any());
         inject(api, "ribService", ribService);
-        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?error=invalidRib&tab=files")));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?error=invalidRib&tab=files#files")));
 
         Response response = api.uploadRib(new ByteArrayInputStream("hello".getBytes(StandardCharsets.US_ASCII)));
 
-        assertEquals(303, response.getStatus());
-        assertEquals(URI.create("http://localhost:8080/admin/org?error=invalidRib&tab=files"), response.getLocation());
+        assertEquals(200, response.getStatus());
+        assertEquals("/admin/org?error=invalidRib&tab=files#files", readRedirect(response));
     }
 
     @Test
@@ -106,12 +106,12 @@ class AdminApiRibTest {
         RibService ribService = mock(RibService.class);
         doThrow(new IOException("disk")).when(ribService).save(org.mockito.ArgumentMatchers.any());
         inject(api, "ribService", ribService);
-        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?error=ribUploadFailed&tab=files")));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?error=ribUploadFailed&tab=files#files")));
 
         Response response = api.uploadRib(new ByteArrayInputStream("%PDF-1.4".getBytes(StandardCharsets.US_ASCII)));
 
-        assertEquals(303, response.getStatus());
-        assertEquals(URI.create("http://localhost:8080/admin/org?error=ribUploadFailed&tab=files"), response.getLocation());
+        assertEquals(200, response.getStatus());
+        assertEquals("/admin/org?error=ribUploadFailed&tab=files#files", readRedirect(response));
     }
 
     @Test
@@ -143,14 +143,14 @@ class AdminApiRibTest {
         Config config = mock(Config.class);
         inject(api, "logoService", logoService);
         inject(api, "config", config);
-        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?success=logoDeleted&tab=files")));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?success=logoDeleted&tab=files#files")));
 
         Response response = api.deleteLogo();
 
         verify(logoService).delete();
         verify(config).applyRuntime();
-        assertEquals(303, response.getStatus());
-        assertEquals(URI.create("http://localhost:8080/admin/org?success=logoDeleted&tab=files"), response.getLocation());
+        assertEquals(200, response.getStatus());
+        assertEquals("/admin/org?success=logoDeleted&tab=files#files", readRedirect(response));
     }
 
     private static LogoService missingLogo() {
@@ -173,6 +173,15 @@ class AdminApiRibTest {
         when(config.getPage()).thenReturn(page);
         when(config.isSecretConfigured(anyString())).thenReturn(false);
         return config;
+    }
+
+    private static String readRedirect(Response response) {
+        Object entity = response.getEntity();
+        if (!(entity instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Object redirect = map.get("redirect");
+        return redirect == null ? null : redirect.toString();
     }
 
     private static UriInfo mockUriInfo(URI target) {

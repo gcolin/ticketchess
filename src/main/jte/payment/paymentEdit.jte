@@ -50,9 +50,9 @@
             <select id="status" name="status" class="form-select" required>
               @for(var payStatus : paymentStatuses)
                 @if(payment.getStatus() != null && payment.getStatus() == payStatus)
-                <option value="${payStatus.name()}" selected>${payStatus.name()}</option>
+                <option value="${payStatus.name()}" selected>${msg.get("payment.status." + payStatus)}</option>
                 @else
-                <option value="${payStatus.name()}">${payStatus.name()}</option>
+                <option value="${payStatus.name()}">${msg.get("payment.status." + payStatus)}</option>
                 @endif
               @endfor
             </select>
@@ -63,9 +63,9 @@
             <select id="type" name="type" class="form-select" required>
               @for(var payType : paymentTypes)
                 @if(payment.getType() != null && payment.getType() == payType)
-                <option value="${payType.name()}" selected>${payType.name()}</option>
+                <option value="${payType.name()}" selected>${msg.get("payment.type." + payType)}</option>
                 @else
-                <option value="${payType.name()}">${payType.name()}</option>
+                <option value="${payType.name()}">${msg.get("payment.type." + payType)}</option>
                 @endif
               @endfor
             </select>

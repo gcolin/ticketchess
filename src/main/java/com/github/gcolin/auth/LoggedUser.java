@@ -44,16 +44,34 @@ public class LoggedUser implements Serializable {
 
     public void initFromCookies() {
         Claims claims = getClaims();
-        if (claims != null) {
-            setLogged(true);
-            setAdmin(config.getAdmins().contains(claims.getSubject()));
-
-            setEmail(claims.getSubject());
-            setUsername(claims.getIssuer());
-            caches.getDebtCache().invalidateAll();
-            request.getSession().setAttribute("auth.email", getEmail());
-            request.getSession().setAttribute("auth.admin", isAdmin());
+        if (claims == null) {
+            return;
         }
+        String newEmail = claims.getSubject();
+        boolean identityChanged = newEmail != null && (email == null || !newEmail.equalsIgnoreCase(email));
+        setLogged(true);
+        setEmail(claims.getSubject());
+        setUsername(claims.getIssuer());
+        setAdmin(resolveAdmin(claims));
+        if (request != null && request.getSession(false) != null) {
+            request.getSession(false).setAttribute("auth.email", getEmail());
+            request.getSession(false).setAttribute("auth.admin", isAdmin());
+        }
+        if (identityChanged) {
+            caches.getDebtCache().invalidateAll();
+            caches.getPermissionCache().invalidateAll();
+        }
+    }
+
+    private boolean resolveAdmin(Claims claims) {
+        Object adminClaim = claims.get("admin");
+        if (adminClaim instanceof Boolean admin) {
+            return admin;
+        }
+        if (adminClaim != null) {
+            return Boolean.parseBoolean(adminClaim.toString());
+        }
+        return config.getAdmins().contains(claims.getSubject());
     }
 
     public Claims getClaims() {

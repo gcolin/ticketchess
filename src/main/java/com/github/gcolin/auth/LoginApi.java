@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
+import java.util.Date;
 
 @Path("login")
 public class LoginApi {
@@ -70,14 +71,25 @@ public class LoginApi {
         loggedUser.setEmail(email);
         loggedUser.setUsername(claims.getIssuer() == null || claims.getIssuer().isBlank() ? email : claims.getIssuer());
         loggedUser.setLogged(true);
-        loggedUser.setAdmin(config.getAdmins().contains(email));
+        boolean isAdmin = config.getAdmins().contains(email);
+        loggedUser.setAdmin(isAdmin);
         caches.getDebtCache().invalidateAll();
+        caches.getPermissionCache().invalidateAll();
+
+        String rememberJwt = Jwts.builder()
+                .subject(email)
+                .issuer(loggedUser.getUsername())
+                .claim("admin", isAdmin)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
+                .compact();
 
         NewCookie newCookie = new NewCookie.Builder("remember_me")
                 .httpOnly(true)
                 .maxAge(60 * 60 * 24 * 30)
                 .path("/")
-                .value(jwt)
+                .value(rememberJwt)
                 .build();
 
         URI redirectTo = Redirects.safeRedirect(redirectUri, uriInfo.getBaseUri(), uriInfo);

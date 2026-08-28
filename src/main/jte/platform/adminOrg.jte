@@ -347,6 +347,23 @@
     </main>
     @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
     <script type="text/javascript">
+      async function handleOrgFileResponse(res, statusEl, button, errorMessage) {
+        const contentType = res.headers.get('Content-Type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data.redirect) {
+            window.location.assign(data.redirect);
+            return;
+          }
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          statusEl.className = 'alert mb-3 alert-danger';
+          statusEl.textContent = text || errorMessage;
+          statusEl.classList.remove('d-none');
+          button.disabled = false;
+        }
+      }
       function bindUpload(formId, inputId, buttonId, url, contentType) {
         const form = document.getElementById(formId);
         if (!form) return;
@@ -363,18 +380,10 @@
           try {
             const res = await fetch(url, {
               method: 'POST',
-              headers: { 'Content-Type': contentType },
+              headers: { 'Content-Type': contentType, 'Accept': 'application/json' },
               body: file
             });
-            if (!res.ok) {
-              const text = await res.text();
-              statusEl.className = 'alert mb-3 alert-danger';
-              statusEl.textContent = text || '${msg.get("admin.uploadFailed")}';
-              statusEl.classList.remove('d-none');
-              button.disabled = false;
-              return;
-            }
-            window.location = res.url;
+            await handleOrgFileResponse(res, statusEl, button, '${msg.get("admin.uploadFailed")}');
           } catch (e) {
             statusEl.className = 'alert mb-3 alert-danger';
             statusEl.textContent = '${msg.get("admin.uploadFailed")}';
@@ -393,16 +402,11 @@
           }
           button.disabled = true;
           try {
-            const res = await fetch(url, { method: 'DELETE' });
-            if (!res.ok) {
-              const text = await res.text();
-              statusEl.className = 'alert mb-3 alert-danger';
-              statusEl.textContent = text || '${msg.get("admin.deleteFailed")}';
-              statusEl.classList.remove('d-none');
-              button.disabled = false;
-              return;
-            }
-            window.location = res.url;
+            const res = await fetch(url, {
+              method: 'DELETE',
+              headers: { 'Accept': 'application/json' }
+            });
+            await handleOrgFileResponse(res, statusEl, button, '${msg.get("admin.deleteFailed")}');
           } catch (e) {
             statusEl.className = 'alert mb-3 alert-danger';
             statusEl.textContent = '${msg.get("admin.deleteFailed")}';

@@ -12,6 +12,8 @@
 @param double unpaidPlayerSubscriptions
 @param java.util.List<com.github.gcolin.event.Event> closestEvents
 @param java.util.List<Object[]> topEvents
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 @param Object p
 !{i18ntitle = msg.get("page.statistics");}
 !{title = i18ntitle;}
@@ -32,6 +34,17 @@
         <li class="breadcrumb-item active" aria-current="page">${msg.get("page.statistics")}</li>
       </ol>
     </nav>
+
+    <form method="get" action="${contextPath}/statistics" class="card mb-3">
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="statistics_season", autoSubmit=false)
+          <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-outline-primary">${msg.get("action.applyFilters")}</button>
+          </div>
+        </div>
+      </div>
+    </form>
 
     <div class="row g-3">
 

@@ -46,19 +46,9 @@
                         <select class="form-select" id="accessRule" name="accessRule" required>
                             @for(var accessRule : accessRules)
                                 @if(license.getAccessRule() != null && license.getAccessRule() == accessRule)
-                                <option value="${accessRule.name()}" selected>
-                                    @if("ALL".equals(accessRule.name()))Tous@endif
-                                    @if("YOUNG_ONLY".equals(accessRule.name()))Young uniquement@endif
-                                    @if("NON_YOUNG_ONLY".equals(accessRule.name()))Non young uniquement@endif
-                                    @if("ADMIN".equals(accessRule.name()))Admin uniquement@endif
-                                </option>
+                                <option value="${accessRule.name()}" selected>${msg.get("membershipOptionAccessRule." + accessRule)}</option>
                                 @else
-                                <option value="${accessRule.name()}">
-                                    @if("ALL".equals(accessRule.name()))Tous@endif
-                                    @if("YOUNG_ONLY".equals(accessRule.name()))Young uniquement@endif
-                                    @if("NON_YOUNG_ONLY".equals(accessRule.name()))Non young uniquement@endif
-                                    @if("ADMIN".equals(accessRule.name()))Admin uniquement@endif
-                                </option>
+                                <option value="${accessRule.name()}">${msg.get("membershipOptionAccessRule." + accessRule)}</option>
                                 @endif
                             @endfor
                         </select>
@@ -80,12 +70,7 @@
                         <label for="accessRule" class="form-label">Accessibilité</label>
                         <select class="form-select" id="accessRule" name="accessRule" required>
                             @for(var accessRule : accessRules)
-                                <option value="${accessRule.name()}">
-                                    @if("ALL".equals(accessRule.name()))Tous@endif
-                                    @if("YOUNG_ONLY".equals(accessRule.name()))Young uniquement@endif
-                                    @if("NON_YOUNG_ONLY".equals(accessRule.name()))Non young uniquement@endif
-                                    @if("ADMIN".equals(accessRule.name()))Admin uniquement@endif
-                                </option>
+                                <option value="${accessRule.name()}">${msg.get("membershipOptionAccessRule." + accessRule)}</option>
                             @endfor
                         </select>
                     </div>

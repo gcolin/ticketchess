@@ -121,7 +121,7 @@ class EventCollectionApiTest {
         inject(api, "eventCollectionService", dao);
     inject(api, "eventCollectionOptionService", optionDao);
         inject(api, "caches", new Caches());
-        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/eventcollection?removed=1")));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/events")));
 
     Response response = api.post("remove", 9, null, null);
 

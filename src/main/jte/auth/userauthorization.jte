@@ -42,7 +42,7 @@
               <label class="form-label" for="permission">${msg.get("label.permission")}</label>
               <select class="form-select" id="permission" name="permission" required>
                 @for(var perm : permissions)
-                  <option value="${perm}">${perm}</option>
+                  <option value="${perm}">${msg.get("permission." + perm)}</option>
                 @endfor
               </select>
             </div>
@@ -51,7 +51,7 @@
               <label class="form-label" for="scopeType">${msg.get("label.scopeType")}</label>
               <select class="form-select" id="scopeType" name="scopeType" required>
                 @for(var scopeType : scopeTypes)
-                  <option value="${scopeType}">${scopeType}</option>
+                  <option value="${scopeType}">${msg.get("scopeType." + scopeType)}</option>
                 @endfor
               </select>
             </div>

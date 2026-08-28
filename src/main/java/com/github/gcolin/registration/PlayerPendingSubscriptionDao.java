@@ -1,5 +1,6 @@
 package com.github.gcolin.registration;
 
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.Event;
 import com.github.gcolin.registration.PlayerPendingSubscription;
 import com.github.gcolin.platform.Transactional;
@@ -40,10 +41,25 @@ public class PlayerPendingSubscriptionDao extends AbstractDao<PlayerPendingSubsc
     }
 
     public List<PlayerPendingSubscription> findAllWithEvent() {
-        TypedQuery<PlayerPendingSubscription> query = em.createQuery(
-                "SELECT e FROM PlayerPendingSubscription e join fetch e.event ORDER BY e.createdAt ASC, e.id ASC",
-                PlayerPendingSubscription.class);
+        return findAllWithEvent(SeasonScope.all());
+    }
+
+    public List<PlayerPendingSubscription> findAllWithEvent(SeasonScope scope) {
+        String jpql = "SELECT e FROM PlayerPendingSubscription e join fetch e.event";
+        if (scope.isFiltered()) {
+            jpql += " WHERE e.event.startDate >= :seasonStart AND e.event.startDate <= :seasonEnd";
+        }
+        jpql += " ORDER BY e.createdAt ASC, e.id ASC";
+        TypedQuery<PlayerPendingSubscription> query = em.createQuery(jpql, PlayerPendingSubscription.class);
+        bindSeasonScope(query, scope);
         return query.getResultList();
+    }
+
+    private void bindSeasonScope(jakarta.persistence.TypedQuery<?> query, SeasonScope scope) {
+        if (scope.isFiltered()) {
+            query.setParameter("seasonStart", scope.getStart());
+            query.setParameter("seasonEnd", scope.getEnd());
+        }
     }
 
     public List<PlayerPendingSubscription> findByEventCollection(Integer eventCollectionId) {

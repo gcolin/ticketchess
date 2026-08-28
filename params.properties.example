@@ -62,6 +62,10 @@ jwt.key=change-me-in-production-use-a-long-random-string
 #db.pass=
 #db.type=postgres
 
+# H2 : persistance sur disque (fichiers dans ./h2 ou CONFIG_DIR/h2)
+#db.h2.persistent=true
+#db.h2.path=./h2
+
 # Initialisation H2 depuis un dump PostgreSQL (optionnel, développement local)
 db.h2.loadPostgresDump=false
 #db.h2.reloadPostgresDump=false

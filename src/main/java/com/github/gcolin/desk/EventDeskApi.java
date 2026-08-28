@@ -57,7 +57,7 @@ public class EventDeskApi {
                 .claim("admin", loggedUser.isAdmin())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 12))
-                .signWith(config.getKeys())
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                 .compact();
         Map<String, Object> model = new HashMap<>();
         model.put("event", event);

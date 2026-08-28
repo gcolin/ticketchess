@@ -1,6 +1,8 @@
 package com.github.gcolin.platform;
 
 import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.auth.PermissionCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.Transactional;
@@ -12,6 +14,7 @@ import com.github.gcolin.registration.PlayerSubscriptionDao;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.QueryParam;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,15 +28,21 @@ public class DashboardApi {
     @Inject
     private Find find;
 
+    @Inject
+    private ClubSeasonFilter clubSeasonFilter;
+
     @GET
     @RequirePermission(PermissionCode.ADMIN_PANEL)
     @Transactional
-    public JteHtml page() {
+    public JteHtml page(@QueryParam("seasonId") Integer seasonId) {
         Map<String, Object> model = new HashMap<>();
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        clubSeasonFilter.addToModel(model, seasonId);
+
         List<PlayerSubscription> subsWithoutPayment =
-                playerSubscriptionDao.findWithoutPaymentWithEvent(PlayerSubscriptionStatus.PAID);
-        List<PlayerSubscription> cancelledSubs = playerSubscriptionDao.findCancelledWithEvent();
-        List<PlayerSubscription> notPaidSubs = playerSubscriptionDao.findNotPaidWithEvent();
+                playerSubscriptionDao.findWithoutPaymentWithEvent(PlayerSubscriptionStatus.PAID, scope);
+        List<PlayerSubscription> cancelledSubs = playerSubscriptionDao.findCancelledWithEvent(scope);
+        List<PlayerSubscription> notPaidSubs = playerSubscriptionDao.findNotPaidWithEvent(scope);
         fillPlayers(subsWithoutPayment);
         fillPlayers(cancelledSubs);
         fillPlayers(notPaidSubs);

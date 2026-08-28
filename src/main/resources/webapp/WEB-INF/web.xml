@@ -1,112 +1,114 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_1.xsd"
-         metadata-complete="true"
-         version="6.1">
-    <display-name>Ticketchess</display-name>
-    <description>Chess web application</description>
-
-    <listener>
-        <listener-class>com.github.gcolin.platform.ApplicationBootstrapListener</listener-class>
-    </listener>
-    <listener>
-        <listener-class>com.github.gcolin.auth.HttpSessionDestroyedListener</listener-class>
-    </listener>
-    <listener>
-        <listener-class>com.github.gcolin.desk.WebSocketDeployer</listener-class>
-    </listener>
-
-    <filter>
-        <filter-name>RequestContextFilter</filter-name>
-        <filter-class>com.github.gcolin.platform.RequestContextFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>RequestContextFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
-    <!-- ===================== -->
-    <!-- 🔹 Jersey en FILTER -->
-    <!-- ===================== -->
-    <filter>
-        <filter-name>jersey</filter-name>
-        <filter-class>com.github.gcolin.desk.JerseyWebSocketAwareFilter</filter-class>
-
-        <init-param>
-            <param-name>jersey.config.server.provider.classnames</param-name>
-            <param-value>
-                com.github.gcolin.platform.JerseyDiFeature,
-                com.github.gcolin.platform.AdminApi,
-                com.github.gcolin.platform.AdminMailApi,
-                com.github.gcolin.event.EventCollectionApi,
-                com.github.gcolin.event.EventCollectionMailApi,
-                com.github.gcolin.event.EventCollectionStatisticsApi,
-                com.github.gcolin.player.ClubApi,
-                com.github.gcolin.registration.ClubRegisterApi,
-                com.github.gcolin.platform.ConstraintViolationExceptionMapper,
-                com.github.gcolin.player.CustomPlayerApi,
-                com.github.gcolin.platform.DashboardApi,
-                com.github.gcolin.player.DatabaseApi,
-                com.github.gcolin.event.EventApi,
-                com.github.gcolin.event.EventCsvApi,
-                com.github.gcolin.desk.EventDeskApi,
-                com.github.gcolin.event.EventLicenceCheckApi,
-                com.github.gcolin.event.EventGroupApi,
-                com.github.gcolin.event.EventMailApi,
-                com.github.gcolin.event.EventStatisticsApi,
-                com.github.gcolin.event.EventPapiApi,
-                com.github.gcolin.registration.EventRegisterApi,
-                com.github.gcolin.event.EventsApi,
-                com.github.gcolin.platform.JteConfig,
-                com.github.gcolin.platform.JteHtml,
-                com.github.gcolin.platform.JteMessageBodyWriter,
-                com.github.gcolin.auth.AuthSim,
-                com.github.gcolin.platform.HomeApi,
-                com.github.gcolin.auth.OauthCallbackApi,
-                com.github.gcolin.auth.LoginApi,
-                com.github.gcolin.auth.LogAsApi,
-                com.github.gcolin.auth.LoggedUsersApi,
-                com.github.gcolin.auth.LogoutApi,
-                com.github.gcolin.platform.MentionApi,
-                com.github.gcolin.event.MyEventsApi,
-                com.github.gcolin.notification.NotificationApi,
-                com.github.gcolin.membership.LicenseAdminApi,
-                com.github.gcolin.payment.PaymentApi,
-                com.github.gcolin.payment.RibApi,
-                com.github.gcolin.platform.LogoApi,
-                com.github.gcolin.platform.BackgroundApi,
-                com.github.gcolin.membership.MembershipApi,
-                com.github.gcolin.membership.MembershipOptionAdminApi,
-                com.github.gcolin.registration.PlayerSubscriptionAdminApi,
-                com.github.gcolin.registration.PlayerSubscriptionOptionApi,
-                com.github.gcolin.player.PlayerApi,
-                com.github.gcolin.auth.UserAuthorizationApi,
-                com.github.gcolin.event.StatisticsApi,
-                com.github.gcolin.auth.LoggedUserTrackerFilter,
-                com.github.gcolin.auth.RequirePermissionFilter,
-                com.github.gcolin.auth.LoggedOnlyFilter
-            </param-value>
-        </init-param>
-
-        <init-param>
-            <param-name>jersey.config.servlet.filter.forwardOn404</param-name>
-            <param-value>true</param-value>
-        </init-param>
-    </filter>
-
-    <filter-mapping>
-        <filter-name>jersey</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
-    <filter>
-        <filter-name>EncodingFilter</filter-name>
-        <filter-class>com.github.gcolin.platform.EncodingFilter</filter-class>
-    </filter>
-    <filter-mapping>
-        <filter-name>EncodingFilter</filter-name>
-        <url-pattern>/*</url-pattern>
-    </filter-mapping>
-
-</web-app>
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_6_1.xsd"
+         metadata-complete="true"
+         version="6.1">
+    <display-name>Ticketchess</display-name>
+    <description>Chess web application</description>
+
+    <listener>
+        <listener-class>com.github.gcolin.platform.ApplicationBootstrapListener</listener-class>
+    </listener>
+    <listener>
+        <listener-class>com.github.gcolin.auth.HttpSessionDestroyedListener</listener-class>
+    </listener>
+    <listener>
+        <listener-class>com.github.gcolin.desk.WebSocketDeployer</listener-class>
+    </listener>
+
+    <filter>
+        <filter-name>RequestContextFilter</filter-name>
+        <filter-class>com.github.gcolin.platform.RequestContextFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>RequestContextFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <!-- ===================== -->
+    <!-- 🔹 Jersey en FILTER -->
+    <!-- ===================== -->
+    <filter>
+        <filter-name>jersey</filter-name>
+        <filter-class>com.github.gcolin.desk.JerseyWebSocketAwareFilter</filter-class>
+
+        <init-param>
+            <param-name>jersey.config.server.provider.classnames</param-name>
+            <param-value>
+                com.github.gcolin.platform.JerseyDiFeature,
+                com.github.gcolin.platform.AdminApi,
+                com.github.gcolin.club.ClubSeasonAdminApi,
+                com.github.gcolin.platform.AdminMailApi,
+                com.github.gcolin.event.EventCollectionApi,
+                com.github.gcolin.event.EventCollectionMailApi,
+                com.github.gcolin.event.EventCollectionStatisticsApi,
+                com.github.gcolin.player.ClubApi,
+                com.github.gcolin.registration.ClubRegisterApi,
+                com.github.gcolin.platform.ConstraintViolationExceptionMapper,
+                com.github.gcolin.player.CustomPlayerApi,
+                com.github.gcolin.platform.DashboardApi,
+                com.github.gcolin.player.DatabaseApi,
+                com.github.gcolin.event.EventAdminApi,
+                com.github.gcolin.event.EventApi,
+                com.github.gcolin.event.EventCsvApi,
+                com.github.gcolin.desk.EventDeskApi,
+                com.github.gcolin.event.EventLicenceCheckApi,
+                com.github.gcolin.event.EventGroupApi,
+                com.github.gcolin.event.EventMailApi,
+                com.github.gcolin.event.EventStatisticsApi,
+                com.github.gcolin.event.EventPapiApi,
+                com.github.gcolin.registration.EventRegisterApi,
+                com.github.gcolin.event.EventsApi,
+                com.github.gcolin.platform.JteConfig,
+                com.github.gcolin.platform.JteHtml,
+                com.github.gcolin.platform.JteMessageBodyWriter,
+                com.github.gcolin.auth.AuthSim,
+                com.github.gcolin.platform.HomeApi,
+                com.github.gcolin.auth.OauthCallbackApi,
+                com.github.gcolin.auth.LoginApi,
+                com.github.gcolin.auth.LogAsApi,
+                com.github.gcolin.auth.LoggedUsersApi,
+                com.github.gcolin.auth.LogoutApi,
+                com.github.gcolin.platform.MentionApi,
+                com.github.gcolin.event.MyEventsApi,
+                com.github.gcolin.notification.NotificationApi,
+                com.github.gcolin.membership.LicenseAdminApi,
+                com.github.gcolin.payment.PaymentApi,
+                com.github.gcolin.payment.RibApi,
+                com.github.gcolin.platform.LogoApi,
+                com.github.gcolin.platform.BackgroundApi,
+                com.github.gcolin.membership.MembershipApi,
+                com.github.gcolin.membership.MembershipOptionAdminApi,
+                com.github.gcolin.registration.PlayerSubscriptionAdminApi,
+                com.github.gcolin.registration.PlayerSubscriptionOptionApi,
+                com.github.gcolin.player.PlayerApi,
+                com.github.gcolin.auth.UserAuthorizationApi,
+                com.github.gcolin.event.StatisticsApi,
+                com.github.gcolin.auth.LoggedUserTrackerFilter,
+                com.github.gcolin.auth.RequirePermissionFilter,
+                com.github.gcolin.auth.LoggedOnlyFilter
+            </param-value>
+        </init-param>
+
+        <init-param>
+            <param-name>jersey.config.servlet.filter.forwardOn404</param-name>
+            <param-value>true</param-value>
+        </init-param>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>jersey</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <filter>
+        <filter-name>EncodingFilter</filter-name>
+        <filter-class>com.github.gcolin.platform.EncodingFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>EncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+</web-app>

@@ -73,7 +73,14 @@ public class EventGroupApi {
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response save(
-            @FormParam("id") Integer id, @FormParam("shortname") String shortname, @FormParam("name") String name) {
+            @FormParam("action") String action,
+            @FormParam("id") Integer id,
+            @FormParam("shortname") String shortname,
+            @FormParam("name") String name) {
+        if ("remove".equals(action)) {
+            return remove(id);
+        }
+
         EventGroup eventGroup = new EventGroup();
         if (id != null) {
             eventGroup.setId(id);
@@ -113,8 +120,7 @@ public class EventGroupApi {
         return Response.ok().build();
     }
 
-    @POST
-    public Response remove(@FormParam("id") Integer id) {
+    private Response remove(Integer id) {
         EventGroup eventGroup = eventGroupService.find(id);
         if (eventGroup == null) {
             throw new NotFoundException();
@@ -124,7 +130,7 @@ public class EventGroupApi {
         caches.getEvent().invalidateAll();
         caches.getAllEvents().invalidateAll();
         caches.getEventGroups().invalidateAll();
-        return Response.seeOther(uriInfo.getBaseUriBuilder().path("eventgroup").build())
+        return Response.seeOther(uriInfo.getBaseUriBuilder().path("admin/events").build())
                 .build();
     }
 }

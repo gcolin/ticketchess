@@ -2,6 +2,9 @@ package com.github.gcolin.payment;
 
 import com.github.gcolin.auth.LoggedOnly;
 import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
+import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
@@ -88,16 +91,25 @@ public class PaymentApi {
     @Inject
     private Properties properties;
 
+    @Inject
+    private ClubSeasonFilter clubSeasonFilter;
+
+    @Inject
+    private EventPaymentsReportService eventPaymentsReportService;
+
     @GET
     @RequirePermission(PermissionCode.PAYMENT_READ)
     public JteHtml page(
             @QueryParam("page") @DefaultValue("0") @Min(0) Integer page,
             @QueryParam("size") @DefaultValue("25") @Max(100) @Min(1) Integer size,
-            @QueryParam("search") @DefaultValue("") String search) {
+            @QueryParam("search") @DefaultValue("") String search,
+            @QueryParam("seasonId") Integer seasonId) {
         int start = page * size;
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
 
-        PagedList<Payment> paged =
-                search.isBlank() ? paymentService.page(start, size) : paymentService.pageSearch(search, start, size);
+        PagedList<Payment> paged = search.isBlank()
+                ? paymentService.page(start, size, scope)
+                : paymentService.pageSearch(search, start, size, scope);
         long totalItems = paged.getTotal();
         int totalPages = (int) Math.max(1, (totalItems + size - 1) / size);
         page++;
@@ -139,6 +151,7 @@ public class PaymentApi {
         model.put("hasNext", page < totalPages);
         model.put("prevPage", Math.max(0, page - 2));
         model.put("nextPage", Math.min(totalPages, page));
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "payment/payments.jte");
     }
 
@@ -551,8 +564,9 @@ public class PaymentApi {
     @Path("export/csv")
     @Produces("text/csv")
     @RequirePermission(PermissionCode.PAYMENT_READ)
-    public Response exportCsv() {
-        List<Payment> payments = paymentService.all();
+    public Response exportCsv(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        List<Payment> payments = paymentService.all(scope);
 
         StringWriter writer = new StringWriter();
 
@@ -580,8 +594,9 @@ public class PaymentApi {
     @Path("export/csv/details")
     @Produces("text/csv")
     @RequirePermission(PermissionCode.PAYMENT_READ)
-    public Response exportCsvDetails() {
-        List<Payment> payments = paymentService.all();
+    public Response exportCsvDetails(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        List<Payment> payments = paymentService.all(scope);
         StringWriter writer = new StringWriter();
         // Header CSV with detailed subscription info
         writer.append("id;type;status;amount;event_name;player_name;player_license\n");
@@ -625,14 +640,32 @@ public class PaymentApi {
     }
 
     @GET
+    @Path("export/pdf")
+    @Produces("application/pdf")
+    @RequirePermission(PermissionCode.PAYMENT_READ)
+    public Response exportAccountingPdf(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        byte[] pdf = eventPaymentsReportService.generateForAccounting(paymentService.findPaid(scope), scope);
+        return Response.ok(pdf)
+                .header(
+                        "Content-Disposition",
+                        "attachment; filename=journal-recettes-"
+                                + java.time.LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+                                + ".pdf")
+                .build();
+    }
+
+    @GET
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
     @RequirePermission(PermissionCode.PAYMENT_READ)
     @Path("export")
     public PagedList<Payment> export(
             @QueryParam("page") @DefaultValue("0") @Min(0) Integer page,
-            @QueryParam("size") @DefaultValue("50") @Max(100) @Min(1) Integer size) {
+            @QueryParam("size") @DefaultValue("50") @Max(100) @Min(1) Integer size,
+            @QueryParam("seasonId") Integer seasonId) {
         int start = page * size;
-        PagedList<Payment> paged = paymentService.page(start, size);
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        PagedList<Payment> paged = paymentService.page(start, size, scope);
         paged.setElements(paymentService.detachAll(paged.getElements()));
         return paged;
     }
@@ -658,8 +691,9 @@ public class PaymentApi {
     @Path("audit")
     @RequirePermission(PermissionCode.PAYMENT_READ)
     @Transactional
-    public JteHtml audit() {
-        List<Payment> payments = paymentService.all();
+    public JteHtml audit(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        List<Payment> payments = paymentService.all(scope);
         List<Map<String, Object>> mismatches = new ArrayList<>();
         for (Payment payment : payments) {
             if (payment.getStatus() != com.github.gcolin.payment.PaymentStatus.PAID) {
@@ -702,6 +736,7 @@ public class PaymentApi {
         }
         Map<String, Object> model = new HashMap<>();
         model.put("mismatches", mismatches);
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "payment/paymentAudit.jte");
     }
 
@@ -709,18 +744,15 @@ public class PaymentApi {
     @Path("audit/fix/{payment_id:\\d+}")
     @RequirePermission(PermissionCode.PAYMENT_WRITE)
     @Transactional
-    public Response auditFix(@PathParam("payment_id") Integer paymentId) {
+    public Response auditFix(
+            @PathParam("payment_id") Integer paymentId, @FormParam("seasonId") Integer seasonId) {
         Payment payment = paymentService.find(paymentId);
         if (payment == null) {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
         List<PlayerSubscription> subs = playerSubscriptionService.findByPaymentId(paymentId);
         if (subs.isEmpty()) {
-            return Response.seeOther(uriInfo.getBaseUriBuilder()
-                            .path("payment")
-                            .path("audit")
-                            .build())
-                    .build();
+            return Response.seeOther(buildAuditUri(seasonId)).build();
         }
         for (PlayerSubscription sub : subs) {
             IPlayer player = find.player(sub.getNrFfe(), null);
@@ -729,11 +761,15 @@ public class PaymentApi {
                 playerSubscriptionService.persist(sub);
             }
         }
-        return Response.seeOther(uriInfo.getBaseUriBuilder()
-                        .path("payment")
-                        .path("audit")
-                        .build())
-                .build();
+        return Response.seeOther(buildAuditUri(seasonId)).build();
+    }
+
+    private URI buildAuditUri(Integer seasonId) {
+        UriBuilder builder = uriInfo.getBaseUriBuilder().path("payment").path("audit");
+        if (seasonId != null) {
+            builder.queryParam("seasonId", seasonId);
+        }
+        return builder.build();
     }
 
     private RequestOptions stripeRequestOptions() {

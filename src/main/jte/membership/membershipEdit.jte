@@ -69,11 +69,6 @@
           </div>
 
           <div class="col-12 col-md-6">
-            <label for="membership_clubref" class="form-label">${msg.get("admin.membership.clubRef")}</label>
-            <input id="membership_clubref" type="number" name="clubRef" class="form-control" value="${String.valueOf(membership.getClubRef())}" required>
-          </div>
-
-          <div class="col-12 col-md-6">
             <label for="membership_amount" class="form-label">${msg.get("admin.membership.amountCents")}</label>
             <input id="membership_amount" type="number" name="amountCents" class="form-control" min="0" value="${membership.getAmountCents()}" required>
           </div>
@@ -113,7 +108,7 @@
                       <td>${(mos.getMembershipOption() != null && mos.getMembershipOption().getAmountCents() != null ? mos.getMembershipOption().getAmountCents() : 0) / 100.0} €</td>
 
                       <td>
-                        <a class="btn btn-sm btn-outline-danger" href="${contextPath}/membership/${membership.getId()}/option/${mos.getId()}/remove">${msg.get("action.remove")}</a>
+                        <a class="btn btn-sm btn-danger" href="${contextPath}/membership/${membership.getId()}/option/${mos.getId()}/remove">${msg.get("action.remove")}</a>
                       </td>
                     </tr>
                   @endfor
@@ -125,13 +120,13 @@
           @endif
           
           <div class="mt-3">
-            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addOptionModal">${msg.get("action.addMembershipOption")}</button>
+            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addOptionModal">${msg.get("action.addMembershipOption")}</button>
           </div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-4">
-          <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#sendMailModal">Envoyer mail</button>
-          <a class="btn btn-outline-secondary" href="${contextPath}/membership">${msg.get("action.cancel")}</a>
+          <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#sendMailModal">Envoyer mail</button>
+          <a class="btn btn-secondary" href="${contextPath}/membership">${msg.get("action.cancel")}</a>
           <button type="submit" class="btn btn-primary">${msg.get("action.save")}</button>
         </div>
       </form>
@@ -157,7 +152,7 @@
           ></iframe>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
           <form method="post" action="${contextPath}/membership/${membership.getId()}/send-mail" class="d-inline">
             <button type="submit" class="btn btn-primary">Envoyer l'email</button>
           </form>
@@ -202,7 +197,7 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
             <button type="submit" class="btn btn-primary">Ajouter</button>
           </div>
         </form>

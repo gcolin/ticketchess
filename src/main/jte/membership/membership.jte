@@ -14,8 +14,13 @@
 @param Object p
 @param String status
 @param com.github.gcolin.registration.PlayerSubscription sub
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.memberships");}
 !{title = i18ntitle;}
+!{if (seasons == null) seasons = java.util.List.of();}
+!{if (memberships == null) memberships = java.util.List.of();}
+!{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 
@@ -34,9 +39,14 @@
       </ol>
     </nav>
 
+    <form method="get" action="${contextPath}/membership" class="row g-2 align-items-end mb-3">
+      @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="membership_season", autoSubmit=true)
+    </form>
+
     <div class="mb-3 d-flex gap-2">
       <a class="btn btn-success" href="${contextPath}/membership/new">${msg.get("action.addMembership")}</a>
-      <a class="btn btn-outline-success" href="${contextPath}/membership/export/csv">${msg.get("action.exportCsv")}</a>
+      <a class="btn btn-outline-success" href="${contextPath}/membership/export/csv${seasonParam}">${msg.get("action.exportCsv")}</a>
+      <a class="btn btn-outline-success" href="${contextPath}/membership/export/pdf${seasonParam}">${msg.get("action.exportMembershipsPdf")}</a>
     </div>
 
     <div class="table-responsive bg-body rounded p-2">
@@ -53,8 +63,6 @@
             <th scope="col">${msg.get("label.status")}</th>
             <th scope="col">${msg.get("admin.membership.amount")}</th>
             <th scope="col">${msg.get("clubRegister.myMemberships.options")}</th>
-            <th scope="col">${msg.get("sub.createdAt")}</th>
-            <th scope="col">${msg.get("sub.updatedAt")}</th>
           </tr>
         </thead>
         <tbody>
@@ -82,12 +90,10 @@
                   <span class="text-muted">-</span>
                 @endif
               </td>
-              <td>@if(mem.getCreatedAt() != null)${mem.getCreatedAt().toString()}@endif</td>
-              <td>@if(mem.getUpdatedAt() != null)${mem.getUpdatedAt().toString()}@endif</td>
             </tr>
           @else
             <tr>
-              <td colspan="12" class="text-center text-muted">${msg.get("info.noMembership")}</td>
+              <td colspan="10" class="text-center text-muted">${msg.get("info.noMembership")}</td>
             </tr>
           @endfor
         </tbody>

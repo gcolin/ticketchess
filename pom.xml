@@ -23,7 +23,7 @@
 		<lucene.version>10.5.1</lucene.version>
 		<h2.version>2.4.240</h2.version>
 		<jackcess.version>4.0.11</jackcess.version>
-		<postgresql.version>42.7.10</postgresql.version>
+		<postgresql.version>42.7.13</postgresql.version>
 		<hikaricp.version>7.1.0</hikaricp.version>
 		<logback.version>1.6.3</logback.version>
 		<slf4j.version>2.0.18</slf4j.version>

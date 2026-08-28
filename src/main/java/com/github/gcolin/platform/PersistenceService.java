@@ -39,11 +39,13 @@ public class PersistenceService {
 
     public void init() {
         initDatasource();
+        applySchemaPatches();
         Map<String, Object> props = new HashMap<>();
         props.put("jakarta.persistence.nonJtaDataSource", dataSource);
         props.put("hibernate.hbm2ddl.auto", "update");
 
         emf = Persistence.createEntityManagerFactory("myPU", props);
+        backfillMembershipTimestamps();
         initH2FromPostgresDumpIfNeeded();
     }
 
@@ -90,8 +92,9 @@ public class PersistenceService {
             dataSource.setMinimumIdle(0);
             dataSource.setMaximumPoolSize(4);
         } else {
-            boolean h2Persistent = Boolean.parseBoolean(envOrProperty("DB_H2_PERSISTENT"));
-            String h2PathEnv = envOrProperty("DB_H2_PATH");
+            boolean h2Persistent = Boolean.parseBoolean(envOrProperty("DB_H2_PERSISTENT"))
+                    || Boolean.parseBoolean(properties.getProperty("db.h2.persistent", "false"));
+            String h2PathEnv = firstNonBlank(envOrProperty("DB_H2_PATH"), properties.getProperty("db.h2.path"));
             String databaseUrl;
 
             if (h2Persistent) {
@@ -114,7 +117,7 @@ public class PersistenceService {
             } else {
                 databaseUrl = "jdbc:h2:mem:" + dbName;
                 logger.info(
-                        "h2 using in-memory database (set DB_H2_PERSISTENT=true for disk persistence)");
+                        "h2 using in-memory database (set db.h2.persistent=true or DB_H2_PERSISTENT=true for disk persistence)");
             }
 
             dataSource.setDriverClassName("org.h2.Driver");
@@ -132,6 +135,81 @@ public class PersistenceService {
             return env;
         }
         return System.getProperty(key);
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private void applySchemaPatches() {
+        try (Connection connection = dataSource.getConnection()) {
+            applyClubSeasonCurrentColumn(connection);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to apply schema patches", e);
+        }
+    }
+
+    private void backfillMembershipTimestamps() {
+        try (Connection connection = dataSource.getConnection()) {
+            backfillTimedEntityColumns(connection, "MEMBERSHIP");
+            backfillTimedEntityColumns(connection, "MEMBERSHIP_OPTION");
+        } catch (SQLException e) {
+            logger.warn("Failed to backfill membership timestamps", e);
+        }
+    }
+
+    private void backfillTimedEntityColumns(Connection connection, String table) throws SQLException {
+        if (!tableExists(connection, table)
+                || !columnExists(connection, table, "CREATED_AT")
+                || !columnExists(connection, table, "UPDATED_AT")) {
+            return;
+        }
+        String sql = "UPDATE " + table.toLowerCase()
+                + " SET created_at = COALESCE(created_at, updated_at, CURRENT_TIMESTAMP),"
+                + " updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)"
+                + " WHERE created_at IS NULL OR updated_at IS NULL";
+        try (Statement st = connection.createStatement()) {
+            int updated = st.executeUpdate(sql);
+            if (updated > 0) {
+                logger.info("Backfilled timestamps on {} {} row(s)", updated, table.toLowerCase());
+            }
+        }
+    }
+
+    private void applyClubSeasonCurrentColumn(Connection connection) throws SQLException {
+        if (!tableExists(connection, "CLUB_SEASON") || columnExists(connection, "CLUB_SEASON", "IS_CURRENT")) {
+            return;
+        }
+        try (Statement st = connection.createStatement()) {
+            st.execute(
+                    "ALTER TABLE club_season ADD COLUMN IF NOT EXISTS is_current boolean NOT NULL DEFAULT false");
+        }
+        tableColumnsCache.remove("CLUB_SEASON");
+        logger.info("Added club_season.is_current column with default false for existing rows");
+    }
+
+    private boolean tableExists(Connection connection, String table) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES "
+                        + "WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = ?")) {
+            ps.setString(1, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1) > 0;
+            }
+        }
+    }
+
+    private boolean columnExists(Connection connection, String table, String column) throws SQLException {
+        return getTableColumns(connection, table).contains(column.toUpperCase());
     }
 
     private void initH2FromPostgresDumpIfNeeded() {

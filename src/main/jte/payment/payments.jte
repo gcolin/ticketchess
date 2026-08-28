@@ -22,11 +22,15 @@
 @param boolean hasNext
 @param int prevPage
 @param int nextPage
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.payments");}
 !{title = i18ntitle;}
 !{if (payments == null) payments = java.util.List.of();}
 !{if (paymentSearchNames == null) paymentSearchNames = java.util.Map.of();}
 !{if (paymentSearchLicences == null) paymentSearchLicences = java.util.Map.of();}
+!{if (seasons == null) seasons = java.util.List.of();}
+!{String seasonParam = seasonId != null ? "&seasonId=" + seasonId : "";}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 
@@ -45,32 +49,38 @@
       </ol>
     </nav>
 
-
-
-    <div class="mb-2 bg-body rounded px-3 py-2">
-      <div class="d-flex gap-2 mb-3">
+    <div class="mb-2 bg-body rounded px-3 py-3">
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
         <a class="btn btn-success" href="${contextPath}/payment/new">${msg.get("action.newPayment")}</a>
-        <a class="btn btn-dark" href="${contextPath}/payment/export/csv">${msg.get("action.exportCsv")}</a>
-        <a class="btn btn-outline-dark" href="${contextPath}/payment/export" target="_blanc">${msg.get("action.exportJson")}</a>
-        <a class="btn btn-outline-warning" href="${contextPath}/payment/audit">Audit montants</a>
-	    </div>
-      <form method="get" action="${contextPath}/payment" class="row g-2 mb-3">
-      <div class="col-12 col-md-6">
-        <input type="text" name="search" id="paymentSearch" class="form-control" placeholder="Recherche par email ou licence" autocomplete="off" value="${search != null ? search : ""}">
+        @template.payment.paymentPageActionsMenu(contextPath=contextPath, msg=msg, seasonId=seasonId)
       </div>
-      <div class="col-12 col-md-3">
-        <button type="submit" class="btn btn-outline-dark">Rechercher</button>
-      @if(search != null && !search.isEmpty())
-        <a class="btn btn-outline-secondary" href="${contextPath}/payment?size=${pageSize}">Effacer</a>
-      @endif
-      </div>
-      <div class="col-12 col-md-3">
-        <select id="paymentSort" class="form-select" aria-label="Tri des paiements">
-          <option value="id">Trier par ID</option>
-          <option value="name">Trier par nom</option>
-        </select>
-      </div>
-      <input type="hidden" name="size" value="${pageSize}">
+      <form method="get" action="${contextPath}/payment" class="row g-2 align-items-end mb-3">
+        <input type="hidden" name="page" value="0">
+        <input type="hidden" name="size" value="${pageSize}">
+
+        @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="payment_season", autoSubmit=true)
+
+        <div class="col-12 col-lg">
+          <label for="paymentSearch" class="form-label mb-0">Recherche</label>
+          <input type="search" name="search" id="paymentSearch" class="form-control" placeholder="Email, licence ou nom" autocomplete="off" value="${search != null ? search : ""}">
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-auto">
+          <label for="paymentSort" class="form-label mb-0">Tri</label>
+          <select id="paymentSort" class="form-select">
+            <option value="id">ID décroissant</option>
+            <option value="name">Nom alphabétique</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-auto">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-outline-dark flex-grow-1">Rechercher</button>
+            @if(search != null && !search.isEmpty())
+              <a class="btn btn-outline-secondary" href="${contextPath}/payment?size=${pageSize}${seasonParam}">Effacer</a>
+            @endif
+          </div>
+        </div>
       </form>
     <div class="d-flex justify-content-between align-items-center">
       <div class="text-body-secondary">
@@ -79,18 +89,18 @@
       <div class="d-flex gap-2">
         @if(hasPrev)
           @if(search != null && !search.isEmpty())
-          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${prevPage}&size=${pageSize}&search=${java.net.URLEncoder.encode(search, java.nio.charset.StandardCharsets.UTF_8)}">${msg.get("pagination.previous")}</a>
+          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${prevPage}&size=${pageSize}&search=${java.net.URLEncoder.encode(search, java.nio.charset.StandardCharsets.UTF_8)}${seasonParam}">${msg.get("pagination.previous")}</a>
           @else
-          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${prevPage}&size=${pageSize}">${msg.get("pagination.previous")}</a>
+          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${prevPage}&size=${pageSize}${seasonParam}">${msg.get("pagination.previous")}</a>
           @endif
         @else
           <span class="btn btn-outline-tertiary btn-sm disabled">${msg.get("pagination.previous")}</span>
         @endif
         @if(hasNext)
           @if(search != null && !search.isEmpty())
-          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${nextPage}&size=${pageSize}&search=${java.net.URLEncoder.encode(search, java.nio.charset.StandardCharsets.UTF_8)}">${msg.get("pagination.next")}</a>
+          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${nextPage}&size=${pageSize}&search=${java.net.URLEncoder.encode(search, java.nio.charset.StandardCharsets.UTF_8)}${seasonParam}">${msg.get("pagination.next")}</a>
           @else
-          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${nextPage}&size=${pageSize}">${msg.get("pagination.next")}</a>
+          <a class="btn btn-outline-dark btn-sm" href="${contextPath}/payment?page=${nextPage}&size=${pageSize}${seasonParam}">${msg.get("pagination.next")}</a>
           @endif
         @else
           <span class="btn btn-outline-tertiary btn-sm disabled">${msg.get("pagination.next")}</span>
@@ -104,14 +114,14 @@
         <thead>
           <tr>
             <th scope="col">#</th>
-            <th scope="col">${msg.get("pay.email")}</th>
+            <th scope="col">${msg.get("payment.email")}</th>
             <th scope="col" class="d-none d-lg-table-cell">${msg.get("player.licence")}</th>
             <th scope="col" class="d-none d-lg-table-cell">${msg.get("player.name")}</th>
-            <th scope="col">${msg.get("pay.status")}</th>
-            <th scope="col">${msg.get("pay.type")}</th>
-            <th scope="col">${msg.get("pay.amount")}</th>
-            <th scope="col">${msg.get("pay.created")}</th>
-            <th scope="col">${msg.get("pay.updated")}</th>
+            <th scope="col">${msg.get("payment.status")}</th>
+            <th scope="col">${msg.get("payment.type")}</th>
+            <th scope="col">${msg.get("payment.amount")}</th>
+            <th scope="col">${msg.get("payment.created")}</th>
+            <th scope="col">${msg.get("payment.updated")}</th>
             <th scope="col">${msg.get("label.action")}</th>
           </tr>
         </thead>
@@ -125,13 +135,13 @@
               <td>${pay.getUserEmail() != null ? pay.getUserEmail() : ""}</td>
               <td class="d-none d-lg-table-cell">${paymentSearchLicences.get(String.valueOf(pay.getId())) != null ? paymentSearchLicences.get(String.valueOf(pay.getId())) : ""}</td>
               <td class="d-none d-lg-table-cell">${paymentSearchNames.get(String.valueOf(pay.getId())) != null ? paymentSearchNames.get(String.valueOf(pay.getId())) : ""}</td>
-              <td>${pay.getStatus() != null ? pay.getStatus().name() : ""}</td>
-              <td>${pay.getType() != null ? pay.getType().name() : ""}</td>
+              <td>${pay.getStatus() != null ? msg.get("payment.status." + pay.getStatus()) : ""}</td>
+              <td>${pay.getType() != null ? msg.get("payment.type." + pay.getType()) : ""}</td>
               <td>${pay.getAmount() != null ? String.format(java.util.Locale.FRANCE, "%.2f", pay.getAmount()) : "0,00"}</td>
               <td>@if(pay.getCreatedAt() != null)${pay.getCreatedAt().toString()}@endif</td>
               <td>@if(pay.getUpdatedAt() != null)${pay.getUpdatedAt().toString()}@endif</td>
               <td>
-                <a class="btn btn-outline-primary btn-sm" href="${contextPath}/payment/${pay.getId()}/edit">${msg.get("action.edit")}</a>
+                @template.payment.paymentRowActionsMenu(contextPath=contextPath, msg=msg, payment=pay)
               </td>
             </tr>
           @else

@@ -40,6 +40,9 @@ public class EventCollection {
     @Transient
     private Integer nbSubscriptions;
 
+    @Transient
+    private Integer eventCount;
+
     // =========================
     // Constructeurs
     // =========================
@@ -89,7 +92,14 @@ public class EventCollection {
     }
 
     public int getEventCount() {
+        if (eventCount != null) {
+            return eventCount;
+        }
         return events != null ? events.size() : 0;
+    }
+
+    public void setEventCount(Integer eventCount) {
+        this.eventCount = eventCount;
     }
 
     @Override

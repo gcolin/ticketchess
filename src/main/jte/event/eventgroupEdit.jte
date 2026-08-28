@@ -31,8 +31,8 @@
             <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
                 <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
                 <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-                <li class="breadcrumb-item"><a href="${contextPath}/eventgroup">${msg.get("page.eventGroups")}</a></li>
-                <li class="breadcrumb-item active" aria-current="page">${msg.get("action.edit")}</li>
+                <li class="breadcrumb-item"><a href="${contextPath}/admin/events">${msg.get("breadcrumb.events")}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@if(eventGroup.getId() != null)${msg.get("eventgroup.editBreadcrumb")}@else${msg.get("eventgroup.createBreadcrumb")}@endif</li>
             </ol>
         </nav>
         <div class="bg-body p-3 rounded mb-3">
@@ -66,12 +66,15 @@
                 aria-labelledby="general-tab">
                 <div class="row justify-content-center mt-3">
                     <form method="post" action="${contextPath}/eventgroup">
+                        @if(eventGroup.getId() != null)
+                        <input type="hidden" name="id" value="${eventGroup.getId()}">
+                        @endif
 
                         <div class="mb-3">
                             <label class="form-label">
                                 #
                             </label>
-                            <input id="id" type="text" name="id" value="${eventGroup.getId() != null ? String.valueOf(eventGroup.getId()) : ""}" class="form-control" disabled>
+                            <input id="id" type="text" value="${eventGroup.getId() != null ? String.valueOf(eventGroup.getId()) : ""}" class="form-control" disabled>
                         </div>
 
                         <!-- Event Name -->
@@ -95,14 +98,18 @@
                             <button id="event_submit" type="submit" class="btn btn-primary">
                                 &#128190; ${msg.get("action.save")}
                             </button>
-                            @if(eventGroup.getId() != null)
-                            <button type="submit" name="action" value="remove" class="btn btn-danger ms-2">
-                                &#10006; ${msg.get("action.remove")}
-                            </button>
-                            @endif
                         </div>
 
                     </form>
+                    @if(eventGroup.getId() != null)
+                    <form method="post" action="${contextPath}/eventgroup" class="d-flex justify-content-end mb-3">
+                        <input type="hidden" name="action" value="remove">
+                        <input type="hidden" name="id" value="${eventGroup.getId()}">
+                        <button type="submit" class="btn btn-danger">
+                            &#10006; ${msg.get("action.remove")}
+                        </button>
+                    </form>
+                    @endif
                 </div>
             </div>
             @if(eventGroup.getId() != null)

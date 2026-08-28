@@ -113,15 +113,18 @@ public class OauthCallbackApi {
             loggedUser.setLogged(true);
             loggedUser.setAdmin(config.getAdmins().contains(email));
             caches.getDebtCache().invalidateAll();
+            caches.getPermissionCache().invalidateAll();
 
             String idToken = json.optString("id_token", null);
+            boolean isAdmin = loggedUser.isAdmin();
             String jwt = Jwts.builder()
                     .subject(email)
                     .issuer(username)
+                    .claim("admin", isAdmin)
                     .id(idToken)
                     .issuedAt(new Date())
                     .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                    .signWith(config.getKeys())
+                    .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                     .compact();
 
             NewCookie newCookie = new NewCookie.Builder("remember_me")

@@ -63,6 +63,81 @@ public class LoggedUserTest {
     }
 
     @SuppressWarnings("unchecked")
+    @Test
+    public void testSyncFromRememberMeCookieUsesAdminClaim() {
+        SecretKey keys =
+                Keys.hmacShaKeyFor("9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b".getBytes());
+
+        Mockito.when(config.getKeys()).thenReturn(keys);
+        Mockito.when(config.getAdmins()).thenReturn(Collections.emptySet());
+
+        String jwt = Jwts.builder()
+                .subject("dev@test.com")
+                .issuer("Dev")
+                .claim("admin", true)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
+                .compact();
+
+        Cookie[] cookies = {new Cookie("remember_me", jwt)};
+        Mockito.when(request.getCookies()).thenReturn(cookies);
+
+        HttpSession session = Mockito.mock(HttpSession.class);
+        Mockito.when(request.getSession(false)).thenReturn(session);
+
+        Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+        Cache<String, Boolean> permissionCache = Mockito.mock(Cache.class);
+        Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+        Mockito.when(caches.getPermissionCache()).thenReturn(permissionCache);
+
+        loggedUser = new LoggedUser();
+        LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);
+        loggedUser.initFromCookies();
+
+        Assertions.assertTrue(loggedUser.isLogged());
+        Assertions.assertTrue(loggedUser.isAdmin());
+        Assertions.assertEquals("dev@test.com", loggedUser.getEmail());
+    }
+
+    @Test
+    public void testSyncFromRememberMeCookieRestoresStaleSessionUser() {
+        SecretKey keys =
+                Keys.hmacShaKeyFor("9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b".getBytes());
+
+        Mockito.when(config.getKeys()).thenReturn(keys);
+        Mockito.when(config.getAdmins()).thenReturn(Collections.emptySet());
+
+        String jwt = Jwts.builder()
+                .subject("dev@test.com")
+                .issuer("Dev")
+                .claim("admin", true)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
+                .compact();
+
+        Cookie[] cookies = {new Cookie("remember_me", jwt)};
+        Mockito.when(request.getCookies()).thenReturn(cookies);
+
+        HttpSession session = Mockito.mock(HttpSession.class);
+        Mockito.when(request.getSession(false)).thenReturn(session);
+
+        Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+        Cache<String, Boolean> permissionCache = Mockito.mock(Cache.class);
+        Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+        Mockito.when(caches.getPermissionCache()).thenReturn(permissionCache);
+
+        loggedUser.setLogged(false);
+
+        loggedUser.initFromCookies();
+
+        Assertions.assertTrue(loggedUser.isLogged());
+        Assertions.assertTrue(loggedUser.isAdmin());
+        Assertions.assertEquals("dev@test.com", loggedUser.getEmail());
+    }
+
+    @SuppressWarnings("unchecked")
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     public void testInitFromCookiesWithValidAdminToken(boolean isAdmin) {
@@ -78,17 +153,19 @@ public class LoggedUserTest {
                 .issuer("Alice")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                .signWith(config.getKeys())
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                 .compact();
 
         Cookie[] cookies = {new Cookie("remember_me", jwt)};
         Mockito.when(request.getCookies()).thenReturn(cookies);
 
         HttpSession session = Mockito.mock(HttpSession.class);
-        Mockito.when(request.getSession()).thenReturn(session);
+        Mockito.when(request.getSession(false)).thenReturn(session);
 
         Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+        Cache<String, Boolean> permissionCache = Mockito.mock(Cache.class);
         Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+        Mockito.when(caches.getPermissionCache()).thenReturn(permissionCache);
 
         loggedUser = new LoggedUser();
         LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);

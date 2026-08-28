@@ -34,4 +34,22 @@ public final class Redirects {
         }
         return builder.build();
     }
+
+    /** Strips scheme/host so redirects resolve against the browser's current origin (HTTPS behind a proxy). */
+    public static URI toSameOriginRelative(URI uri) {
+        String path = uri.getRawPath();
+        if (path == null || path.isEmpty()) {
+            path = "/";
+        }
+        StringBuilder relative = new StringBuilder(path);
+        String query = uri.getRawQuery();
+        if (query != null && !query.isEmpty()) {
+            relative.append('?').append(query);
+        }
+        String fragment = uri.getRawFragment();
+        if (fragment != null && !fragment.isEmpty()) {
+            relative.append('#').append(fragment);
+        }
+        return URI.create(relative.toString());
+    }
 }

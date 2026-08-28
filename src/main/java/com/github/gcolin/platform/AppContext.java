@@ -6,6 +6,7 @@ import com.github.gcolin.desk.EventDeskService;
 import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.event.StatisticsReportService;
 import com.github.gcolin.membership.LicensePriceService;
+import com.github.gcolin.membership.MembershipReportService;
 import com.github.gcolin.payment.RibService;
 import com.github.gcolin.player.LuceneDb;
 import jakarta.servlet.ServletContext;
@@ -31,6 +32,7 @@ public final class AppContext {
     private LicensePriceService licensePriceService;
     private StatisticsReportService statisticsReportService;
     private EventPaymentsReportService eventPaymentsReportService;
+    private MembershipReportService membershipReportService;
     private BackgroundService backgroundService;
 
     private AppContext() {}
@@ -85,6 +87,8 @@ public final class AppContext {
         app.statisticsReportService = new StatisticsReportService();
         app.eventPaymentsReportService = new EventPaymentsReportService();
         app.eventPaymentsReportService.setProperties(app.config.getProperties());
+        app.membershipReportService = new MembershipReportService();
+        app.membershipReportService.setProperties(app.config.getProperties());
 
         app.backgroundService = new BackgroundService();
         app.backgroundService.setConfig(app.config);
@@ -177,6 +181,10 @@ public final class AppContext {
 
     public EventPaymentsReportService eventPaymentsReportService() {
         return eventPaymentsReportService;
+    }
+
+    public MembershipReportService membershipReportService() {
+        return membershipReportService;
     }
 
     public BackgroundService backgroundService() {

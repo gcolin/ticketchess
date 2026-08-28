@@ -15,6 +15,8 @@
 @param com.github.gcolin.player.DisplayPlayer player
 @param com.github.gcolin.registration.PlayerSubscription sub
 @param java.util.List<com.github.gcolin.registration.PlayerSubscription> subsWithoutPayment
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.dashboard");}
 !{title = i18ntitle;}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
@@ -34,6 +36,17 @@
         <li class="breadcrumb-item active" aria-current="page">${msg.get("page.dashboard")}</li>
       </ol>
     </nav>
+
+    <form method="get" action="${contextPath}/dashboard" class="card mb-3">
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="dashboard_season", autoSubmit=false)
+          <div class="col-12 col-md-auto">
+            <button type="submit" class="btn btn-outline-primary">${msg.get("action.applyFilters")}</button>
+          </div>
+        </div>
+      </div>
+    </form>
 
     <div class="row g-3">
 

@@ -16,12 +16,15 @@ import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.PapiUlploadService;
 import com.github.gcolin.event.StatisticsReportService;
+import com.github.gcolin.club.ClubSeasonDao;
+import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.membership.LicenseDao;
 import com.github.gcolin.membership.LicensePriceDao;
 import com.github.gcolin.membership.LicensePriceService;
 import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.membership.MembershipOptionDao;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
+import com.github.gcolin.membership.MembershipReportService;
 import com.github.gcolin.notification.NotificationDao;
 import com.github.gcolin.notification.Notifications;
 import com.github.gcolin.payment.DebtService;
@@ -62,8 +65,11 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(app(AppContext.get().licensePriceService())).to(LicensePriceService.class);
                 bindFactory(app(AppContext.get().statisticsReportService())).to(StatisticsReportService.class);
                 bindFactory(app(AppContext.get().eventPaymentsReportService())).to(EventPaymentsReportService.class);
+                bindFactory(app(AppContext.get().membershipReportService())).to(MembershipReportService.class);
                 bindFactory(app(AppContext.get().config().getProperties())).to(Properties.class);
 
+                bindFactory(req(RequestContext::clubSeasonDao)).to(ClubSeasonDao.class);
+                bindFactory(req(RequestContext::clubSeasonFilter)).to(ClubSeasonFilter.class);
                 bindFactory(req(RequestContext::licenseDao)).to(LicenseDao.class);
                 bindFactory(req(RequestContext::licensePriceDao)).to(LicensePriceDao.class);
                 bindFactory(req(RequestContext::membershipDao)).to(MembershipDao.class);

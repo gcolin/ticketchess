@@ -1,6 +1,7 @@
 package com.github.gcolin.registration;
 
 import com.github.gcolin.event.Event;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.Transactional;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
@@ -103,26 +104,48 @@ public class PlayerSubscriptionDao extends AbstractDao<PlayerSubscription> {
     }
 
     public List<PlayerSubscription> findWithoutPaymentWithEvent(PlayerSubscriptionStatus status) {
-        TypedQuery<PlayerSubscription> query = em.createQuery(
-                "SELECT e FROM PlayerSubscription e join fetch e.event where e.payment is null and e.event.price > 0 and e.status = :status",
-                PlayerSubscription.class);
+        return findWithoutPaymentWithEvent(status, SeasonScope.all());
+    }
+
+    public List<PlayerSubscription> findWithoutPaymentWithEvent(PlayerSubscriptionStatus status, SeasonScope scope) {
+        String jpql =
+                "SELECT e FROM PlayerSubscription e join fetch e.event where e.payment is null and e.event.price > 0 and e.status = :status";
+        if (scope.isFiltered()) {
+            jpql += " and e.event.startDate >= :seasonStart and e.event.startDate <= :seasonEnd";
+        }
+        TypedQuery<PlayerSubscription> query = em.createQuery(jpql, PlayerSubscription.class);
         query.setParameter("status", status);
+        bindSeasonScope(query, scope);
         return query.getResultList();
     }
 
     public List<PlayerSubscription> findCancelledWithEvent() {
-        TypedQuery<PlayerSubscription> query = em.createQuery(
-                "SELECT e FROM PlayerSubscription e join fetch e.event where e.status = :status",
-                PlayerSubscription.class);
+        return findCancelledWithEvent(SeasonScope.all());
+    }
+
+    public List<PlayerSubscription> findCancelledWithEvent(SeasonScope scope) {
+        String jpql = "SELECT e FROM PlayerSubscription e join fetch e.event where e.status = :status";
+        if (scope.isFiltered()) {
+            jpql += " and e.event.startDate >= :seasonStart and e.event.startDate <= :seasonEnd";
+        }
+        TypedQuery<PlayerSubscription> query = em.createQuery(jpql, PlayerSubscription.class);
         query.setParameter("status", PlayerSubscriptionStatus.CANCELLED);
+        bindSeasonScope(query, scope);
         return query.getResultList();
     }
 
     public List<PlayerSubscription> findNotPaidWithEvent() {
-        TypedQuery<PlayerSubscription> query = em.createQuery(
-                "SELECT e FROM PlayerSubscription e join fetch e.event where e.status = :status",
-                PlayerSubscription.class);
+        return findNotPaidWithEvent(SeasonScope.all());
+    }
+
+    public List<PlayerSubscription> findNotPaidWithEvent(SeasonScope scope) {
+        String jpql = "SELECT e FROM PlayerSubscription e join fetch e.event where e.status = :status";
+        if (scope.isFiltered()) {
+            jpql += " and e.event.startDate >= :seasonStart and e.event.startDate <= :seasonEnd";
+        }
+        TypedQuery<PlayerSubscription> query = em.createQuery(jpql, PlayerSubscription.class);
         query.setParameter("status", PlayerSubscriptionStatus.NOT_PAID);
+        bindSeasonScope(query, scope);
         return query.getResultList();
     }
 
@@ -134,10 +157,19 @@ public class PlayerSubscriptionDao extends AbstractDao<PlayerSubscription> {
     }
 
     public List<PlayerSubscription> findLinkedToCustomPlayers() {
-        TypedQuery<PlayerSubscription> query = em.createQuery(
-                "SELECT e FROM PlayerSubscription e join fetch e.event WHERE e.nrFfe LIKE :customRef ORDER BY e.createdAt DESC",
-                PlayerSubscription.class);
+        return findLinkedToCustomPlayers(SeasonScope.all());
+    }
+
+    public List<PlayerSubscription> findLinkedToCustomPlayers(SeasonScope scope) {
+        String jpql =
+                "SELECT e FROM PlayerSubscription e join fetch e.event WHERE e.nrFfe LIKE :customRef";
+        if (scope.isFiltered()) {
+            jpql += " and e.event.startDate >= :seasonStart and e.event.startDate <= :seasonEnd";
+        }
+        jpql += " ORDER BY e.createdAt DESC";
+        TypedQuery<PlayerSubscription> query = em.createQuery(jpql, PlayerSubscription.class);
         query.setParameter("customRef", "@%");
+        bindSeasonScope(query, scope);
         return query.getResultList();
     }
 
@@ -171,4 +203,11 @@ public class PlayerSubscriptionDao extends AbstractDao<PlayerSubscription> {
         query.setParameter("status", PlayerSubscriptionStatus.CANCELLED);
         return query.getSingleResult() > 0;
         }
+
+    private void bindSeasonScope(TypedQuery<?> query, SeasonScope scope) {
+        if (scope.isFiltered()) {
+            query.setParameter("seasonStart", scope.getStart());
+            query.setParameter("seasonEnd", scope.getEnd());
+        }
+    }
 }

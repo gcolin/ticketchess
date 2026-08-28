@@ -147,7 +147,7 @@ public class AdminMailApi {
                         .issuer(safeName.isBlank() ? to.trim() : safeName)
                         .issuedAt(new Date())
                         .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                        .signWith(config.getKeys())
+                        .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                         .compact();
                 String loginUrl = selectedBaseUrl + "/login?jwt=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8)
                         + "&redirect_uri=" + URLEncoder.encode("/event/my", StandardCharsets.UTF_8);
@@ -172,7 +172,7 @@ public class AdminMailApi {
                         .issuer(safeName.isBlank() ? to.trim() : safeName)
                         .issuedAt(new Date())
                         .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                        .signWith(config.getKeys())
+                        .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                         .compact();
                 String loginUrl = selectedBaseUrl + "/login?jwt=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8)
                         + "&redirect_uri=" + URLEncoder.encode("/event/my", StandardCharsets.UTF_8);
@@ -197,7 +197,7 @@ public class AdminMailApi {
                         .issuer(safeName.isBlank() ? to.trim() : safeName)
                         .issuedAt(new Date())
                         .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                        .signWith(config.getKeys())
+                        .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                         .compact();
                 String loginUrl = selectedBaseUrl + "/login?jwt=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8)
                         + "&redirect_uri=" + URLEncoder.encode("/event/my", StandardCharsets.UTF_8);
@@ -224,7 +224,7 @@ public class AdminMailApi {
                         .issuer(safeName.isBlank() ? to.trim() : safeName)
                         .issuedAt(new Date())
                         .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                        .signWith(config.getKeys())
+                        .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                         .compact();
 
                 String loginUrl = selectedBaseUrl + "/login?jwt=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8);

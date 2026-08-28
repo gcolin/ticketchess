@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -26,6 +28,8 @@ import com.github.gcolin.player.IPlayer;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
 import com.github.gcolin.platform.SelectItem;
 import com.github.gcolin.platform.Caches;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.EventGroupFilter;
 import com.github.gcolin.player.Find;
 import com.github.gcolin.auth.LoggedUser;
@@ -59,23 +63,26 @@ class EventApiTest {
         Caches caches = new Caches();
         EventDao eventDao = mock(EventDao.class);
         EventGroupFilter eventGroupFilter = mock(EventGroupFilter.class);
+        ClubSeasonFilter clubSeasonFilter = mock(ClubSeasonFilter.class);
 
         Event event = new Event();
         event.setId(1);
 
-        when(eventDao.findByStatus(EventStatus.ACTIVE)).thenReturn(List.of(event));
+        when(eventDao.findByStatus(eq(EventStatus.ACTIVE), any(SeasonScope.class))).thenReturn(List.of(event));
         when(eventGroupFilter.getAll(null)).thenReturn(List.<SelectItem>of());
+        when(clubSeasonFilter.resolve(null)).thenReturn(SeasonScope.all());
 
         inject(api, "caches", caches);
         inject(api, "eventService", eventDao);
         inject(api, "eventGroupFilter", eventGroupFilter);
+        inject(api, "clubSeasonFilter", clubSeasonFilter);
 
-        JteHtml first = api.events("ACTIVE");
-        JteHtml second = api.events("ACTIVE");
+        JteHtml first = api.events("ACTIVE", null);
+        JteHtml second = api.events("ACTIVE", null);
 
         assertEquals("event/events.jte", first.getTemplate());
         assertEquals("event/events.jte", second.getTemplate());
-        verify(eventDao, times(1)).findByStatus(EventStatus.ACTIVE);
+        verify(eventDao, times(1)).findByStatus(eq(EventStatus.ACTIVE), any(SeasonScope.class));
         verify(eventDao, times(1)).detachAll(anyList());
     }
 
@@ -217,10 +224,20 @@ class EventApiTest {
 
         Response response = api.postEventEdit(
                 true, false, 9, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null);
 
         assertEquals(303, response.getStatus());
         assertEquals(URI.create("http://localhost:8080/event/9/edit?success=save"), response.getLocation());
+    }
+
+    @Test
+    void previewDescriptionShouldRenderMarkdown() {
+        EventApi api = new EventApi();
+
+        Response response = api.previewDescription(7, "**bold** text");
+
+        assertEquals(200, response.getStatus());
+        assertEquals("<p><strong>bold</strong> text</p>\n", response.getEntity());
     }
 
     @Test
@@ -236,7 +253,7 @@ class EventApiTest {
 
         Response response = api.postEventEdit(
                 false, true, 11, null, "login", null, null, "pwd", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, "1");
+                null, null, null, null, "1");
 
         assertEquals(303, response.getStatus());
         assertEquals(URI.create("http://localhost:8080/event/11/edit?success=save"), response.getLocation());

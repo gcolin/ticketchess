@@ -27,6 +27,7 @@
 @param String status
 @param com.github.gcolin.registration.PlayerSubscription sub
 @param Object type
+@param String clubSeasonName
 !{i18ntitle = msg.get("page.clubRegister");}
 !{title = i18ntitle;}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
@@ -47,8 +48,8 @@
     @endif
 
     <div class="bg-body p-3 rounded mb-3" id="help" style="${user.isLogged() && memberships != null && !memberships.isEmpty() && query == null ? "display:none" : ""}">
-      <h1 class="h3 mb-2">${msg.get("clubRegister.title")}</h1>
-      <p class="text-body-secondary mb-0">${msg.get("clubRegister.description")}</p>
+      <h1 class="h3 mb-2">${msg.get("clubRegister.title", clubSeasonName != null ? clubSeasonName : "")}</h1>
+      <p class="text-body-secondary mb-0">${msg.get("clubRegister.description", clubSeasonName != null ? clubSeasonName : "")}</p>
     </div>
 
     @if(user.isLogged() && query == null && memberships != null && (memberships != null && !memberships.isEmpty()) && (success == null || !"mail".equals(success)))

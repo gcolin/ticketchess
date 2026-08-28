@@ -13,6 +13,8 @@ import com.github.gcolin.event.EventInfoDao;
 import com.github.gcolin.event.EventOptionDao;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.PapiUlploadService;
+import com.github.gcolin.club.ClubSeasonDao;
+import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.membership.LicenseDao;
 import com.github.gcolin.membership.LicensePriceDao;
 import com.github.gcolin.membership.MembershipDao;
@@ -42,6 +44,8 @@ public final class RequestContext {
     private EntityManager em;
     private boolean readOnly;
 
+    private ClubSeasonDao clubSeasonDao;
+    private ClubSeasonFilter clubSeasonFilter;
     private LicenseDao licenseDao;
     private LicensePriceDao licensePriceDao;
     private MembershipDao membershipDao;
@@ -246,6 +250,23 @@ public final class RequestContext {
             user.initFromCookies();
         }
         return user;
+    }
+
+    public ClubSeasonDao clubSeasonDao() {
+        touchEm();
+        if (clubSeasonDao == null) {
+            clubSeasonDao = new ClubSeasonDao();
+            clubSeasonDao.setEm(em);
+        }
+        return clubSeasonDao;
+    }
+
+    public ClubSeasonFilter clubSeasonFilter() {
+        if (clubSeasonFilter == null) {
+            clubSeasonFilter = new ClubSeasonFilter();
+            clubSeasonFilter.setClubSeasonDao(clubSeasonDao());
+        }
+        return clubSeasonFilter;
     }
 
     public LicenseDao licenseDao() {

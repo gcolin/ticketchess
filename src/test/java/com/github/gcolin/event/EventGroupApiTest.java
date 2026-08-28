@@ -105,7 +105,7 @@ class EventGroupApiTest {
         inject(api, "caches", new Caches());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/eventgroup/10")));
 
-        Response response = api.save(null, "rapid", "Rapid");
+        Response response = api.save(null, null, "rapid", "Rapid");
 
         assertEquals(303, response.getStatus());
         verify(dao).persist(org.mockito.ArgumentMatchers.any(EventGroup.class));
@@ -123,10 +123,29 @@ class EventGroupApiTest {
         inject(api, "caches", new Caches());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/eventgroup/5")));
 
-        Response response = api.save(5, "blitz", "Blitz Updated");
+        Response response = api.save(null, 5, "blitz", "Blitz Updated");
 
         assertEquals(303, response.getStatus());
         verify(dao).merge(org.mockito.ArgumentMatchers.any(EventGroup.class));
+    }
+
+    @Test
+    void saveShouldRemoveEventGroupWhenActionIsRemove() throws Exception {
+        EventGroupApi api = new EventGroupApi();
+        EventGroupDao dao = mock(EventGroupDao.class);
+
+        EventGroup eg = new EventGroup("Open");
+        eg.setId(9);
+        when(dao.find(9)).thenReturn(eg);
+
+        inject(api, "eventGroupService", dao);
+        inject(api, "caches", new Caches());
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/events")));
+
+        Response response = api.save("remove", 9, null, null);
+
+        assertEquals(303, response.getStatus());
+        verify(dao).remove(eg);
     }
 
     private static UriInfo mockUriInfo(URI target) {

@@ -19,9 +19,12 @@
 @param java.util.List<java.util.Map<String, Object>> rows
 @param java.util.List<java.util.Map<String, Object>> pendingRows
 @param java.util.List<com.github.gcolin.player.CustomPlayer> orphanCustomPlayers
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.playerSubscriptionsAdmin");}
 !{title = i18ntitle;}
 !{page = "playersubscriptionadmin";}
+!{if (seasons == null) seasons = java.util.List.of();}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <html>
   <body class="d-flex flex-column min-vh-100 bg-chess-overlay">
@@ -34,6 +37,9 @@
           <li class="breadcrumb-item active" aria-current="page">${msg.get("page.playerSubscriptionsAdmin")}</li>
         </ol>
       </nav>
+      <form method="get" action="${contextPath}/playersubscription-admin" class="row g-2 align-items-end mb-3">
+        @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="playersub_season", autoSubmit=true)
+      </form>
       <div class="card mb-3">
         <div class="card-body">
           <h1>${msg.get("heading.playerSubscriptionsAdmin")}</h1>
@@ -75,6 +81,9 @@
                   <form method="post" action="${contextPath}/playersubscription-admin" class="m-0"
                         onsubmit="return confirm('${msg.get("action.confirm")}');">
                     <input type="hidden" name="deletePendingId" value="${String.valueOf(pendingRow.get("id"))}">
+                    @if(seasonId != null)
+                      <input type="hidden" name="seasonId" value="${seasonId}">
+                    @endif
                     <button type="submit" class="btn btn-outline-danger btn-sm">${msg.get("action.remove")}</button>
                   </form>
                 </td>
@@ -120,6 +129,9 @@
           </div>
           <form method="post" action="${contextPath}/playersubscription-admin" class="m-0">
             <input type="hidden" name="deleteOrphans" value="true">
+            @if(seasonId != null)
+              <input type="hidden" name="seasonId" value="${seasonId}">
+            @endif
             @if(orphanCount > 0)
             <button type="submit" class="btn btn-danger">
               ${msg.get("action.deleteOrphanCustomPlayers")}
@@ -167,6 +179,9 @@
       <div class="d-flex justify-content-end mb-3">
         <form method="post" action="${contextPath}/playersubscription-admin">
           <input type="hidden" name="all" value="true">
+          @if(seasonId != null)
+            <input type="hidden" name="seasonId" value="${seasonId}">
+          @endif
           @if(replaceableCount > 0)
           <button type="submit" class="btn btn-primary">
             ${msg.get("action.replaceAllByLicence")}
@@ -223,6 +238,9 @@
                   @if(subRow.get("canReplace") != null && (Boolean) subRow.get("canReplace"))
                     <form method="post" action="${contextPath}/playersubscription-admin" class="m-0">
                       <input type="hidden" name="subscriptionId" value="${String.valueOf(subRow.get("subscriptionId"))}">
+                      @if(seasonId != null)
+                        <input type="hidden" name="seasonId" value="${seasonId}">
+                      @endif
                       <button type="submit" class="btn btn-outline-primary btn-sm">${msg.get("action.replaceByLicence")}</button>
                     </form>
                   @endif

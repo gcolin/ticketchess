@@ -53,56 +53,15 @@
         <section class="mb-4 bg-white p-3 rounded-3">
           <h2 class="h4 mb-3">${msg.get("admin.section.event")}</h2>
           <div class="row g-3">
-            @if(user.hasPermission("EVENT_CREATE"))
-              <div class="col-12 col-md-6 col-xl-4">
-                <a class="card h-100 text-decoration-none" id="newevent" href="${contextPath}/event/new">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                      <i class="bi bi-calendar-plus fs-3 text-primary"></i>
-                      <div>
-                        <h3 class="h5 mb-1">${msg.get("event.new")}</h3>
-                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.eventNewDesc")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-            @endif
             @if(user.hasPermission("EVENT_EDIT"))
               <div class="col-12 col-md-6 col-xl-4">
-                <a class="card h-100 text-decoration-none" href="${contextPath}/eventgroup">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/admin/events">
                   <div class="card-body">
                     <div class="d-flex align-items-start gap-3">
-                      <i class="bi bi-diagram-3 fs-3 text-primary"></i>
+                      <i class="bi bi-list-nested fs-3 text-primary"></i>
                       <div>
-                        <h3 class="h5 mb-1">${msg.get("menu.eventGroup")}</h3>
-                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.eventGroupDesc")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="col-12 col-md-6 col-xl-4">
-                <a class="card h-100 text-decoration-none" href="${contextPath}/eventcollection">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                      <i class="bi bi-collection fs-3 text-primary"></i>
-                      <div>
-                        <h3 class="h5 mb-1">${msg.get("menu.eventCollections")}</h3>
-                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.eventCollectionsDesc")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="col-12 col-md-6 col-xl-4">
-                <a class="card h-100 text-decoration-none" href="${contextPath}/notification">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                      <i class="bi bi-bell fs-3 text-primary"></i>
-                      <div>
-                        <h3 class="h5 mb-1">${msg.get("menu.notifications")}</h3>
-                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.notificationsDesc")}</p>
+                        <h3 class="h5 mb-1">${msg.get("menu.adminEvents")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.adminEventsDesc")}</p>
                       </div>
                     </div>
                   </div>
@@ -137,6 +96,33 @@
                 </a>
               </div>
             @endif
+
+            <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/dashboard">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-speedometer2 fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.dashboard")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.dashboardDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/statistics">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-bar-chart fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("menu.statistics")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.statisticsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
           </div>
         </section>
       @endif
@@ -305,6 +291,19 @@
                 </a>
               </div>
               <div class="col-12 col-md-6 col-xl-4">
+                <a class="card h-100 text-decoration-none" href="${contextPath}/admin/seasons">
+                  <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                      <i class="bi bi-calendar-range fs-3 text-primary"></i>
+                      <div>
+                        <h3 class="h5 mb-1">${msg.get("page.seasons")}</h3>
+                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.seasonsDesc")}</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 col-md-6 col-xl-4">
                 <a class="card h-100 text-decoration-none" href="${contextPath}/admin/clear-cache">
                   <div class="card-body">
                     <div class="d-flex align-items-start gap-3">
@@ -312,32 +311,6 @@
                       <div>
                         <h3 class="h5 mb-1">${msg.get("action.clearCache")}</h3>
                         <p class="text-body-secondary mb-0">${msg.get("admin.tile.clearCacheDesc")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="col-12 col-md-6 col-xl-4">
-                <a class="card h-100 text-decoration-none" href="${contextPath}/dashboard">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                      <i class="bi bi-speedometer2 fs-3 text-primary"></i>
-                      <div>
-                        <h3 class="h5 mb-1">${msg.get("menu.dashboard")}</h3>
-                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.dashboardDesc")}</p>
-                      </div>
-                    </div>
-                  </div>
-                </a>
-              </div>
-              <div class="col-12 col-md-6 col-xl-4">
-                <a class="card h-100 text-decoration-none" href="${contextPath}/statistics">
-                  <div class="card-body">
-                    <div class="d-flex align-items-start gap-3">
-                      <i class="bi bi-bar-chart fs-3 text-primary"></i>
-                      <div>
-                        <h3 class="h5 mb-1">${msg.get("menu.statistics")}</h3>
-                        <p class="text-body-secondary mb-0">${msg.get("admin.tile.statisticsDesc")}</p>
                       </div>
                     </div>
                   </div>

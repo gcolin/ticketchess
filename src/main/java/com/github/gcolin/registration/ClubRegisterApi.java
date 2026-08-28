@@ -1,6 +1,8 @@
 package com.github.gcolin.registration;
 
 import com.github.gcolin.auth.LoggedOnly;
+import com.github.gcolin.club.ClubSeason;
+import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.membership.Membership;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionAccessRule;
@@ -88,6 +90,9 @@ public class ClubRegisterApi {
     @Inject
     private Properties properties;
 
+    @Inject
+    private ClubSeasonDao clubSeasonDao;
+
     @Context
     UriInfo uriInfo;
 
@@ -96,6 +101,8 @@ public class ClubRegisterApi {
         Map<String, Object> model = new HashMap<>();
         model.put("query", query);
         model.put("success", success);
+        ClubSeason currentSeason = clubSeasonDao.findCurrent();
+        model.put("clubSeasonName", currentSeason != null ? currentSeason.getName() : "");
 
         boolean isLogged = loggedUser != null && loggedUser.getEmail() != null;
         if (isLogged) {

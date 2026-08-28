@@ -114,7 +114,7 @@ public class EventCollectionApi {
             }
             eventCollectionService.remove(eventCollection);
             invalidateEventCaches();
-            return redirect("removed", "1");
+            return redirectToAdminEvents();
         }
 
         String trimName = trim(name);
@@ -168,6 +168,11 @@ public class EventCollectionApi {
     private void invalidateEventCaches() {
         caches.getEvent().invalidateAll();
         caches.getAllEvents().invalidateAll();
+    }
+
+    private Response redirectToAdminEvents() {
+        URI redirect = uriInfo.getBaseUriBuilder().path("admin/events").build();
+        return Response.seeOther(redirect).build();
     }
 
     private Response redirect(String key, String value) {

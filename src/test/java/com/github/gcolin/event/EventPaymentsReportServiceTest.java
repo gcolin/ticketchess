@@ -5,7 +5,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.github.gcolin.payment.Payment;
+import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.player.Find;
 import com.github.gcolin.player.IPlayer;
 import com.github.gcolin.platform.TestContext;
@@ -65,5 +67,29 @@ class EventPaymentsReportServiceTest {
         payment.setStripeSessionId("cs_test_123");
         org.junit.jupiter.api.Assertions.assertEquals(
                 "CARD", EventPaymentsReportService.resolvePaymentType(payment));
+    }
+
+    @Test
+    void generateForAccountingShouldProducePdfFromPaidPayments() {
+        EventPaymentsReportService service = new EventPaymentsReportService();
+        service.setProperties(new Properties());
+
+        Payment paid = new Payment();
+        paid.setId(12L);
+        paid.setStatus(PaymentStatus.PAID);
+        paid.setType(PaymentType.BANK_TRANSFER);
+        paid.setUserEmail("compta@example.com");
+        paid.setAmount(42.5);
+        paid.setUpdatedAt(LocalDateTime.of(2026, 8, 20, 10, 0));
+
+        Payment pending = new Payment();
+        pending.setId(13L);
+        pending.setStatus(PaymentStatus.PENDING);
+        pending.setAmount(100.0);
+
+        byte[] pdf = service.generateForAccounting(List.of(paid, pending), SeasonScope.all());
+
+        assertTrue(pdf.length > 100);
+        assertTrue(new String(pdf, 0, Math.min(8, pdf.length)).startsWith("%PDF"));
     }
 }

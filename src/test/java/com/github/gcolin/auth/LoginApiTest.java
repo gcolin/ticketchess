@@ -39,7 +39,7 @@ class LoginApiTest {
                 .issuer("User")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 60_000))
-                .signWith(key)
+                .signWith(key, Config.JWT_ALGORITHM)
                 .compact();
 
         when(config.getKeys()).thenReturn(key);

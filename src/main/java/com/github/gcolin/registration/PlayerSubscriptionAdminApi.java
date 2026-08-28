@@ -1,6 +1,8 @@
 package com.github.gcolin.registration;
 
 import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.player.CustomPlayer;
 import com.github.gcolin.auth.PermissionCode;
 import com.github.gcolin.registration.PlayerPendingSubscription;
@@ -21,6 +23,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.util.ArrayList;
@@ -48,12 +51,15 @@ public class PlayerSubscriptionAdminApi {
     @Inject
     private Caches caches;
 
+    @Inject
+    private ClubSeasonFilter clubSeasonFilter;
+
     @Context
     private UriInfo uriInfo;
 
     @GET
-    public JteHtml page() {
-        return page(null, null, null, null);
+    public JteHtml page(@jakarta.ws.rs.QueryParam("seasonId") Integer seasonId) {
+        return page(null, null, null, null, seasonId);
     }
 
     @GET
@@ -62,8 +68,9 @@ public class PlayerSubscriptionAdminApi {
             @jakarta.ws.rs.QueryParam("replaced") Integer replaced,
             @jakarta.ws.rs.QueryParam("failed") Integer failed,
             @jakarta.ws.rs.QueryParam("deleted") Integer deleted,
-            @jakarta.ws.rs.QueryParam("deleteFailed") Integer deleteFailed) {
-        return page(replaced, failed, deleted, deleteFailed);
+            @jakarta.ws.rs.QueryParam("deleteFailed") Integer deleteFailed,
+            @jakarta.ws.rs.QueryParam("seasonId") Integer seasonId) {
+        return page(replaced, failed, deleted, deleteFailed, seasonId);
     }
 
     @POST
@@ -72,12 +79,14 @@ public class PlayerSubscriptionAdminApi {
             @FormParam("subscriptionId") Integer subscriptionId,
             @FormParam("all") @DefaultValue("false") boolean all,
             @FormParam("deleteOrphans") @DefaultValue("false") boolean deleteOrphans,
-            @FormParam("deletePendingId") Integer deletePendingId) {
+            @FormParam("deletePendingId") Integer deletePendingId,
+            @FormParam("seasonId") Integer seasonId) {
         int replaced = 0;
         int failed = 0;
         int deleted = 0;
         int deleteFailed = 0;
         boolean pendingRemoved = false;
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
 
         if (deletePendingId != null) {
             PlayerPendingSubscription pending = playerPendingSubscriptionService.find(deletePendingId);
@@ -98,7 +107,7 @@ public class PlayerSubscriptionAdminApi {
                 }
             }
         } else if (all) {
-            for (PlayerSubscription subscription : playerSubscriptionService.findLinkedToCustomPlayers()) {
+            for (PlayerSubscription subscription : playerSubscriptionService.findLinkedToCustomPlayers(scope)) {
                 ReplacementCandidate candidate = buildCandidate(subscription);
                 if (candidate != null && candidate.canReplace) {
                     subscription.setNrFfe(candidate.replacementNrFfe);
@@ -126,23 +135,26 @@ public class PlayerSubscriptionAdminApi {
             caches.getDebtCache().invalidateAll();
         }
 
-        URI uri = uriInfo.getBaseUriBuilder()
+        UriBuilder uriBuilder = uriInfo.getBaseUriBuilder()
                 .path("playersubscription-admin")
                 .path("result")
                 .queryParam("replaced", replaced)
                 .queryParam("failed", failed)
                 .queryParam("deleted", deleted)
-                .queryParam("deleteFailed", deleteFailed)
-                .build();
-        return Response.seeOther(uri).build();
+                .queryParam("deleteFailed", deleteFailed);
+        if (seasonId != null) {
+            uriBuilder.queryParam("seasonId", seasonId);
+        }
+        return Response.seeOther(uriBuilder.build()).build();
     }
 
-    private JteHtml page(Integer replaced, Integer failed, Integer deleted, Integer deleteFailed) {
+    private JteHtml page(Integer replaced, Integer failed, Integer deleted, Integer deleteFailed, Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         List<Map<String, Object>> rows = new ArrayList<>();
         List<Map<String, Object>> pendingRows = new ArrayList<>();
         int replaceableCount = 0;
 
-        for (PlayerSubscription subscription : playerSubscriptionService.findLinkedToCustomPlayers()) {
+        for (PlayerSubscription subscription : playerSubscriptionService.findLinkedToCustomPlayers(scope)) {
             ReplacementCandidate candidate = buildCandidate(subscription);
             if (candidate == null) {
                 continue;
@@ -167,7 +179,7 @@ public class PlayerSubscriptionAdminApi {
             rows.add(row);
         }
 
-        for (PlayerPendingSubscription pendingSubscription : playerPendingSubscriptionService.findAllWithEvent()) {
+        for (PlayerPendingSubscription pendingSubscription : playerPendingSubscriptionService.findAllWithEvent(scope)) {
             IPlayer player = resolvePlayer(pendingSubscription.getNrFfe());
             Map<String, Object> row = new HashMap<>();
             row.put("id", pendingSubscription.getId());
@@ -193,6 +205,7 @@ public class PlayerSubscriptionAdminApi {
         model.put("failed", failed);
         model.put("deleted", deleted);
         model.put("deleteFailed", deleteFailed);
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "registration/playersubscriptionAdmin.jte");
     }
 

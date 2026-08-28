@@ -1,6 +1,8 @@
 package com.github.gcolin.event;
 
 import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.Event;
 import com.github.gcolin.platform.Transactional;
 import com.github.gcolin.auth.PermissionCode;
@@ -14,6 +16,7 @@ import com.github.gcolin.registration.PlayerSubscriptionDao;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.QueryParam;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,33 +37,34 @@ public class StatisticsApi {
     @Inject
     private Find find;
 
+    @Inject
+    private ClubSeasonFilter clubSeasonFilter;
+
     @GET
     @RequirePermission(PermissionCode.ADMIN_PANEL)
     @Transactional
-    public JteHtml page() {
+    public JteHtml page(@QueryParam("seasonId") Integer seasonId) {
         Map<String, Object> model = new HashMap<>();
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        clubSeasonFilter.addToModel(model, seasonId);
 
-        // Get 10 closest future events
-        List<Event> closestEvents = eventDao.findClosestEvents(10);
+        List<Event> closestEvents = eventDao.findClosestEvents(10, scope);
         model.put("closestEvents", closestEvents);
 
-        // Get 10 events with most participants
-        List<Object[]> topEvents = eventDao.findTopEventsByParticipants(10);
+        List<Object[]> topEvents = eventDao.findTopEventsByParticipants(10, scope);
         model.put("topEvents", topEvents);
 
-        // Get sum of all payments
-        Double totalPayments = paymentDao.sumAllPayments();
+        Double totalPayments = paymentDao.sumAllPayments(scope);
         model.put("totalPayments", totalPayments != null ? totalPayments : 0.0);
 
-        // Get sum of unpaid player subscriptions using calculatePrice (considers young/senior status)
-        Double unpaidPlayerSubscriptions = calculateUnpaidSubscriptionsTotal();
+        Double unpaidPlayerSubscriptions = calculateUnpaidSubscriptionsTotal(scope);
         model.put("unpaidPlayerSubscriptions", unpaidPlayerSubscriptions);
 
         return new JteHtml(model, "event/statistics.jte");
     }
 
-    private Double calculateUnpaidSubscriptionsTotal() {
-        List<PlayerSubscription> unpaidSubscriptions = playerSubscriptionDao.findNotPaidWithEvent();
+    private Double calculateUnpaidSubscriptionsTotal(SeasonScope scope) {
+        List<PlayerSubscription> unpaidSubscriptions = playerSubscriptionDao.findNotPaidWithEvent(scope);
         long totalCents = 0;
 
         for (PlayerSubscription subscription : unpaidSubscriptions) {

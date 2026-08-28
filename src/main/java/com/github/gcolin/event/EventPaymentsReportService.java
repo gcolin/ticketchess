@@ -1,6 +1,8 @@
 package com.github.gcolin.event;
 
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.payment.Payment;
+import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
 import com.github.gcolin.platform.Config;
 import com.github.gcolin.platform.RequestContext;
@@ -64,6 +66,95 @@ public class EventPaymentsReportService {
         String reportNumber =
                 "REC-C" + collection.getId() + "-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         return generate(collection.getName(), null, reportNumber, subscriptions, true);
+    }
+
+    public byte[] generateForAccounting(List<Payment> payments, SeasonScope scope) {
+        String reportNumber = "REC-"
+                + (scope.isFiltered() ? "S" + scope.getSeasonId() + "-" : "")
+                + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+        List<PaymentRow> rows = payments.stream()
+                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .filter(payment -> payment.getAmountCents() != null)
+                .map(payment -> new PaymentRow(
+                        payment.getUpdatedAt() != null ? payment.getUpdatedAt() : payment.getCreatedAt(),
+                        payment.getId(),
+                        resolvePaymentType(payment),
+                        payment.getUserEmail(),
+                        ServiceUtils.toEuros(payment.getAmountCents())))
+                .sorted(Comparator.comparing(
+                                PaymentRow::paymentAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(PaymentRow::id, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        return generateAccounting(reportNumber, rows, scope);
+    }
+
+    private byte[] generateAccounting(String reportNumber, List<PaymentRow> rows, SeasonScope scope) {
+        Map<String, Double> amountByType = new LinkedHashMap<>();
+        double total = 0.0;
+        for (PaymentRow row : rows) {
+            total += row.amountEuros();
+            amountByType.merge(row.paymentType(), row.amountEuros(), Double::sum);
+        }
+
+        Document document = new Document(PageSize.A4.rotate(), 36, 36, 50, 50);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            ResourceBundle bundle = ResourceBundle.getBundle("messages", Locale.getDefault());
+            String vatNotice = properties.getProperty(
+                    "invoice.vat.notice", bundle.getString("statistics.payments.vatNotice"));
+            String footerContact = properties.getProperty(
+                    "invoice.footer", bundle.getString("statistics.payments.footer"));
+            writer.setPageEvent(new FooterEvent(vatNotice, footerContact));
+            document.open();
+
+            Font titleFont = new Font(Font.HELVETICA, 16, Font.BOLD);
+            Font sectionFont = new Font(Font.HELVETICA, 12, Font.BOLD);
+            Font headerFont = new Font(Font.HELVETICA, 9, Font.BOLD);
+            Font normalFont = new Font(Font.HELVETICA, 9);
+            Font smallFont = new Font(Font.HELVETICA, 8);
+
+            addSellerHeader(document, normalFont, smallFont);
+            document.add(new Paragraph(bundle.getString("statistics.payments.title"), titleFont));
+            document.add(new Paragraph(
+                    MessageFormat.format(bundle.getString("statistics.payments.reportNumber"), reportNumber),
+                    normalFont));
+            document.add(new Paragraph(
+                    MessageFormat.format(
+                            bundle.getString("statistics.payments.issuedAt"), LocalDate.now().format(DATE_FORMAT)),
+                    normalFont));
+            if (scope.isFiltered()) {
+                String period = scope.getStart().toLocalDate().format(DATE_FORMAT)
+                        + " — "
+                        + scope.getEnd().toLocalDate().format(DATE_FORMAT);
+                document.add(new Paragraph(
+                        MessageFormat.format(bundle.getString("statistics.payments.period"), period), normalFont));
+            }
+            document.add(new Paragraph(" "));
+
+            document.add(new Paragraph(bundle.getString("statistics.payments.summary"), sectionFont));
+            document.add(new Paragraph(
+                    MessageFormat.format(
+                            bundle.getString("statistics.payments.totalCollected"), formatEuros(total)),
+                    normalFont));
+            document.add(new Paragraph(" "));
+            document.add(buildSummaryTable(bundle, amountByType, total, headerFont, normalFont));
+            document.add(new Paragraph(" "));
+
+            document.add(new Paragraph(bundle.getString("statistics.payments.detail"), sectionFont));
+            document.add(new Paragraph(" "));
+            document.add(buildAccountingDetailTable(bundle, rows, headerFont, normalFont));
+            document.add(new Paragraph(" "));
+            document.add(new Paragraph(
+                    MessageFormat.format(bundle.getString("statistics.payments.totalCollected"), formatEuros(total)),
+                    sectionFont));
+
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            logger.error("Error generating accounting payments report PDF", e);
+            throw new RuntimeException("Failed to generate accounting payments report PDF", e);
+        }
     }
 
     private byte[] generate(
@@ -300,6 +391,30 @@ public class EventPaymentsReportService {
         return table;
     }
 
+    private PdfPTable buildAccountingDetailTable(
+            ResourceBundle bundle, List<PaymentRow> rows, Font headerFont, Font normalFont)
+            throws DocumentException {
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[] {15f, 12f, 20f, 38f, 15f});
+        addHeaderCell(table, bundle.getString("statistics.payments.date"), headerFont);
+        addHeaderCell(table, "#", headerFont);
+        addHeaderCell(table, bundle.getString("statistics.payments.paymentType"), headerFont);
+        addHeaderCell(table, bundle.getString("payment.email"), headerFont);
+        addHeaderCell(table, bundle.getString("payment.amount"), headerFont);
+
+        for (PaymentRow row : rows) {
+            table.addCell(new Phrase(formatDate(row.paymentAt()), normalFont));
+            table.addCell(new Phrase(row.id() == null ? "" : String.valueOf(row.id()), normalFont));
+            table.addCell(new Phrase(paymentTypeLabel(bundle, row.paymentType()), normalFont));
+            table.addCell(new Phrase(nullToEmpty(row.email()), normalFont));
+            PdfPCell amountCell = new PdfPCell(new Phrase(formatEuros(row.amountEuros()), normalFont));
+            amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(amountCell);
+        }
+        return table;
+    }
+
     private static void addHeaderCell(PdfPTable table, String text, Font headerFont) {
         PdfPCell cell = new PdfPCell(new Phrase(text, headerFont));
         cell.setBackgroundColor(HEADER_BG);
@@ -401,6 +516,9 @@ public class EventPaymentsReportService {
             String email,
             double amountEuros,
             String eventName) {}
+
+    private record PaymentRow(
+            LocalDateTime paymentAt, Long id, String paymentType, String email, double amountEuros) {}
 
     private static final class FooterEvent extends PdfPageEventHelper {
         private final String vatNotice;

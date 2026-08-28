@@ -20,6 +20,7 @@
         <class>com.github.gcolin.event.EventCollection</class>
         <class>com.github.gcolin.membership.License</class>
         <class>com.github.gcolin.membership.LicensePrice</class>
+        <class>com.github.gcolin.club.ClubSeason</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
     </persistence-unit>
 </persistence>

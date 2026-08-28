@@ -30,8 +30,8 @@
         <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
           <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
           <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-          <li class="breadcrumb-item"><a href="${contextPath}/eventcollection">${msg.get("page.eventCollections")}</a></li>
-          <li class="breadcrumb-item active" aria-current="page">@if(createMode)${msg.get("action.createGeneric")}@else${msg.get("action.edit")}@endif</li>
+          <li class="breadcrumb-item"><a href="${contextPath}/admin/events">${msg.get("breadcrumb.events")}</a></li>
+          <li class="breadcrumb-item active" aria-current="page">@if(createMode)${msg.get("eventcollection.createBreadcrumb")}@else${msg.get("eventcollection.editBreadcrumb")}@endif</li>
         </ol>
       </nav>
 
@@ -70,7 +70,11 @@
           </form>
           @if(!createMode)
           <p class="text-body-secondary mt-3 mb-0">
-            ${msg.get("eventcollection.currentSubscriptions", eventCollection.getNbSubscriptions() != null ? eventCollection.getNbSubscriptions() : 0)}
+            @if(eventCollection.getMaxSubscribe() != null)
+              ${msg.get("eventcollection.currentSubscriptionsWithMax", eventCollection.getNbSubscriptions() != null ? eventCollection.getNbSubscriptions() : 0, eventCollection.getMaxSubscribe())}
+            @else
+              ${msg.get("eventcollection.currentSubscriptions", eventCollection.getNbSubscriptions() != null ? eventCollection.getNbSubscriptions() : 0)}
+            @endif
           </p>
           @endif
           @if(!createMode)

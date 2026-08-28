@@ -1,6 +1,12 @@
 package com.github.gcolin.platform;
 
 import java.text.MessageFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.Date;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
@@ -11,6 +17,31 @@ public class Messages {
 
     public Messages(Locale locale) {
         this.locale = locale;
+    }
+
+    public Locale getLocale() {
+        return locale;
+    }
+
+    public String formatDate(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "";
+        }
+        return formatDate(dateTime.toLocalDate());
+    }
+
+    public String formatDate(LocalDate date) {
+        if (date == null) {
+            return "";
+        }
+        return DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(date);
+    }
+
+    public String formatDate(Date date) {
+        if (date == null) {
+            return "";
+        }
+        return formatDate(date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
     }
 
     public String get(String key) {

@@ -40,6 +40,14 @@ class RedirectsTest {
     }
 
     @Test
+    void shouldStripHostFromAbsoluteRedirect() {
+        URI relative = Redirects.toSameOriginRelative(
+                URI.create("http://tournoistest.example/admin/org?success=ribUploaded&tab=files#files"));
+
+        assertEquals("/admin/org?success=ribUploaded&tab=files#files", relative.toString());
+    }
+
+    @Test
     void shouldFallbackToDefaultForUnsafeRedirect() {
         UriInfo uriInfo = mock(UriInfo.class);
         URI defaultUri = URI.create("http://localhost:8080/app/");

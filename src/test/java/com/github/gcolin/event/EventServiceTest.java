@@ -139,14 +139,12 @@ class EventServiceTest {
                 "7",
                 "90",
                 "Haley",
-                "CLUB1",
                 null);
 
         Assertions.assertEquals(5, id);
         verify(eventOptionDao).setOption(5, EventOptionType.ROUNDS, "7");
         verify(eventOptionDao).setOption(5, EventOptionType.CADENCE, "90");
         verify(eventOptionDao).setOption(5, EventOptionType.PAIRING, "Haley");
-        verify(eventOptionDao).setOption(5, EventOptionType.CLUB_REF, "CLUB1");
         verify(eventOptionDao).setOption(5, EventOptionType.MAX_SUBSCRIPTIONS, "");
     }
 

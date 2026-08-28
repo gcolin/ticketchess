@@ -21,6 +21,8 @@ import com.github.gcolin.platform.Caches;
 import com.github.gcolin.desk.EventDeskHub;
 import com.github.gcolin.desk.EventDeskService;
 import com.github.gcolin.event.EventGroupFilter;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.player.Find;
 import com.github.gcolin.auth.LoggedUser;
 import com.github.gcolin.registration.RegisterService;
@@ -45,6 +47,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
@@ -60,6 +63,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.gcolin.platform.JteHtml;
@@ -91,6 +97,9 @@ public class EventApi {
 
     @Inject
     EventGroupFilter eventGroupFilter;
+
+    @Inject
+    ClubSeasonFilter clubSeasonFilter;
 
     @Inject
     private PlayerSubscriptionDao playerSubscriptionService;
@@ -128,8 +137,11 @@ public class EventApi {
     private static final Logger logger = LoggerFactory.getLogger(EventApi.class);
 
     @GET
-    public JteHtml events(@QueryParam("status") @DefaultValue("ACTIVE") String status) throws IOException {
-        return events(status, null);
+    public JteHtml events(
+            @QueryParam("status") @DefaultValue("ACTIVE") String status,
+            @QueryParam("seasonId") Integer seasonId)
+            throws IOException {
+        return events(status, null, seasonId);
     }
 
     @GET
@@ -518,18 +530,22 @@ public class EventApi {
     @GET
     @Path("{group}")
     public JteHtml events(
-            @QueryParam("status") @DefaultValue("ACTIVE") String statusString, @PathParam("group") String group)
+            @QueryParam("status") @DefaultValue("ACTIVE") String statusString,
+            @PathParam("group") String group,
+            @QueryParam("seasonId") Integer seasonId)
             throws IOException {
-        EventsCache eventsCache = caches.getAllEvents().getIfPresent(statusString + group);
+        String cacheKey = statusString + group + clubSeasonFilter.effectiveSeasonId(seasonId);
+        EventsCache eventsCache = caches.getAllEvents().getIfPresent(cacheKey);
 
         if (eventsCache == null) {
             eventsCache = new EventsCache();
             if (group != null) {
                 eventsCache.group = eventGroupService.findByShortname(group);
             }
+            SeasonScope scope = clubSeasonFilter.resolve(seasonId);
             List<Event> events = group == null
-                    ? eventService.findByStatus(EventStatus.valueOf(statusString))
-                    : eventService.findByStatus(EventStatus.valueOf(statusString), eventsCache.group);
+                    ? eventService.findByStatus(EventStatus.valueOf(statusString), scope)
+                    : eventService.findByStatus(EventStatus.valueOf(statusString), eventsCache.group, scope);
             
             events.forEach(eventService::fillSubscriptionLimits);
             eventService.fillNbSubscriptions(events);
@@ -541,7 +557,7 @@ public class EventApi {
                 eventGroupService.detach(eventsCache.group);
             }
 
-            caches.getAllEvents().put(statusString + group, eventsCache);
+            caches.getAllEvents().put(cacheKey, eventsCache);
         }
 
         Map<String, Object> model = new HashMap<String, Object>();
@@ -550,6 +566,7 @@ public class EventApi {
         model.put("events", eventsCache.events);
         model.put("eventGroup", eventsCache.group);
         model.put("eventgroups", eventGroupFilter.getAll(group));
+        clubSeasonFilter.addToModel(model, seasonId);
         if (eventsCache.group != null) {
             model.put("filterUrl", "/event/" + eventsCache.group.getShortname());
         } else {
@@ -581,6 +598,19 @@ public class EventApi {
     }
 
     @POST
+    @Path("{id:\\d+}/description/preview")
+    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @Produces(MediaType.TEXT_HTML)
+    public Response previewDescription(
+            @PathParam("id") Integer eventId, @FormParam("description") String description) {
+        Parser parser = Parser.builder().build();
+        Node document = parser.parse(description == null ? "" : description);
+        HtmlRenderer renderer = HtmlRenderer.builder().escapeHtml(true).build();
+        return Response.ok(renderer.render(document), MediaType.TEXT_HTML).build();
+    }
+
+    @POST
     @RequirePermission(PermissionCode.EVENT_EDIT)
     @Consumes({MediaType.APPLICATION_FORM_URLENCODED, MediaType.MULTIPART_FORM_DATA})
     public Response postEventEdit(
@@ -604,7 +634,6 @@ public class EventApi {
             @FormParam("rondes") String rondes,
             @FormParam("cadence") String cadence,
             @FormParam("pairing") String pairing,
-            @FormParam("clubRef") String clubRef,
             @FormParam("maxSubscriptions") String maxSubscriptions,
             @FormParam("pointage") String pointage) {
         if (descriptionOnly) {
@@ -636,7 +665,6 @@ public class EventApi {
                     rondes,
                     cadence,
                     pairing,
-                    clubRef,
                     maxSubscriptions);
         }
         caches.getEvent().invalidateAll();

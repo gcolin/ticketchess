@@ -9,9 +9,13 @@
 @param String title
 @param com.github.gcolin.auth.LoggedUser user
 @param java.util.List<com.github.gcolin.membership.MembershipOption> options
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.membershipOptions");}
 !{title = i18ntitle;}
 !{page = "admin";}
+!{if (seasons == null) seasons = java.util.List.of();}
+!{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 
@@ -29,8 +33,12 @@
       </ol>
     </nav>
 
+    <form method="get" action="${contextPath}/membership-option-admin" class="row g-2 align-items-end mb-3">
+      @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="membership_option_season", autoSubmit=true)
+    </form>
+
     <div class="mb-3">
-      <a class="btn btn-success" href="${contextPath}/membership-option-admin/new">${msg.get("action.addMembershipOption")}</a>
+      <a class="btn btn-success" href="${contextPath}/membership-option-admin/new${seasonParam}">${msg.get("action.addMembershipOption")}</a>
     </div>
 
     <div class="table-responsive bg-body rounded p-2">
@@ -43,8 +51,6 @@
             <th scope="col">Licence</th>
             <th scope="col">Montant (€)</th>
             <th scope="col">Accessibilite</th>
-            <th scope="col">Créé</th>
-            <th scope="col">Modifié</th>
             <th scope="col">Actions</th>
           </tr>
         </thead>
@@ -67,19 +73,20 @@
                   Admin uniquement
                 @endif
               </td>
-              <td>@if(opt.getCreatedAt() != null)${opt.getCreatedAt().toString()}@endif</td>
-              <td>@if(opt.getUpdatedAt() != null)${opt.getUpdatedAt().toString()}@endif</td>
               <td>
                 <div class="d-flex gap-2">
-                <a class="btn btn-sm btn-outline-primary" href="${contextPath}/membership-option-admin/${opt.getId()}/edit">Modifier</a>
-                <form method="post" action="${contextPath}/membership-option-admin/${opt.getId()}/delete" onsubmit="return confirm('Supprimer cette option ?')">
+                <a class="btn btn-sm btn-outline-primary" href="${contextPath}/membership-option-admin/${opt.getId()}/edit${seasonParam}">Modifier</a>
+                <form method="post" class="m-0" action="${contextPath}/membership-option-admin/${opt.getId()}/delete" onsubmit="return confirm('Supprimer cette option ?')">
+                  @if(seasonId != null)
+                    <input type="hidden" name="seasonId" value="${seasonId}">
+                  @endif
                   <button type="submit" class="btn btn-sm btn-outline-danger">Supprimer</button>
                 </form>
                 </div>
               </td>
             </tr>
           @else
-            <tr><td colspan="9" class="text-center text-body-secondary">Aucune option configurée.</td></tr>
+            <tr><td colspan="7" class="text-center text-body-secondary">Aucune option configurée.</td></tr>
           @endfor
         </tbody>
       </table>

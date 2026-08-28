@@ -1,6 +1,8 @@
 package com.github.gcolin.platform;
 
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.MacAlgorithm;
 import jakarta.servlet.ServletContext;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -23,6 +25,9 @@ import org.slf4j.LoggerFactory;
 public class Config {
 
     static final String DEFAULT_JWT_KEY = "9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b";
+    /** HS256 requires jwt.key of at least 32 UTF-8 bytes (RFC 7518). */
+    public static final MacAlgorithm JWT_ALGORITHM = Jwts.SIG.HS256;
+    static final int JWT_KEY_MIN_BYTES = 32;
     public static final Set<String> SECRET_KEYS = Set.of(
             "stripe.secret", "oauth.clientSecret", "jwt.key", "mail.PASSWORD", "db.pass", "keycloak.CLIENT_SECRET");
 
@@ -187,7 +192,13 @@ public class Config {
             logger.warn(
                     "No JWT key provided in properties, using default. This is not secure and should be changed in production.");
         }
-        keys = Keys.hmacShaKeyFor(properties.getProperty("jwt.key", DEFAULT_JWT_KEY).getBytes(StandardCharsets.UTF_8));
+        String jwtKeyRaw = properties.getProperty("jwt.key", DEFAULT_JWT_KEY);
+        byte[] jwtKeyBytes = jwtKeyRaw.getBytes(StandardCharsets.UTF_8);
+        if (jwtKeyBytes.length < JWT_KEY_MIN_BYTES) {
+            throw new IllegalStateException(
+                    "jwt.key must be at least " + JWT_KEY_MIN_BYTES + " UTF-8 bytes for " + JWT_ALGORITHM.getId());
+        }
+        keys = Keys.hmacShaKeyFor(jwtKeyBytes);
 
         testMode = isTestModeProperty();
         pendingQueueOffset = Integer.parseInt(properties.getProperty("pendingQueueOffset", "0"));
@@ -400,7 +411,7 @@ public class Config {
         }
         if (!hasSecureJwtKey()) {
             throw new IllegalStateException(
-                    "Production requires a custom jwt.key (at least 32 characters, not a placeholder).");
+                    "Production requires a custom jwt.key (at least 32 UTF-8 bytes, not a placeholder).");
         }
     }
 
@@ -423,7 +434,7 @@ public class Config {
         if ("integration-test-jwt-key-not-for-production-use-only".equals(jwtKey)) {
             return false;
         }
-        return jwtKey.length() >= 32;
+        return jwtKey.getBytes(StandardCharsets.UTF_8).length >= JWT_KEY_MIN_BYTES;
     }
 
     private boolean isTestModeProperty() {

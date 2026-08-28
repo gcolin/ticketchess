@@ -36,16 +36,19 @@
           @endif
 
           <div class="bg-body p-3 pb-1 rounded mb-3">
-            <h2><i class="bi bi-trophy me-2"></i>  ${event.getName()}
-              @if(event.getFfeId() != null)
-                <a id="ffe-link" class="btn btn-outline-info btn-sm ms-2 align-middle"
-                   href="https://www.echecs.asso.fr/FicheTournoi.aspx?Ref=${java.net.URLEncoder.encode(String.valueOf(event.getFfeId()), java.nio.charset.StandardCharsets.UTF_8)}"
-                   target="_blank" rel="noopener noreferrer"
-                   title="${msg.get("event.ffeLink")}">
-                  <i class="bi bi-box-arrow-up-right me-1"></i>${msg.get("event.ffeLink")}
-                </a>
-              @endif
-            </h2>
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <h2 class="mb-0"><i class="bi bi-trophy me-2"></i>${event.getName()}
+                @if(event.getFfeId() != null)
+                  <a id="ffe-link" class="btn btn-outline-info btn-sm ms-2 align-middle"
+                     href="https://www.echecs.asso.fr/FicheTournoi.aspx?Ref=${java.net.URLEncoder.encode(String.valueOf(event.getFfeId()), java.nio.charset.StandardCharsets.UTF_8)}"
+                     target="_blank" rel="noopener noreferrer"
+                     title="${msg.get("event.ffeLink")}">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>${msg.get("event.ffeLink")}
+                  </a>
+                @endif
+              </h2>
+              @template.event.eventActionsMenu(contextPath=contextPath, msg=msg, user=user, event=event, showView=false, showUploadPapi=true)
+            </div>
             @if(event.getMaxSubscriptions() != null && Math.max(0, event.getMaxSubscriptions() - players.size()) > 0)
             <p class="text-body-secondary mb-2">${msg.get("event.remainingSubscriptions", Math.max(0, event.getMaxSubscriptions() - players.size()))}</p>
             @endif
@@ -68,23 +71,7 @@
                 @endif
               @endif
             @endif
-              @if(user.hasPermission("EVENT_EDIT"))
-                <a id="edit" class="btn btn-info mb-2" href="${contextPath}/event/${event.getId()}/edit">&#9999; ${msg.get("action.edit")}</a>
-                <a id="desk" class="btn btn-primary mb-2" href="${contextPath}/event/${event.getId()}/desk"><i class="bi bi-clipboard-check me-1"></i>${msg.get("event.desk.title")}</a>
-              @endif
-              @if(user.hasPermission("EVENT_READ"))
-                <a id="exportPapi" class="btn btn-success mb-2" href="${contextPath}/event/${event.getId()}/papi">&#128190; ${msg.get("action.exportPapi")}</a>
-                <a id="exportCsv" class="btn btn-success mb-2" href="${contextPath}/event/${event.getId()}/csv">&#128190; ${msg.get("action.exportCsv")}</a>
-                <a id="licenceCheck" class="btn btn-warning mb-2" href="${contextPath}/event/${event.getId()}/licencecheck">&#128203; ${msg.get("action.licenceCheck")}</a>
-              @endif
-              @if(user.hasPermission("MAIL_SEND"))
-                <a id="sendMail" class="btn btn-warning mb-2" href="${contextPath}/event/${event.getId()}/mail">&#9993; ${msg.get("mail.sendToAll")}</a>
-              @endif
-              @if(user.hasPermission("ADMIN_PANEL"))
-                <a id="statistics" class="btn btn-secondary mb-2" href="${contextPath}/event/${event.getId()}/statistics">&#128202; ${msg.get("event.statistics")}</a>
-                <button id="uploadPapi" class="btn btn-dark mb-2" type="button">&#128228; Upload PAPI</button>
-              @endif
-              <div id="uploadPapiFeedback" class="mt-2"></div>
+            <div id="uploadPapiFeedback" class="mt-2"></div>
           </div>
           <div id="info">@if(eventInfo instanceof String)$unsafe{(String) eventInfo}@endif</div>
 

@@ -15,6 +15,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
@@ -138,10 +139,10 @@ public class AdminApi {
         caches.getNotifications().invalidateAll();
         caches.getEventGroups().invalidateAll();
 
-        URI redirect = uriInfo.getBaseUriBuilder()
+        URI redirect = Redirects.toSameOriginRelative(uriInfo.getBaseUriBuilder()
                 .path("admin")
                 .queryParam("success", "cacheCleared")
-                .build();
+                .build());
         return Response.seeOther(redirect).build();
     }
 
@@ -151,11 +152,11 @@ public class AdminApi {
     public Response ribRedirect() {
         URI requestUri = uriInfo.getRequestUri();
         String query = requestUri == null ? null : requestUri.getRawQuery();
-        URI redirect = uriInfo.getBaseUriBuilder()
+        URI redirect = Redirects.toSameOriginRelative(uriInfo.getBaseUriBuilder()
                 .path("admin")
                 .path("org")
                 .replaceQuery(query)
-                .build();
+                .build());
         return Response.seeOther(redirect).build();
     }
 
@@ -232,10 +233,11 @@ public class AdminApi {
     @Path("org/rib")
     @RequirePermission(PermissionCode.ADMIN_PANEL)
     @Consumes({"application/pdf", "application/x-pdf", "application/octet-stream", "*/*"})
+    @Produces(MediaType.APPLICATION_JSON)
     public Response uploadRib(InputStream file) {
         try {
             ribService.save(file);
-            return redirectToOrg("success", "ribUploaded", "files");
+            return jsonRedirectToOrg("success", "ribUploaded", "files");
         } catch (WebApplicationException e) {
             String error = "ribUploadFailed";
             String message = e.getMessage() == null ? "" : e.getMessage();
@@ -244,23 +246,24 @@ public class AdminApi {
             } else if (message.contains("too large")) {
                 error = "ribTooLarge";
             }
-            return redirectToOrg("error", error, "files");
+            return jsonRedirectToOrg("error", error, "files");
         } catch (IOException e) {
             logger.error("cannot save RIB file", e);
-            return redirectToOrg("error", "ribUploadFailed", "files");
+            return jsonRedirectToOrg("error", "ribUploadFailed", "files");
         }
     }
 
     @DELETE
     @Path("org/rib")
     @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response deleteRib() {
         try {
             ribService.delete();
-            return redirectToOrg("success", "ribDeleted", "files");
+            return jsonRedirectToOrg("success", "ribDeleted", "files");
         } catch (IOException e) {
             logger.error("cannot delete RIB file", e);
-            return redirectToOrg("error", "ribDeleteFailed", "files");
+            return jsonRedirectToOrg("error", "ribDeleteFailed", "files");
         }
     }
 
@@ -268,11 +271,12 @@ public class AdminApi {
     @Path("org/logo")
     @RequirePermission(PermissionCode.ADMIN_PANEL)
     @Consumes({"image/png", "image/jpeg", "image/webp", "application/octet-stream"})
+    @Produces(MediaType.APPLICATION_JSON)
     public Response uploadLogo(InputStream file) {
         try {
             logoService.save(file);
             config.applyRuntime();
-            return redirectToOrg("success", "logoUploaded", "files");
+            return jsonRedirectToOrg("success", "logoUploaded", "files");
         } catch (WebApplicationException e) {
             String error = "logoUploadFailed";
             String message = e.getMessage() == null ? "" : e.getMessage();
@@ -281,24 +285,25 @@ public class AdminApi {
             } else if (message.contains("too large")) {
                 error = "logoTooLarge";
             }
-            return redirectToOrg("error", error, "files");
+            return jsonRedirectToOrg("error", error, "files");
         } catch (IOException e) {
             logger.error("cannot save logo file", e);
-            return redirectToOrg("error", "logoUploadFailed", "files");
+            return jsonRedirectToOrg("error", "logoUploadFailed", "files");
         }
     }
 
     @DELETE
     @Path("org/logo")
     @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response deleteLogo() {
         try {
             logoService.delete();
             config.applyRuntime();
-            return redirectToOrg("success", "logoDeleted", "files");
+            return jsonRedirectToOrg("success", "logoDeleted", "files");
         } catch (IOException e) {
             logger.error("cannot delete logo file", e);
-            return redirectToOrg("error", "logoDeleteFailed", "files");
+            return jsonRedirectToOrg("error", "logoDeleteFailed", "files");
         }
     }
 
@@ -306,11 +311,12 @@ public class AdminApi {
     @Path("org/background")
     @RequirePermission(PermissionCode.ADMIN_PANEL)
     @Consumes({"image/png", "image/jpeg", "image/webp", "application/octet-stream"})
+    @Produces(MediaType.APPLICATION_JSON)
     public Response uploadBackground(InputStream file) {
         try {
             backgroundService.save(file);
             config.applyRuntime();
-            return redirectToOrg("success", "backgroundUploaded", "files");
+            return jsonRedirectToOrg("success", "backgroundUploaded", "files");
         } catch (WebApplicationException e) {
             String error = "backgroundUploadFailed";
             String message = e.getMessage() == null ? "" : e.getMessage();
@@ -319,36 +325,45 @@ public class AdminApi {
             } else if (message.contains("too large")) {
                 error = "backgroundTooLarge";
             }
-            return redirectToOrg("error", error, "files");
+            return jsonRedirectToOrg("error", error, "files");
         } catch (IOException e) {
             logger.error("cannot save background file", e);
-            return redirectToOrg("error", "backgroundUploadFailed", "files");
+            return jsonRedirectToOrg("error", "backgroundUploadFailed", "files");
         }
     }
 
     @DELETE
     @Path("org/background")
     @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response deleteBackground() {
         try {
             backgroundService.delete();
             config.applyRuntime();
-            return redirectToOrg("success", "backgroundDeleted", "files");
+            return jsonRedirectToOrg("success", "backgroundDeleted", "files");
         } catch (IOException e) {
             logger.error("cannot delete background file", e);
-            return redirectToOrg("error", "backgroundDeleteFailed", "files");
+            return jsonRedirectToOrg("error", "backgroundDeleteFailed", "files");
         }
     }
 
     private Response redirectToOrg(String queryName, String queryValue, String tab) {
-        URI redirect = uriInfo.getBaseUriBuilder()
+        return Response.seeOther(orgRedirectUri(queryName, queryValue, tab)).build();
+    }
+
+    private Response jsonRedirectToOrg(String queryName, String queryValue, String tab) {
+        return Response.ok(Map.of("redirect", orgRedirectUri(queryName, queryValue, tab).toString()))
+                .build();
+    }
+
+    private URI orgRedirectUri(String queryName, String queryValue, String tab) {
+        return Redirects.toSameOriginRelative(uriInfo.getBaseUriBuilder()
                 .path("admin")
                 .path("org")
                 .queryParam(queryName, queryValue)
                 .queryParam("tab", tab)
                 .fragment(tab)
-                .build();
-        return Response.seeOther(redirect).build();
+                .build());
     }
 
     private static String formValue(MultivaluedMap<String, String> form, String key) {

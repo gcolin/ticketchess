@@ -75,6 +75,7 @@ public class JteTemplateCoverageTest extends PlaywrightBaseTest {
         map.put("event/eventgroupEdit.jte", "/eventgroup/1");
         map.put("event/eventcollection.jte", "/eventcollection");
         map.put("event/eventcollectionEdit.jte", "/eventcollection/new");
+        map.put("event/eventAdminTree.jte", "/admin/events");
 
         map.put("registration/register.jte", "/event/1/register");
         map.put("registration/subEdit.jte", "/event/3/register/1");
@@ -101,10 +102,13 @@ public class JteTemplateCoverageTest extends PlaywrightBaseTest {
 
         map.put("platform/admin.jte", "/admin");
         map.put("platform/adminOrg.jte", "/admin/org");
+        map.put("club/seasonAdmin.jte", "/admin/seasons");
+        map.put("club/seasonEdit.jte", "/admin/seasons/new");
+        map.put("club/seasonEdit.jte (edit)", "/admin/seasons/1/edit");
         map.put("platform/adminMail.jte", "/admin/mail");
         map.put("platform/dashboard.jte", "/dashboard");
         map.put("platform/mentions.jte", "/mentions");
-        map.put("platform/error.jte", "/membership-option-admin/999999/edit");
+        map.put("platform/error.jte", "/admin/seasons/999999/edit");
 
         map.put("auth/loggedusers.jte", "/logged-users");
         map.put("auth/logas.jte", "/logas");

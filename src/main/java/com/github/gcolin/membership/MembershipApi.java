@@ -1,6 +1,10 @@
 package com.github.gcolin.membership;
 
 import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.club.ClubSeason;
+import com.github.gcolin.club.ClubSeasonDao;
+import com.github.gcolin.club.ClubSeasonFilter;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.membership.Membership;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionSubscription;
@@ -25,12 +29,14 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.StringWriter;
 import java.net.URI;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -58,14 +64,24 @@ public class MembershipApi {
     @Inject
     private Config config;
 
+    @Inject
+    private ClubSeasonFilter clubSeasonFilter;
+
+    @Inject
+    private ClubSeasonDao clubSeasonDao;
+
+    @Inject
+    private MembershipReportService membershipReportService;
+
     private static final Logger logger = LoggerFactory.getLogger(MembershipApi.class);
 
     @Context
     UriInfo uriInfo;
 
     @GET
-    public JteHtml list() {
-        List<Membership> memberships = membershipDao.all();
+    public JteHtml list(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        List<Membership> memberships = membershipDao.all(scope);
         memberships.sort(Comparator.comparing(Membership::getId, Comparator.nullsLast(Integer::compareTo)).reversed());
 
         List<MembershipOptionSubscription> allSubscriptions = membershipOptionSubscriptionDao.all();
@@ -78,29 +94,18 @@ public class MembershipApi {
         Map<String, Object> model = new HashMap<String, Object>();
         model.put("memberships", memberships);
         model.put("membershipSubscriptions", subscriptionsByMembership);
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "membership/membership.jte");
     }
 
     @GET
     @Path("export/csv")
     @Produces("text/csv; charset=UTF-8")
-    public Response exportCsv() {
-        List<Membership> memberships = new java.util.ArrayList<>(membershipDao.all());
+    public Response exportCsv(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        List<Membership> memberships = new java.util.ArrayList<>(membershipDao.all(scope));
         memberships.sort(Comparator.comparing(Membership::getId, Comparator.nullsLast(Integer::compareTo)).reversed());
-
-        Map<Integer, List<String>> optionsByMembership = new HashMap<>();
-        for (MembershipOptionSubscription sub : membershipOptionSubscriptionDao.all()) {
-            if (sub.getMembership() == null || sub.getMembership().getId() == null) {
-                continue;
-            }
-            String optionValue = sub.getMembershipOption() != null ? sub.getMembershipOption().getOptionValue() : null;
-            if (optionValue == null || optionValue.isBlank()) {
-                continue;
-            }
-            optionsByMembership
-                    .computeIfAbsent(sub.getMembership().getId(), k -> new java.util.ArrayList<>())
-                    .add(optionValue);
-        }
+        Map<Integer, List<String>> optionsByMembership = buildOptionsByMembership(memberships);
 
         StringWriter writer = new StringWriter();
         writer.append("id;User;Nr FFE;Nom;Prénom;Date de naissance;Status;Options;Created;Updated\n");
@@ -125,6 +130,47 @@ public class MembershipApi {
     }
 
     @GET
+    @Path("export/pdf")
+    @Produces("application/pdf")
+    public Response exportPdf(@QueryParam("seasonId") Integer seasonId) {
+        SeasonScope scope = clubSeasonFilter.resolve(seasonId);
+        List<Membership> memberships = membershipDao.all(scope);
+        Map<Integer, List<String>> optionsByMembership = buildOptionsByMembership(memberships);
+        byte[] pdf = membershipReportService.generate(memberships, optionsByMembership, scope);
+        return Response.ok(pdf)
+                .header(
+                        "Content-Disposition",
+                        "attachment; filename=adhesions-"
+                                + java.time.LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+                                + ".pdf")
+                .build();
+    }
+
+    private Map<Integer, List<String>> buildOptionsByMembership(List<Membership> memberships) {
+        java.util.Set<Integer> membershipIds = memberships.stream()
+                .map(Membership::getId)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Integer, List<String>> optionsByMembership = new HashMap<>();
+        for (MembershipOptionSubscription sub : membershipOptionSubscriptionDao.all()) {
+            if (sub.getMembership() == null || sub.getMembership().getId() == null) {
+                continue;
+            }
+            if (!membershipIds.contains(sub.getMembership().getId())) {
+                continue;
+            }
+            String optionValue = sub.getMembershipOption() != null ? sub.getMembershipOption().getOptionValue() : null;
+            if (optionValue == null || optionValue.isBlank()) {
+                continue;
+            }
+            optionsByMembership
+                    .computeIfAbsent(sub.getMembership().getId(), k -> new java.util.ArrayList<>())
+                    .add(optionValue);
+        }
+        return optionsByMembership;
+    }
+
+    @GET
     @Path("new")
     public JteHtml createPage() {
         Map<String, Object> model = new HashMap<String, Object>();
@@ -141,7 +187,6 @@ public class MembershipApi {
             @FormParam("lastname") String lastname,
             @FormParam("firstname") String firstname,
             @FormParam("birthDate") String birthDate,
-            @FormParam("clubRef") Integer clubRef,
             @FormParam("status") String status,
             @FormParam("amountCents") Integer amountCents) {
         Membership membership = new Membership();
@@ -150,7 +195,6 @@ public class MembershipApi {
         membership.setLastname(lastname);
         membership.setFirstname(firstname);
         membership.setBirthDate(birthDate);
-        membership.setClubRef(clubRef == null ? 0 : clubRef);
         membership.setAmountCents(amountCents == null ? 0 : amountCents);
 
         MembershipStatus parsedStatus = MembershipStatus.PENDING_APPROVAL;
@@ -198,7 +242,6 @@ public class MembershipApi {
             @FormParam("lastname") String lastname,
             @FormParam("firstname") String firstname,
             @FormParam("birthDate") String birthDate,
-            @FormParam("clubRef") Integer clubRef,
             @FormParam("status") String status,
             @FormParam("amountCents") Integer amountCents) {
         Membership membership = membershipDao.find(id);
@@ -211,7 +254,6 @@ public class MembershipApi {
         membership.setLastname(lastname);
         membership.setFirstname(firstname);
         membership.setBirthDate(birthDate);
-        membership.setClubRef(clubRef == null ? 0 : clubRef);
         membership.setAmountCents(amountCents == null ? 0 : amountCents);
 
         MembershipStatus parsedStatus = MembershipStatus.PENDING_APPROVAL;
@@ -285,7 +327,7 @@ public class MembershipApi {
                 .issuer(fullName.isEmpty() ? recipient : fullName)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                .signWith(config.getKeys())
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                 .compact();
 
         String loginUrl = config.getProperties().getProperty("baseurl", "http://localhost:8080")
@@ -310,8 +352,11 @@ public class MembershipApi {
         boolean needsConfirmation = membership.getStatus() == MembershipStatus.PENDING_CONFIRMATION;
 
         StringBuilder body = new StringBuilder();
+        String seasonName = currentSeasonName();
         body.append("Bonjour").append(greetingName.isBlank() ? "" : " " + greetingName)
-                .append(",<br><br>Votre inscription à la saison 2026/2027 a bien été prise en compte :")
+                .append(",<br><br>Votre inscription à la saison ")
+                .append(seasonName)
+                .append(" a bien été prise en compte :")
                 .append("<br><br>").append(optionsText);
         if (needsConfirmation) {
             body.append("<br><br>Merci de confirmer votre adhésion en cliquant sur le bouton ci-dessous.");
@@ -319,7 +364,7 @@ public class MembershipApi {
         body.append("<br><br>Cordialement,<br>").append(orgName);
 
         BroadcastMail mail = new BroadcastMail();
-        mail.setEventName("Inscription 2026/2027");
+        mail.setEventName("Inscription " + seasonName);
         mail.setName(fullName);
         mail.setBody(body.toString());
         mail.setLoginUrl(loginUrl);
@@ -375,6 +420,11 @@ public class MembershipApi {
 
         URI redirect = uriInfo.getBaseUriBuilder().path("membership").path(membershipId.toString()).path("edit").build();
         return Response.seeOther(redirect).build();
+    }
+
+    private String currentSeasonName() {
+        ClubSeason current = clubSeasonDao.findCurrent();
+        return current != null && current.getName() != null ? current.getName() : "";
     }
 
     private static String safe(String value) {

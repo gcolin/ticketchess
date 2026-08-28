@@ -27,7 +27,7 @@ public class RegisterToClubTest extends PlaywrightBaseTest {
         page.navigate(BASE_URL + "/club-register");
 
         assertEquals(BASE_URL + "/club-register", getBaseUrl(page.url()));
-        assertThat(page.locator("main")).containsText("S'inscrire au club 2026/2027");
+        assertThat(page.locator("main")).containsText("S'inscrire au club");
 
         Locator hiddenForm = page.locator("#inscriptionForm");
         if (!hiddenForm.isVisible()) {

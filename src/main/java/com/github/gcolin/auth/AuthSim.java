@@ -56,16 +56,19 @@ public class AuthSim {
         loggerUser.setEmail(email);
         loggerUser.setUsername(name);
         loggerUser.setLogged(true);
-        loggerUser.setAdmin(admin || config.getAdmins().contains(email));
+        boolean effectiveAdmin = admin || config.getAdmins().contains(email);
+        loggerUser.setAdmin(effectiveAdmin);
         caches.getDebtCache().invalidateAll();
-        rememberAuthInSession(email, loggerUser.isAdmin());
+        caches.getPermissionCache().invalidateAll();
+        rememberAuthInSession(email, effectiveAdmin);
 
         String jwt = Jwts.builder()
                 .subject(email)
                 .issuer(name)
+                .claim("admin", effectiveAdmin)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
-                .signWith(config.getKeys())
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                 .compact();
 
         NewCookie newCookie = new NewCookie.Builder("remember_me")
@@ -87,14 +90,16 @@ public class AuthSim {
         loggerUser.setLogged(true);
         loggerUser.setAdmin(true);
         caches.getDebtCache().invalidateAll();
+        caches.getPermissionCache().invalidateAll();
         rememberAuthInSession(loggerUser.getEmail(), true);
 
         String jwt = Jwts.builder()
                 .subject(loggerUser.getEmail())
                 .issuer(loggerUser.getUsername())
+                .claim("admin", true)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30)) // 30 jours
-                .signWith(config.getKeys())
+                .signWith(config.getKeys(), Config.JWT_ALGORITHM)
                 .compact();
 
         NewCookie newCookie = new NewCookie.Builder("remember_me")

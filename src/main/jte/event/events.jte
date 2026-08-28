@@ -18,8 +18,11 @@
 @param com.github.gcolin.membership.MembershipOption option
 @param Object p
 @param String status
+@param Integer seasonId
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
 @param Object type
 !{i18ntitle = msg.get("events.title");}
+!{String seasonParam = seasonId != null ? "&seasonId=" + seasonId : "";}
 !{title = i18ntitle;}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
@@ -49,27 +52,44 @@
                     <div class="btn-group mb-3" role="group">
                         @if(user.canManageEvents())
                         @if("DRAFT".equals(status))
-                        <a id="event_draft" href="${contextPath}${filterUrl}?status=DRAFT" class="btn btn-info active">${msg.get("status.DRAFT")}</a>
+                        <a id="event_draft" href="${contextPath}${filterUrl}?status=DRAFT${seasonParam}" class="btn btn-info active">${msg.get("status.DRAFT")}</a>
                         @else
-                        <a id="event_draft" href="${contextPath}${filterUrl}?status=DRAFT" class="btn btn-info">${msg.get("status.DRAFT")}</a>
+                        <a id="event_draft" href="${contextPath}${filterUrl}?status=DRAFT${seasonParam}" class="btn btn-info">${msg.get("status.DRAFT")}</a>
                         @endif
                         @endif
                         @if("ACTIVE".equals(status))
-                        <a id="event_active" href="${contextPath}${filterUrl}?status=ACTIVE" class="btn btn-info active">${msg.get("status.ACTIVE")}</a>
+                        <a id="event_active" href="${contextPath}${filterUrl}?status=ACTIVE${seasonParam}" class="btn btn-info active">${msg.get("status.ACTIVE")}</a>
                         @else
-                        <a id="event_active" href="${contextPath}${filterUrl}?status=ACTIVE" class="btn btn-info">${msg.get("status.ACTIVE")}</a>
+                        <a id="event_active" href="${contextPath}${filterUrl}?status=ACTIVE${seasonParam}" class="btn btn-info">${msg.get("status.ACTIVE")}</a>
                         @endif
                         @if("ONGOING".equals(status))
-                        <a id="event_ongoing" href="${contextPath}${filterUrl}?status=ONGOING" class="btn btn-info active">${msg.get("status.ONGOING")}</a>
+                        <a id="event_ongoing" href="${contextPath}${filterUrl}?status=ONGOING${seasonParam}" class="btn btn-info active">${msg.get("status.ONGOING")}</a>
                         @else
-                        <a id="event_ongoing" href="${contextPath}${filterUrl}?status=ONGOING" class="btn btn-info">${msg.get("status.ONGOING")}</a>
+                        <a id="event_ongoing" href="${contextPath}${filterUrl}?status=ONGOING${seasonParam}" class="btn btn-info">${msg.get("status.ONGOING")}</a>
                         @endif
                         @if("COMPLETED".equals(status))
-                        <a id="event_completed" href="${contextPath}${filterUrl}?status=COMPLETED" class="btn btn-info active">${msg.get("status.COMPLETED")}</a>
+                        <a id="event_completed" href="${contextPath}${filterUrl}?status=COMPLETED${seasonParam}" class="btn btn-info active">${msg.get("status.COMPLETED")}</a>
                         @else
-                        <a id="event_completed" href="${contextPath}${filterUrl}?status=COMPLETED" class="btn btn-info">${msg.get("status.COMPLETED")}</a>
+                        <a id="event_completed" href="${contextPath}${filterUrl}?status=COMPLETED${seasonParam}" class="btn btn-info">${msg.get("status.COMPLETED")}</a>
                         @endif
                     </div>
+                </div>
+                <div class="col">
+                    <form method="get" action="${contextPath}${filterUrl}" class="input-group mb-3">
+                        <input type="hidden" name="status" value="${status}">
+                        <span class="input-group-text">${msg.get("label.season")}</span>
+                        <select class="form-select" name="seasonId" onchange="this.form.submit()">
+                            @if(seasons != null)
+                            @for(var seasonOption : seasons)
+                            @if(seasonOption.isSelected())
+                            <option value="${seasonOption.getValue()}" selected>${seasonOption.getLabel()}</option>
+                            @else
+                            <option value="${seasonOption.getValue()}">${seasonOption.getLabel()}</option>
+                            @endif
+                            @endfor
+                            @endif
+                        </select>
+                    </form>
                 </div>
                 <div class="col">
                     <div class="input-group mb-3">
@@ -88,10 +108,13 @@
 
                         <script type="text/javascript">
                         document.getElementById("inputCategory").addEventListener("change", e => {
-                            var newLocation = "${contextPath}/event";
+                            var newLocation = "${contextPath}/event?status=${status}";
                             if (e.target.value) {
-                                newLocation += "/" + e.target.value;
+                                newLocation = "${contextPath}/event/" + e.target.value + "?status=${status}";
                             }
+                            @if(seasonId != null)
+                            newLocation += "&seasonId=${seasonId}";
+                            @endif
                             window.location = newLocation;
                         });
                         </script>
