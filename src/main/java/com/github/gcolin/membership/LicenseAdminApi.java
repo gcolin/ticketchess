@@ -43,6 +43,16 @@ public class LicenseAdminApi {
     }
 
     @GET
+    @Path("new")
+    public JteHtml newLicense() {
+        License license = new License("");
+        Map<String, Object> model = new HashMap<>();
+        model.put("license", license);
+        model.put("accessRules", MembershipOptionAccessRule.values());
+        return new JteHtml(model, "membership/licenseEdit.jte");
+    }
+
+    @GET
     @Path("{id:\\d+}")
     public JteHtml edit(@PathParam("id") Integer id) {
         License license = licenseDao.find(id);

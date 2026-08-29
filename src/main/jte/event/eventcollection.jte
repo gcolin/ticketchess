@@ -91,7 +91,7 @@
                 <td class="d-flex gap-1">
                   <a href="${contextPath}/eventcollection/${ec.getId()}" class="btn btn-sm btn-outline-primary">${msg.get("action.edit")}</a>
                   <a href="${contextPath}/eventcollection/${ec.getId()}/statistics" class="btn btn-sm btn-outline-info">&#128202; ${msg.get("event.statistics")}</a>
-                  <a href="${contextPath}/eventcollection/${ec.getId()}/mail" class="btn btn-sm btn-outline-secondary">&#9993; ${msg.get("mail.send")}</a>
+                  <a href="${contextPath}/eventcollection/${ec.getId()}/mail" class="btn btn-sm  btn-secondary">&#9993; ${msg.get("mail.send")}</a>
                 </td>
               </tr>
               @endfor

@@ -10,55 +10,57 @@
 @param com.github.gcolin.membership.License license
 @param com.github.gcolin.membership.LicensePrice price
 @param java.util.List<com.github.gcolin.membership.LicensePrice> prices
-!{i18ntitle = "Tarifs Licence";}
+!{i18ntitle = msg.get("page.licensePrices");}
 !{title = i18ntitle;}
-!{page = "license";}
-@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
-<!DOCTYPE html>
-<html>
+!{java.util.List<com.github.gcolin.membership.LicensePrice> safePrices = prices != null ? prices : java.util.List.of();}
+@template.platform.adminLayout(
+  title=title,
+  contextPath=contextPath,
+  pageConfig=pageConfig,
+  msg=msg,
+  notifications=notifications,
+  state=state,
+  user=user,
+  activePageTitle=msg.get("breadcrumb.licensePrices"),
+  breadcrumbTrail = @`
+    <li class="breadcrumb-item"><a href="${contextPath}/license-admin">${msg.get("menu.licenses")}</a></li>
+  `,
+  content = @`
+    @template.platform.adminPageHeader(title=msg.get("heading.licensePrices", license.getName()), helpText=msg.get("help.licensePrices"))
 
-<body class="d-flex flex-column min-vh-100 bg-chess-overlay">
-@template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
-    <main class="container flex-fill">
-        <nav aria-label="breadcrumb" class="mb-3 mt-3">
-            <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
-                <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
-                <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-                <li class="breadcrumb-item"><a href="${contextPath}/license-admin">Licences</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Tarifs pour ${license.getName()}</li>
-            </ol>
-        </nav>
-        <div class="mb-3">
-            <h1>Tarifs - Licence ${license.getName()}</h1>
+    @template.platform.adminPanel(content = @`
+      @template.platform.adminToolbar(content = @`
+        <div class="d-flex gap-2">
+          <a href="${contextPath}/license-admin/${license.getId()}/price/new" class="btn btn-success">${msg.get("action.createGeneric")}</a>
+          <a href="${contextPath}/license-admin" class="btn  btn-secondary">${msg.get("action.cancel")}</a>
         </div>
-        <div>
-            <a href="${contextPath}/license-admin/${license.getId()}/price/new" class="btn btn-primary mb-3">${msg.get("action.createGeneric")}</a>
-            <a href="${contextPath}/license-admin" class="btn btn-secondary mb-3">${msg.get("action.cancel")}</a>
-        </div>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th scope="col">#</th>
-                    <th scope="col">Catégorie</th>
-                    <th scope="col">Prix</th>
-                    <th scope="col">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for(var lp : prices)
-                <tr>
-                    <td>${lp.getId()}</td>
-                    <td>${lp.getCategory()}</td>
-                    <td>${String.format(java.util.Locale.US, "%.2f", lp.getPriceCents() / 100.0)} €</td>
-                    <td>
-                        <a href="${contextPath}/license-admin/${license.getId()}/price/${lp.getId()}/edit" class="btn btn-sm btn-warning">Éditer</a>
-                    </td>
-                </tr>
-                @endfor
-            </tbody>
-        </table>
-    </main>
-    @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
-</body>
-
-</html>
+      `)
+      <table class="table table-striped align-middle mb-0 mt-3">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">${msg.get("label.category")}</th>
+            <th scope="col">${msg.get("label.price")}</th>
+            <th scope="col">${msg.get("label.action")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for(var lp : safePrices)
+            <tr>
+              <td>${lp.getId()}</td>
+              <td>${lp.getCategory()}</td>
+              <td>${String.format(java.util.Locale.FRANCE, "%.2f", lp.getPriceCents() / 100.0)} €</td>
+              <td>
+                <a href="${contextPath}/license-admin/${license.getId()}/price/${lp.getId()}/edit" class="btn btn-sm btn-outline-primary">${msg.get("action.edit")}</a>
+              </td>
+            </tr>
+          @else
+            <tr>
+              <td colspan="4" class="text-center text-body-secondary">${msg.get("info.noLicensePrice")}</td>
+            </tr>
+          @endfor
+        </tbody>
+      </table>
+    `)
+  `
+)

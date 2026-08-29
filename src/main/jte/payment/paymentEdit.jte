@@ -14,29 +14,24 @@
 @param java.util.List<com.github.gcolin.registration.SubscriptionOptionDisplay> optionDisplays
 !{i18ntitle = msg.get("action.edit");}
 !{title = i18ntitle;}
-@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+!{String activeTitle = payment.getId() != null ? msg.get("payment.editTitle", payment.getId()) : msg.get("action.newPayment");}
+@template.platform.adminLayout(
+  title=title,
+  contextPath=contextPath,
+  pageConfig=pageConfig,
+  msg=msg,
+  notifications=notifications,
+  state=state,
+  user=user,
+  activePageTitle=activeTitle,
+  breadcrumbTrail = @`
+    <li class="breadcrumb-item"><a href="${contextPath}/payment">${msg.get("breadcrumb.payments")}</a></li>
+  `,
+  content = @`
+    @template.platform.adminPageHeader(title=activeTitle, icon="bi-credit-card")
 
-<html>
-
-
-<body class="d-flex flex-column min-vh-100 bg-chess-overlay">
-!{page = "payments";}
-  @template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
-
-  <main class="container flex-fill">
-    <nav aria-label="breadcrumb" class="mb-3">
-      <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
-        <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
-        <li class="breadcrumb-item"><a href="${contextPath}/payment">${msg.get("breadcrumb.payments")}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">@if(payment.getId() != null)${msg.get("payment.editTitle", payment.getId())}@else${msg.get("action.newPayment")}@endif</li>
-      </ol>
-    </nav>
-
-    <div class="bg-body p-3 rounded mb-3">
-      <div class="row justify-content-center mt-3">
+    @template.platform.adminPanel(content = @`
         <form id="paymentForm" method="post" action="${contextPath}/payment/save" enctype="application/x-www-form-urlencoded" accept-charset="UTF-8">
-
           <input type="hidden" name="id" value="@if(payment.getId() != null)${payment.getId()}@endif">
           <input type="hidden" name="toRemove" id="toRemove" value="false">
 
@@ -96,7 +91,7 @@
                     @if(subDisplay.getEditLink() != null && !subDisplay.getEditLink().isEmpty())
                       <a class="btn btn-outline-primary" href="${contextPath}${subDisplay.getEditLink()}">Voir</a>
                     @endif
-                    <button type="button" class="btn btn-outline-secondary" onclick="removeSubscriptionInput(this)">${msg.get("action.remove")}</button>
+                    <button type="button" class="btn  btn-secondary" onclick="removeSubscriptionInput(this)">${msg.get("action.remove")}</button>
                   </div>
                   @if((subDisplay.getPlayerName() != null && !subDisplay.getPlayerName().isEmpty()) || (subDisplay.getEventName() != null && !subDisplay.getEventName().isEmpty()))
                     <div class="form-text mt-1 mb-2">
@@ -112,7 +107,7 @@
               @else
                 <div class="input-group">
                   <input type="number" name="subscriptionIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.subscriptionId")}">
-                  <button type="button" class="btn btn-outline-secondary js-remove-sub" onclick="removeSubscriptionInput(this)">${msg.get("action.remove")}</button>
+                  <button type="button" class="btn  btn-secondary js-remove-sub" onclick="removeSubscriptionInput(this)">${msg.get("action.remove")}</button>
                 </div>
               @endif
             </div>
@@ -130,7 +125,7 @@
                     @if(optDisplay.getEditLink() != null && !optDisplay.getEditLink().isEmpty())
                       <a class="btn btn-outline-primary" href="${contextPath}${optDisplay.getEditLink()}">Voir</a>
                     @endif
-                    <button type="button" class="btn btn-outline-secondary" onclick="removeOptionInput(this)">${msg.get("action.remove")}</button>
+                    <button type="button" class="btn  btn-secondary" onclick="removeOptionInput(this)">${msg.get("action.remove")}</button>
                   </div>
                   <div class="form-text mt-1 mb-2">
                     @if(optDisplay.getDescription() != null && !optDisplay.getDescription().isEmpty())${optDisplay.getDescription()}@endif
@@ -150,7 +145,7 @@
               @else
                 <div class="input-group">
                   <input type="number" name="optionIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.optionId")}">
-                  <button type="button" class="btn btn-outline-secondary" onclick="removeOptionInput(this)">${msg.get("action.remove")}</button>
+                  <button type="button" class="btn  btn-secondary" onclick="removeOptionInput(this)">${msg.get("action.remove")}</button>
                 </div>
               @endif
             </div>
@@ -160,80 +155,75 @@
 
           <div class="d-flex justify-content-between">
             @if(payment.getId() != null)
-              <button type="button" class="btn btn-outline-danger js-remove-payment" onclick="removeAndSubmit()">
+              <button type="button" class="btn btn-sm btn-outline-danger js-remove-payment" onclick="removeAndSubmit()">
                 ${msg.get("action.remove")}
               </button>
             @else
               <div></div>
             @endif
 
-            <button type="submit" class="btn btn-outline-primary">${msg.get("action.save")}</button>
+            <button type="submit" class="btn btn-primary">${msg.get("action.save")}</button>
           </div>
-
         </form>
+    `)
+  `,
+  scripts = @`
+    <script type="text/javascript">
+      function addSubscriptionInput() {
+        const container = document.getElementById('subscriptionIdsContainer');
+        const line = document.createElement('div');
+        line.className = 'input-group';
+        line.innerHTML =
+          '<input type="number" name="subscriptionIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.subscriptionId")}">'
+          + '<button type="button" class="btn  btn-secondary" onclick="removeSubscriptionInput(this)">${msg.get("action.remove")}</button>';
+        const input = line.querySelector('input');
+        input.value = '';
+        container.appendChild(line);
+      }
 
-        <script type="text/javascript">
-          function addSubscriptionInput() {
-            const container = document.getElementById('subscriptionIdsContainer');
-            const line = document.createElement('div');
-            line.className = 'input-group';
-            line.innerHTML =
-              '<input type="number" name="subscriptionIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.subscriptionId")}">'
-              + '<button type="button" class="btn btn-outline-secondary" onclick="removeSubscriptionInput(this)">${msg.get("action.remove")}</button>';
-            const input = line.querySelector('input');
+      function removeSubscriptionInput(button) {
+        const container = document.getElementById('subscriptionIdsContainer');
+        if (container.children.length === 1) {
+          const input = container.querySelector('input[name="subscriptionIds"]');
+          if (input) {
             input.value = '';
-            container.appendChild(line);
           }
+          return;
+        }
+        button.closest('.input-group').remove();
+      }
 
-          function removeSubscriptionInput(button) {
-            const container = document.getElementById('subscriptionIdsContainer');
-            if (container.children.length === 1) {
-              const input = container.querySelector('input[name="subscriptionIds"]');
-              if (input) {
-                input.value = '';
-              }
-              return;
-            }
-            button.closest('.input-group').remove();
-          }
+      function addOptionInput() {
+        const container = document.getElementById('optionIdsContainer');
+        const line = document.createElement('div');
+        line.className = 'input-group';
+        line.innerHTML =
+          '<input type="number" name="optionIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.optionId")}">'
+          + '<button type="button" class="btn  btn-secondary" onclick="removeOptionInput(this)">${msg.get("action.remove")}</button>';
+        const input = line.querySelector('input');
+        input.value = '';
+        container.appendChild(line);
+      }
 
-          function addOptionInput() {
-            const container = document.getElementById('optionIdsContainer');
-            const line = document.createElement('div');
-            line.className = 'input-group';
-            line.innerHTML =
-              '<input type="number" name="optionIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.optionId")}">'
-              + '<button type="button" class="btn btn-outline-secondary" onclick="removeOptionInput(this)">${msg.get("action.remove")}</button>';
-            const input = line.querySelector('input');
+      function removeOptionInput(button) {
+        const container = document.getElementById('optionIdsContainer');
+        const group = button.closest('.input-group');
+        if (container.querySelectorAll('input[name="optionIds"]').length === 1) {
+          const input = group.querySelector('input[name="optionIds"]');
+          if (input) {
             input.value = '';
-            container.appendChild(line);
           }
+          return;
+        }
+        group.remove();
+      }
 
-          function removeOptionInput(button) {
-            const container = document.getElementById('optionIdsContainer');
-            const group = button.closest('.input-group');
-            if (container.querySelectorAll('input[name="optionIds"]').length === 1) {
-              const input = group.querySelector('input[name="optionIds"]');
-              if (input) {
-                input.value = '';
-              }
-              return;
-            }
-            group.remove();
-          }
-
-          function removeAndSubmit() {
-            if (confirm('${msg.get("sub.confirmDelete")}')) {
-              document.getElementById('toRemove').value = 'true';
-              document.getElementById('paymentForm').submit();
-            }
-          }
-        </script>
-      </div>
-    </div>
-  </main>
-
-  @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
-</body>
-
-</html>
+      function removeAndSubmit() {
+        if (confirm('${msg.get("sub.confirmDelete")}')) {
+          document.getElementById('toRemove').value = 'true';
+          document.getElementById('paymentForm').submit();
+        }
+      }
+    </script>
+  `
+)

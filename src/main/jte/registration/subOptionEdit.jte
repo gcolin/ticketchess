@@ -85,7 +85,7 @@
                     🗑️ ${msg.get("action.remove")}
                 </button>
                 @else
-                <a class="btn btn-outline-secondary" href="${contextPath}/event/${sub.getEvent().getId()}/register/${sub.getId()}">
+                <a class="btn  btn-secondary" href="${contextPath}/event/${sub.getEvent().getId()}/register/${sub.getId()}">
                     ${msg.get("action.cancel")}
                 </a>
                 @endif

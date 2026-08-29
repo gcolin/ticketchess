@@ -11,92 +11,73 @@
 @param com.github.gcolin.membership.License license
 @param com.github.gcolin.membership.MembershipOption option
 @param com.github.gcolin.membership.LicensePrice price
-!{i18ntitle = "Éditer Licence";}
+!{i18ntitle = license.getId() != null ? msg.get("page.licenseEdit") : msg.get("page.licenseNew");}
 !{title = i18ntitle;}
-!{page = "license";}
-@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
-<!DOCTYPE html>
-<html>
+@template.platform.adminLayout(
+  title=title,
+  contextPath=contextPath,
+  pageConfig=pageConfig,
+  msg=msg,
+  notifications=notifications,
+  state=state,
+  user=user,
+  activePageTitle=license.getId() != null ? msg.get("action.edit") : msg.get("action.createGeneric"),
+  breadcrumbTrail = @`
+    <li class="breadcrumb-item"><a href="${contextPath}/license-admin">${msg.get("menu.licenses")}</a></li>
+  `,
+  content = @`
+    @template.platform.adminPageHeader(title=license.getId() != null ? msg.get("page.licenseEdit") : msg.get("page.licenseNew"))
 
-<body class="d-flex flex-column min-vh-100 bg-chess-overlay">
-@template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
-    <main class="container flex-fill">
-        <nav aria-label="breadcrumb" class="mb-3 mt-3">
-            <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
-                <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
-                <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-                <li class="breadcrumb-item"><a href="${contextPath}/license-admin">Licences</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Éditer</li>
-            </ol>
-        </nav>
-        <div class="mb-3">
-            <h1>@if(license.getId() != null)Éditer Licence@elseNouvelle Licence@endif</h1>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <form method="post" action="${contextPath}/license-admin">
-                    @if(license.getId() != null)
-                    <input type="hidden" name="id" value="${license.getId()}">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nom</label>
-                        <input type="text" class="form-control" id="name" name="name" value="${license.getName()}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="accessRule" class="form-label">Accessibilité</label>
-                        <select class="form-select" id="accessRule" name="accessRule" required>
-                            @for(var accessRule : accessRules)
-                                @if(license.getAccessRule() != null && license.getAccessRule() == accessRule)
-                                <option value="${accessRule.name()}" selected>${msg.get("membershipOptionAccessRule." + accessRule)}</option>
-                                @else
-                                <option value="${accessRule.name()}">${msg.get("membershipOptionAccessRule." + accessRule)}</option>
-                                @endif
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <a href="${contextPath}/license-admin/${license.getId()}/price" class="btn btn-info">Gérer les tarifs</a>
-                    </div>
-                    <div class="mb-3">
-                        <button type="submit" class="btn btn-primary">${msg.get("action.save")}</button>
-                        <button type="button" class="btn btn-danger" onclick="removeLicense(${license.getId()})">Supprimer</button>
-                        <a href="${contextPath}/license-admin" class="btn btn-secondary">${msg.get("action.cancel")}</a>
-                    </div>
-                    @else
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Nom</label>
-                        <input type="text" class="form-control" id="name" name="name" value="" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="accessRule" class="form-label">Accessibilité</label>
-                        <select class="form-select" id="accessRule" name="accessRule" required>
-                            @for(var accessRule : accessRules)
-                                <option value="${accessRule.name()}">${msg.get("membershipOptionAccessRule." + accessRule)}</option>
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <button type="submit" class="btn btn-primary">${msg.get("action.save")}</button>
-                        <a href="${contextPath}/license-admin" class="btn btn-secondary">${msg.get("action.cancel")}</a>
-                    </div>
-                    @endif
-                </form>
+    @template.platform.adminPanel(content = @`
+        <form method="post" action="${contextPath}/license-admin">
+          @if(license.getId() != null)
+            <input type="hidden" name="id" value="${license.getId()}">
+          @endif
+          <div class="mb-3">
+            <label for="name" class="form-label">${msg.get("label.name")}</label>
+            <input type="text" class="form-control" id="name" name="name" value="${license.getName() != null ? license.getName() : ""}" required>
+          </div>
+          <div class="mb-3">
+            <label for="accessRule" class="form-label">${msg.get("label.accessibility")}</label>
+            <select class="form-select" id="accessRule" name="accessRule" required>
+              @for(var accessRule : accessRules)
+                @if(license.getAccessRule() != null && license.getAccessRule() == accessRule)
+                  <option value="${accessRule.name()}" selected>${msg.get("membershipOptionAccessRule." + accessRule)}</option>
+                @else
+                  <option value="${accessRule.name()}">${msg.get("membershipOptionAccessRule." + accessRule)}</option>
+                @endif
+              @endfor
+            </select>
+          </div>
+          @if(license.getId() != null)
+            <div class="mb-3">
+              <a href="${contextPath}/license-admin/${license.getId()}/price" class="btn  btn-secondary">${msg.get("action.managePrices")}</a>
             </div>
-        </div>
-    </main>
-    @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
-    <script>
-        function removeLicense(id) {
-            if (confirm('Êtes-vous sûr de vouloir supprimer cette licence ?')) {
-                const form = document.createElement('form');
-                form.method = 'post';
-                form.action = '${contextPath}/license-admin';
-                form.innerHTML = '<input type="hidden" name="id" value="' + id + '">' +
-                                '<input type="hidden" name="toRemove" value="true">';
-                document.body.appendChild(form);
-                form.submit();
-            }
+          @endif
+          <div class="d-flex flex-wrap gap-2">
+            <button type="submit" class="btn btn-primary">${msg.get("action.save")}</button>
+            @if(license.getId() != null)
+              <button type="button" class="btn btn-outline-danger" onclick="removeLicense(${license.getId()})">${msg.get("action.delete")}</button>
+            @endif
+            <a href="${contextPath}/license-admin" class="btn  btn-secondary">${msg.get("action.cancel")}</a>
+          </div>
+        </form>
+    `)
+  `,
+  scripts = @`
+    <script type="text/javascript">
+      function removeLicense(id) {
+        if (!confirm('${msg.get("license.confirmDelete")}')) {
+          return;
         }
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '${contextPath}/license-admin';
+        form.innerHTML = '<input type="hidden" name="id" value="' + id + '">' +
+                         '<input type="hidden" name="toRemove" value="true">';
+        document.body.appendChild(form);
+        form.submit();
+      }
     </script>
-</body>
-
-</html>
+  `
+)

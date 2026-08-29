@@ -360,7 +360,7 @@
                               <input id="event_ffe_id" type="text" name="ffeId"
                                      value="${eventOptions.get("FFE_ID") != null ? eventOptions.get("FFE_ID") : ""}" class="form-control">
                               @if(eventOptions.get("FFE_ID") != null && !eventOptions.get("FFE_ID").toString().isBlank())
-                                <a id="ffe-link" class="btn btn-outline-secondary"
+                                <a id="ffe-link" class="btn  btn-secondary"
                                    href="https://www.echecs.asso.fr/FicheTournoi.aspx?Ref=${java.net.URLEncoder.encode(String.valueOf(eventOptions.get("FFE_ID")), java.nio.charset.StandardCharsets.UTF_8)}"
                                    target="_blank" rel="noopener noreferrer"
                                    title="${msg.get("event.ffeLink")}">

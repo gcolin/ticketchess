@@ -19,56 +19,42 @@
 @param Integer seasonId
 !{i18ntitle = msg.get("page.dashboard");}
 !{title = i18ntitle;}
-@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+!{java.util.List<com.github.gcolin.platform.SelectItem> safeSeasons = seasons != null ? seasons : java.util.List.of();}
+@template.platform.adminLayout(
+  title=title,
+  contextPath=contextPath,
+  pageConfig=pageConfig,
+  msg=msg,
+  notifications=notifications,
+  state=state,
+  user=user,
+  activePageTitle=msg.get("page.dashboard"),
+  content = @`
+    @template.platform.adminPageHeader(title=msg.get("page.dashboard"), helpText=msg.get("admin.tile.dashboardDesc"), icon="bi-speedometer2")
 
-<html>
+    @template.platform.adminPanel(content = @`
+      @template.platform.adminToolbar(content = @`
+        <form method="get" action="${contextPath}/dashboard" class="d-flex flex-wrap align-items-center gap-2 mb-0">
+          @template.platform.seasonFilter(msg=msg, seasons=safeSeasons, seasonId=seasonId, selectId="dashboard_season", autoSubmit=false, inline=true)
+          <button type="submit" class="btn  btn-secondary">${msg.get("action.applyFilters")}</button>
+        </form>
+      `)
+    `)
 
-<body class="d-flex flex-column min-vh-100 bg-chess-overlay">
-!{page = "dashboard";}
-  @template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
-
-  <main class="container flex-fill">
-    <nav aria-label="breadcrumb" class="mb-3">
-      <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
-        <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
-        <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-        <li class="breadcrumb-item active" aria-current="page">${msg.get("page.dashboard")}</li>
-      </ol>
-    </nav>
-
-    <form method="get" action="${contextPath}/dashboard" class="card mb-3">
-      <div class="card-body">
-        <div class="row g-2 align-items-end">
-          @template.platform.seasonFilter(msg=msg, seasons=seasons, seasonId=seasonId, selectId="dashboard_season", autoSubmit=false)
-          <div class="col-12 col-md-auto">
-            <button type="submit" class="btn btn-outline-primary">${msg.get("action.applyFilters")}</button>
-          </div>
-        </div>
-      </div>
-    </form>
-
-    <div class="row g-3">
-
-      <!-- Souscriptions sans paiement associé -->
-      <div class="col-12">
-        <div class="card rounded-bottom-0">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>${msg.get("dashboard.subsNoPayment")}</strong>
-            <span class="badge bg-secondary">${subsWithoutPayment.size()}</span>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-striped align-middle mb-0">
+    @template.platform.adminPanel(
+      heading=msg.get("dashboard.subsNoPayment"),
+      subheading=msg.get("dashboard.subsNoPaymentCount", subsWithoutPayment.size()),
+      content = @`
+        <table class="table table-striped align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>${msg.get("player.name")}</th>
-                    <th>${msg.get("player.firstname")}</th>
-                    <th>${msg.get("sub.nrFFE")}</th>
-                    <th>${msg.get("sub.creationUser")}</th>
-                    <th>${msg.get("breadcrumb.events")}</th>
-                    <th>${msg.get("label.action")}</th>
+                    <th scope="col">#</th>
+                    <th scope="col">${msg.get("player.name")}</th>
+                    <th scope="col">${msg.get("player.firstname")}</th>
+                    <th scope="col">${msg.get("sub.nrFFE")}</th>
+                    <th scope="col">${msg.get("sub.creationUser")}</th>
+                    <th scope="col">${msg.get("breadcrumb.events")}</th>
+                    <th scope="col">${msg.get("label.action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -80,37 +66,30 @@
                       <td>${ps.getNrFfe() != null ? ps.getNrFfe() : ""}</td>
                       <td>${ps.getCreationUser() != null ? ps.getCreationUser() : ""}</td>
                       <td><a href="${contextPath}/event/${ps.getEvent().getId()}">@if(ps.getEvent().getName() != null)${ps.getEvent().getName()}@else${ps.getEvent().getId()}@endif</a></td>
-                      <td><a class="btn btn-outline-primary btn-sm" href="${contextPath}/event/${ps.getEvent().getId()}/register/${ps.getId()}">${msg.get("action.edit")}</a></td>
+                      <td><a class="btn btn-sm btn-outline-primary" href="${contextPath}/event/${ps.getEvent().getId()}/register/${ps.getId()}">${msg.get("action.edit")}</a></td>
                     </tr>
                   @else
                     <tr><td colspan="7" class="text-center text-muted">${msg.get("info.noSubscription")}</td></tr>
                   @endfor
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      </div>
+      `
+    )
 
-      <!-- Souscriptions annulées -->
-      <div class="col-12">
-        <div class="card rounded-bottom-0">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>${msg.get("dashboard.cancelledSubs")}</strong>
-            <span class="badge bg-danger">${cancelledSubs.size()}</span>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-striped align-middle mb-0">
+    @template.platform.adminPanel(
+      heading=msg.get("dashboard.cancelledSubs"),
+      subheading=msg.get("dashboard.cancelledSubsCount", cancelledSubs.size()),
+      content = @`
+        <table class="table table-striped align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>${msg.get("player.name")}</th>
-                    <th>${msg.get("player.firstname")}</th>
-                    <th>${msg.get("sub.nrFFE")}</th>
-                    <th>${msg.get("sub.creationUser")}</th>
-                    <th>${msg.get("breadcrumb.events")}</th>
-                    <th>${msg.get("label.action")}</th>
+                    <th scope="col">#</th>
+                    <th scope="col">${msg.get("player.name")}</th>
+                    <th scope="col">${msg.get("player.firstname")}</th>
+                    <th scope="col">${msg.get("sub.nrFFE")}</th>
+                    <th scope="col">${msg.get("sub.creationUser")}</th>
+                    <th scope="col">${msg.get("breadcrumb.events")}</th>
+                    <th scope="col">${msg.get("label.action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,37 +101,30 @@
                       <td>${ps.getNrFfe() != null ? ps.getNrFfe() : ""}</td>
                       <td>${ps.getCreationUser() != null ? ps.getCreationUser() : ""}</td>
                       <td><a href="${contextPath}/event/${ps.getEvent().getId()}">@if(ps.getEvent().getName() != null)${ps.getEvent().getName()}@else${ps.getEvent().getId()}@endif</a></td>
-                      <td><a class="btn btn-outline-primary btn-sm" href="${contextPath}/event/${ps.getEvent().getId()}/register/${ps.getId()}">${msg.get("action.edit")}</a></td>
+                      <td><a class="btn btn-sm btn-outline-primary" href="${contextPath}/event/${ps.getEvent().getId()}/register/${ps.getId()}">${msg.get("action.edit")}</a></td>
                     </tr>
                   @else
                     <tr><td colspan="7" class="text-center text-muted">${msg.get("info.noSubscription")}</td></tr>
                   @endfor
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      </div>
+      `
+    )
 
-      <!-- Souscriptions non payées -->
-      <div class="col-12 mb-3">
-        <div class="card rounded-bottom-0">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>${msg.get("dashboard.unpaidSubs")}</strong>
-            <span class="badge bg-warning text-dark">${notPaidSubs.size()}</span>
-          </div>
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table class="table table-striped align-middle mb-0">
+    @template.platform.adminPanel(
+      heading=msg.get("dashboard.unpaidSubs"),
+      subheading=msg.get("dashboard.unpaidSubsCount", notPaidSubs.size()),
+      content = @`
+        <table class="table table-striped align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>${msg.get("player.name")}</th>
-                    <th>${msg.get("player.firstname")}</th>
-                    <th>${msg.get("sub.nrFFE")}</th>
-                    <th>${msg.get("sub.creationUser")}</th>
-                    <th>${msg.get("breadcrumb.events")}</th>
-                    <th>${msg.get("label.action")}</th>
+                    <th scope="col">#</th>
+                    <th scope="col">${msg.get("player.name")}</th>
+                    <th scope="col">${msg.get("player.firstname")}</th>
+                    <th scope="col">${msg.get("sub.nrFFE")}</th>
+                    <th scope="col">${msg.get("sub.creationUser")}</th>
+                    <th scope="col">${msg.get("breadcrumb.events")}</th>
+                    <th scope="col">${msg.get("label.action")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,22 +136,14 @@
                       <td>${ps.getNrFfe() != null ? ps.getNrFfe() : ""}</td>
                       <td>${ps.getCreationUser() != null ? ps.getCreationUser() : ""}</td>
                       <td><a href="${contextPath}/event/${ps.getEvent().getId()}">@if(ps.getEvent().getName() != null)${ps.getEvent().getName()}@else${ps.getEvent().getId()}@endif</a></td>
-                      <td><a class="btn btn-outline-primary btn-sm" href="${contextPath}/event/${ps.getEvent().getId()}/register/${ps.getId()}">${msg.get("action.edit")}</a></td>
+                      <td><a class="btn btn-sm btn-outline-primary" href="${contextPath}/event/${ps.getEvent().getId()}/register/${ps.getId()}">${msg.get("action.edit")}</a></td>
                     </tr>
                   @else
                     <tr><td colspan="7" class="text-center text-muted">${msg.get("info.noSubscription")}</td></tr>
                   @endfor
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </main>
-
-  @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
-</body>
-
-</html>
+      `
+    )
+  `
+)

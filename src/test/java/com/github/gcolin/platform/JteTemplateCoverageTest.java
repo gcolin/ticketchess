@@ -92,6 +92,7 @@ public class JteTemplateCoverageTest extends PlaywrightBaseTest {
         map.put("membership/membershipOptionEdit.jte (new)", "/membership-option-admin/new");
         map.put("membership/licenseAdmin.jte", "/license-admin");
         map.put("membership/licenseEdit.jte", "/license-admin/1");
+        map.put("membership/licenseEdit.jte (new)", "/license-admin/new");
         map.put("membership/licensePriceAdmin.jte", "/license-admin/1/price");
         map.put("membership/licensePriceEdit.jte", "/license-admin/1/price/new");
 

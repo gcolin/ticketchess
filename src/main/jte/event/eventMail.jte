@@ -73,7 +73,7 @@
             <div id="recipientFilterPanel" class="d-none">
               <div class="d-flex justify-content-between align-items-center">
                 <label class="form-label mb-0">${msg.get("mail.recipients")}</label>
-                <button type="button" id="toggleRecipients" class="btn btn-sm btn-outline-secondary">${msg.get("mail.recipients.unselectAll")}</button>
+                <button type="button" id="toggleRecipients" class="btn btn-sm  btn-secondary">${msg.get("mail.recipients.unselectAll")}</button>
               </div>
               <div id="recipient-list" class="border rounded p-2 mt-2" style="max-height:220px;overflow:auto;">
                 @if(recipients != null && recipients.size() > 0)

@@ -68,3 +68,19 @@ table th {
     background: $primary !important;
     color: $light !important;
 }
+
+// Admin pages
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .5rem;
+}
+
+.admin-table-panel {
+  background-color: #fff;
+  border: 1px solid #e0d0bc;
+  border-radius: .75rem;
+  padding: 1rem;
+  overflow-x: auto;
+}

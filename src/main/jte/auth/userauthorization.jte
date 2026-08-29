@@ -12,33 +12,32 @@
 @param java.util.List<com.github.gcolin.auth.AuthorizationScopeType> scopeTypes
 !{i18ntitle = msg.get("page.userAuthorizations");}
 !{title = i18ntitle;}
-!{page = "userauthorizations";}
-@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
-<html>
-  <body class="d-flex flex-column min-vh-100 bg-chess-overlay">
-    @template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
-    <main class="container flex-fill">
-      <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
-          <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
-          <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-          <li class="breadcrumb-item active" aria-current="page">${msg.get("page.userAuthorizations")}</li>
-        </ol>
-      </nav>
+!{java.util.List<com.github.gcolin.auth.UserAuthorization> safeAuthorizations = authorizations != null ? authorizations : java.util.List.of();}
+@template.platform.adminLayout(
+  title=title,
+  contextPath=contextPath,
+  pageConfig=pageConfig,
+  msg=msg,
+  notifications=notifications,
+  state=state,
+  user=user,
+  activePageTitle=msg.get("page.userAuthorizations"),
+  content = @`
+    @template.platform.adminPageHeader(title=msg.get("heading.userAuthorizations"), helpText=msg.get("help.userAuthorizationsDesc"), icon="bi-shield-lock")
 
-      <div class="card mb-3">
-        <div class="card-header"><strong>${msg.get("heading.userAuthorizations")}</strong></div>
-        <div class="card-body">
-          <p class="text-body-secondary">${msg.get("help.userAuthorizationsDesc")}</p>
-          <form method="post" action="${contextPath}/user-authorization" class="row g-3">
-            <input type="hidden" name="toRemove" value="false">
+    @template.platform.adminPanel(
+      heading=msg.get("heading.userAuthorizationNew"),
+      content = @`
+        <form method="post" action="${contextPath}/user-authorization" id="userAuthorizationForm">
+          <input type="hidden" name="toRemove" value="false">
 
-            <div class="col-md-4">
+          <div class="row g-3">
+            <div class="col-12 col-lg-6">
               <label class="form-label" for="email">${msg.get("payment.email")}</label>
-              <input class="form-control" type="email" id="email" name="email" required>
+              <input class="form-control" type="email" id="email" name="email" autocomplete="email" placeholder="utilisateur@exemple.fr" required>
             </div>
 
-            <div class="col-md-3">
+            <div class="col-12 col-lg-6">
               <label class="form-label" for="permission">${msg.get("label.permission")}</label>
               <select class="form-select" id="permission" name="permission" required>
                 @for(var perm : permissions)
@@ -47,81 +46,131 @@
               </select>
             </div>
 
-            <div class="col-md-2">
-              <label class="form-label" for="scopeType">${msg.get("label.scopeType")}</label>
-              <select class="form-select" id="scopeType" name="scopeType" required>
-                @for(var scopeType : scopeTypes)
-                  <option value="${scopeType}">${msg.get("scopeType." + scopeType)}</option>
-                @endfor
-              </select>
+            <div class="col-12">
+              <fieldset class="border rounded-3 p-3 mb-0">
+                <legend class="float-none w-auto px-2 fs-6 mb-2">${msg.get("label.scope")}</legend>
+                <p class="form-text mt-0 mb-3">${msg.get("help.userAuthorization.scope")}</p>
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label class="form-label" for="scopeType">${msg.get("label.scopeType")}</label>
+                    <select class="form-select" id="scopeType" name="scopeType" required>
+                      @for(var scopeType : scopeTypes)
+                        <option value="${scopeType}">${msg.get("scopeType." + scopeType)}</option>
+                      @endfor
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-6" id="scopeIdWrap">
+                    <label class="form-label" for="scopeId">${msg.get("label.scopeId")}</label>
+                    <input class="form-control" type="number" id="scopeId" name="scopeId" min="1" step="1" inputmode="numeric" disabled>
+                    <div class="form-text">${msg.get("help.userAuthorization.scopeId")}</div>
+                  </div>
+                </div>
+              </fieldset>
             </div>
 
-            <div class="col-md-1">
-              <label class="form-label" for="scopeId">${msg.get("label.scopeId")}</label>
-              <input class="form-control" type="number" id="scopeId" name="scopeId" min="1">
-            </div>
-
-            <div class="col-md-2">
+            <div class="col-12 col-md-6">
               <label class="form-label" for="validUntil">${msg.get("label.validUntil")}</label>
               <input class="form-control" type="datetime-local" id="validUntil" name="validUntil">
+              <div class="form-text">${msg.get("help.userAuthorization.validUntil")}</div>
             </div>
+          </div>
 
-            <div class="col-12 d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary">${msg.get("action.createGeneric")}</button>
-            </div>
-          </form>
-        </div>
+          <div class="d-flex justify-content-end mt-4">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-plus-lg me-1"></i>${msg.get("action.createGeneric")}
+            </button>
+          </div>
+        </form>
+      `
+    )
+
+    @template.platform.adminPanel(content = @`
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="h5 mb-0">${msg.get("heading.userAuthorizationsList")}</h2>
+        <span class="badge bg-secondary">${safeAuthorizations.size()}</span>
       </div>
 
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <strong>${msg.get("heading.userAuthorizationsList")}</strong>
-          <span class="badge bg-secondary">${authorizations.size()}</span>
-        </div>
-        <div class="card-body">
-          @if((authorizations != null && !authorizations.isEmpty()))
-            <div class="table-responsive">
-              <table class="table table-striped align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>${msg.get("payment.email")}</th>
-                    <th>${msg.get("label.permission")}</th>
-                    <th>${msg.get("label.scopeType")}</th>
-                    <th>${msg.get("label.scopeId")}</th>
-                    <th>${msg.get("label.validUntil")}</th>
-                    <th>${msg.get("label.action")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for(var authorization : authorizations)
-                    <tr>
-                      <td>${authorization.getId()}</td>
-                      <td>${authorization.getEmail()}</td>
-                      <td>${authorization.getPermission()}</td>
-                      <td>${authorization.getScopeType()}</td>
-                      <td>${authorization.getScopeId() != null ? String.valueOf(authorization.getScopeId()) : ""}</td>
-                      <td>${authorization.getValidUntil() != null ? String.valueOf(authorization.getValidUntil()) : ""}</td>
-                      <td>
-                        <form method="post" action="${contextPath}/user-authorization" class="d-inline">
-                          <input type="hidden" name="id" value="${authorization.getId()}">
-                          <input type="hidden" name="toRemove" value="true">
-                          <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('${msg.get("sub.confirmDelete")}');">
-                            ${msg.get("action.remove")}
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  @endfor
-                </tbody>
-              </table>
-            </div>
-          @else
-            <p class="text-body-secondary mb-0">${msg.get("info.noData")}</p>
-          @endif
-        </div>
-      </div>
-    </main>
-    @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
-  </body>
-</html>
+      @if(!safeAuthorizations.isEmpty())
+        <table class="table table-striped align-middle mb-0 mt-3">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">${msg.get("payment.email")}</th>
+              <th scope="col">${msg.get("label.permission")}</th>
+              <th scope="col">${msg.get("label.scopeType")}</th>
+              <th scope="col">${msg.get("label.scopeId")}</th>
+              <th scope="col">${msg.get("label.validUntil")}</th>
+              <th scope="col">${msg.get("label.action")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(var authorization : safeAuthorizations)
+              <tr>
+                <td>${authorization.getId()}</td>
+                <td><code class="text-body">${authorization.getEmail()}</code></td>
+                <td>${msg.get("permission." + authorization.getPermission())}</td>
+                <td>
+                  @if(authorization.getScopeType() != null && authorization.getScopeType().name().equals("GLOBAL"))
+                    <span class="badge text-bg-light border">${msg.get("userAuthorization.scopeGlobal")}</span>
+                  @elseif(authorization.getScopeType() != null)
+                    ${msg.get("scopeType." + authorization.getScopeType())}
+                  @endif
+                </td>
+                <td>
+                  @if(authorization.getScopeId() != null)
+                    ${authorization.getScopeId()}
+                  @else
+                    <span class="text-body-secondary">—</span>
+                  @endif
+                </td>
+                <td>
+                  @if(authorization.getValidUntil() != null)
+                    ${authorization.getValidUntil().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}
+                  @else
+                    <span class="badge text-bg-success">${msg.get("userAuthorization.permanent")}</span>
+                  @endif
+                </td>
+                <td>
+                  <form method="post" action="${contextPath}/user-authorization" class="m-0">
+                    <input type="hidden" name="id" value="${authorization.getId()}">
+                    <input type="hidden" name="toRemove" value="true">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('${msg.get("sub.confirmDelete")}');">
+                      ${msg.get("action.remove")}
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            @endfor
+          </tbody>
+        </table>
+      @else
+        <p class="text-body-secondary mb-0">${msg.get("info.noData")}</p>
+      @endif
+    `)
+  `,
+  scripts = @`
+    <script type="text/javascript">
+      (function () {
+        const scopeTypeSelect = document.getElementById('scopeType');
+        const scopeIdInput = document.getElementById('scopeId');
+        const scopeIdWrap = document.getElementById('scopeIdWrap');
+        if (!scopeTypeSelect || !scopeIdInput || !scopeIdWrap) {
+          return;
+        }
+
+        function syncScopeIdField() {
+          const isGlobal = scopeTypeSelect.value === 'GLOBAL';
+          scopeIdInput.disabled = isGlobal;
+          scopeIdInput.required = !isGlobal;
+          scopeIdWrap.classList.toggle('opacity-50', isGlobal);
+          if (isGlobal) {
+            scopeIdInput.value = '';
+          }
+        }
+
+        scopeTypeSelect.addEventListener('change', syncScopeIdField);
+        syncScopeIdField();
+      })();
+    </script>
+  `
+)

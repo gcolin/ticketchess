@@ -121,7 +121,16 @@ class JteCompileTest {
         testCollection.setId(1);
         testCollection.setName("Test Collection");
         model.put("eventCollection", testCollection);
-        model.put("eventGroup", new com.github.gcolin.event.EventGroup());
+        model.put("collection", testCollection);
+        com.github.gcolin.event.EventGroup testGroup = new com.github.gcolin.event.EventGroup();
+        testGroup.setId(1);
+        testGroup.setName("Test Group");
+        testGroup.setShortname("test");
+        model.put("group", testGroup);
+        model.put("eventGroup", testGroup);
+        model.put("groups", List.of());
+        model.put("showView", false);
+        model.put("showUploadPapi", false);
         model.put("totalPayments", 0.0);
         model.put("unpaidPlayerSubscriptions", 0.0);
         model.put("closestEvents", List.of());

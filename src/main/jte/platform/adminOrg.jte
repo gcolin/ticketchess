@@ -29,20 +29,16 @@
 @param String ribSize
 !{i18ntitle = msg.get("page.adminOrg");}
 !{title = i18ntitle;}
-!{page = "admin";}
-@template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
-<html>
-  <body class="d-flex flex-column min-vh-100 bg-chess-overlay">
-    @template.platform.menubar(contextPath=contextPath, user=user, state=state, notifications=notifications, pageConfig=pageConfig, page=page, msg=msg)
-    <main class="container flex-fill">
-      <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb bg-body rounded px-3 py-2 mb-0">
-          <li class="breadcrumb-item"><a href="${contextPath}/">${msg.get("breadcrumb.home")}</a></li>
-          <li class="breadcrumb-item"><a href="${contextPath}/admin">${msg.get("menu.admin")}</a></li>
-          <li class="breadcrumb-item active" aria-current="page">${msg.get("page.adminOrg")}</li>
-        </ol>
-      </nav>
-
+@template.platform.adminLayout(
+  title=title,
+  contextPath=contextPath,
+  pageConfig=pageConfig,
+  msg=msg,
+  notifications=notifications,
+  state=state,
+  user=user,
+  activePageTitle=msg.get("page.adminOrg"),
+  alerts = @`
       @if("ribUploaded".equals(success))
         <div class="alert alert-success mb-3" role="alert">${msg.get("admin.ribUploaded")}</div>
       @elseif("logoUploaded".equals(success))
@@ -88,15 +84,12 @@
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.configInvalid")}</div>
       @endif
       <div id="rib-status" class="alert d-none mb-3" role="alert"></div>
+  `,
+  content = @`
+      @template.platform.adminPageHeader(title=msg.get("page.adminOrg"), helpText=msg.get("help.adminOrg"), icon="bi-bank")
 
-      <div class="card mb-4">
-        <div class="card-body">
-          <h1 class="mb-2">${msg.get("page.adminOrg")}</h1>
-          <p class="text-body-secondary mb-0">${msg.get("help.adminOrg")}</p>
-        </div>
-      </div>
-
-      <ul class="nav nav-tabs bg-white rounded-top-2" id="org-tabs" role="tablist">
+      @template.platform.adminPanel(content = @`
+      <ul class="nav nav-tabs rounded-top-2" id="org-tabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link ${("club".equals(tab) ? "active" : "")}" id="club-tab" data-bs-toggle="tab" data-bs-target="#club" type="button" role="tab">${msg.get("admin.tab.club")}</button>
         </li>
@@ -117,7 +110,7 @@
         </li>
       </ul>
 
-      <div class="tab-content bg-body rounded-bottom p-3 mb-4 border border-top-0">
+      <div class="tab-content rounded-bottom p-3 border border-top-0">
         <div class="tab-pane fade ${("club".equals(tab) ? "show active" : "")}" id="club" role="tabpanel">
           <form method="post" action="${contextPath}/admin/org/config">
             <input type="hidden" name="tab" value="club">
@@ -344,8 +337,9 @@
           </form>
         </div>
       </div>
-    </main>
-    @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
+      `)
+  `,
+  scripts = @`
     <script type="text/javascript">
       async function handleOrgFileResponse(res, statusEl, button, errorMessage) {
         const contentType = res.headers.get('Content-Type') || '';
@@ -438,5 +432,5 @@
         });
       });
     </script>
-  </body>
-</html>
+  `
+)
