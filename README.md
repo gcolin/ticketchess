@@ -139,8 +139,9 @@ Alternative sans Docker : charger une sauvegarde dans H2 (voir [MANUAL.md](MANUA
 
 ## Documentation
 
+- **Site en ligne** : [gcolin.github.io/ticketchess](https://gcolin.github.io/ticketchess/) (MkDocs, publié sur GitHub Pages à chaque push sur `master`)
 - Manuel des commandes : [MANUAL.md](MANUAL.md)
-- Documentation utilisateur et organisateur : [`src/main/doc/`](src/main/doc/) (MkDocs)
+- Sources MkDocs : [`src/main/doc/`](src/main/doc/) (MkDocs)
 - Synchronisation SharlyChess : [`src/main/doc/content/SYNCHRO_SHARLYCHESS.md`](src/main/doc/content/SYNCHRO_SHARLYCHESS.md)
 - Contribution : [CONTRIBUTING.md](CONTRIBUTING.md)
 - Code de conduite : [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)

@@ -136,6 +136,7 @@ __pycache__/
 # Local build artifacts
 dist/
 lucene/
+src/script/
 
 mariadb_data/
 src/docker/config/

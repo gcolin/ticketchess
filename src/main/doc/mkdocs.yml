@@ -1,5 +1,7 @@
 site_name: Ticket Chess — Documentation
 site_description: Documentation utilisateur et guides opérationnels Ticket Chess
+site_url: https://gcolin.github.io/ticketchess/
+repo_url: https://github.com/gcolin/ticketchess
 site_dir: ../../../target/mkdocs-site
 docs_dir: content
 use_directory_urls: false
