@@ -1,8 +1,8 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.event.EventCollection;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.player.IPlayer;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("eventcollection/{id:\\d+}/mail")
-@RequirePermission(PermissionCode.MAIL_SEND)
+@RequireRole(RoleCode.EVENT_ADMIN)
 public class EventCollectionMailApi {
 
     @Inject

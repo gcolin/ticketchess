@@ -79,9 +79,7 @@ public class RegisterToEventTest extends PlaywrightBaseTest {
             // assertThat(status).containsText("Payé");
         }
 
-        Locator edit = page.locator("#edit");
-        assertTrue(edit.isVisible());
-        edit.click();
+        navigateToEventEdit(page, "1");
 
         Locator name = page.locator("#event_name");
         assertTrue(name.isVisible());

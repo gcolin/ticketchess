@@ -1,6 +1,7 @@
 package com.github.gcolin.platform;
 
 import com.github.gcolin.auth.LoggedUser;
+import com.github.gcolin.auth.RoleResolver;
 import com.github.gcolin.auth.UserAuthorizationDao;
 import com.github.gcolin.desk.EventDeskHub;
 import com.github.gcolin.desk.EventDeskService;
@@ -247,11 +248,18 @@ public final class RequestContext {
                 debtService(),
                 request,
                 AppContext.get().config(),
-                userAuthorizationDao());
+                roleResolver());
         if (isNew) {
             user.initFromCookies();
         }
         return user;
+    }
+
+    public RoleResolver roleResolver() {
+        return new RoleResolver(
+                AppContext.get().config(),
+                userAuthorizationDao(),
+                AppContext.get().caches().getRoleCache());
     }
 
     public ClubSeasonDao clubSeasonDao() {

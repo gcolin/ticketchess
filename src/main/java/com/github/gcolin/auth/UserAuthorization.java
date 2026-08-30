@@ -19,12 +19,12 @@ import java.time.LocalDateTime;
         name = "user_authorization",
         indexes = {
             @Index(name = "idx_user_auth_email", columnList = "email"),
-            @Index(name = "idx_user_auth_lookup", columnList = "email,permission,scope_type,scope_id,active")
+            @Index(name = "idx_user_auth_lookup", columnList = "email,role,scope_type,scope_id,active")
         },
         uniqueConstraints = {
             @UniqueConstraint(
                     name = "uk_user_auth_grant",
-                    columnNames = {"email", "permission", "scope_type", "scope_id"})
+                    columnNames = {"email", "role", "scope_type", "scope_id"})
         })
 public class UserAuthorization {
 
@@ -36,8 +36,8 @@ public class UserAuthorization {
     private String email;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "permission", nullable = false, length = 64)
-    private PermissionCode permission;
+    @Column(name = "role", nullable = false, length = 64)
+    private RoleCode role;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "scope_type", nullable = false, length = 32)
@@ -84,12 +84,12 @@ public class UserAuthorization {
         this.email = email;
     }
 
-    public PermissionCode getPermission() {
-        return permission;
+    public RoleCode getRole() {
+        return role;
     }
 
-    public void setPermission(PermissionCode permission) {
-        this.permission = permission;
+    public void setRole(RoleCode role) {
+        this.role = role;
     }
 
     public AuthorizationScopeType getScopeType() {

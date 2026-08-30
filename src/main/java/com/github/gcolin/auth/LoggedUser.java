@@ -18,13 +18,12 @@ public class LoggedUser implements Serializable {
     private String username;
     private String email;
     private boolean logged = false;
-    private boolean admin = false;
 
     private transient Caches caches;
     private transient DebtService debtService;
     private transient HttpServletRequest request;
     private transient Config config;
-    private transient UserAuthorizationDao userAuthorizationDao;
+    private transient RoleResolver roleResolver;
 
     private static final Logger logger = LoggerFactory.getLogger(LoggedUser.class);
 
@@ -34,12 +33,12 @@ public class LoggedUser implements Serializable {
             DebtService debtService,
             HttpServletRequest request,
             Config config,
-            UserAuthorizationDao userAuthorizationDao) {
+            RoleResolver roleResolver) {
         user.caches = caches;
         user.debtService = debtService;
         user.request = request;
         user.config = config;
-        user.userAuthorizationDao = userAuthorizationDao;
+        user.roleResolver = roleResolver;
     }
 
     public void initFromCookies() {
@@ -52,26 +51,13 @@ public class LoggedUser implements Serializable {
         setLogged(true);
         setEmail(claims.getSubject());
         setUsername(claims.getIssuer());
-        setAdmin(resolveAdmin(claims));
         if (request != null && request.getSession(false) != null) {
             request.getSession(false).setAttribute("auth.email", getEmail());
-            request.getSession(false).setAttribute("auth.admin", isAdmin());
         }
         if (identityChanged) {
             caches.getDebtCache().invalidateAll();
-            caches.getPermissionCache().invalidateAll();
+            caches.getRoleCache().invalidateAll();
         }
-    }
-
-    private boolean resolveAdmin(Claims claims) {
-        Object adminClaim = claims.get("admin");
-        if (adminClaim instanceof Boolean admin) {
-            return admin;
-        }
-        if (adminClaim != null) {
-            return Boolean.parseBoolean(adminClaim.toString());
-        }
-        return config.getAdmins().contains(claims.getSubject());
     }
 
     public Claims getClaims() {
@@ -132,57 +118,56 @@ public class LoggedUser implements Serializable {
     }
 
     public boolean isAdmin() {
-        return admin;
+        return hasRole(RoleCode.ADMIN);
     }
 
+    /** @deprecated use {@link #hasRole(RoleCode)} */
+    @Deprecated
     public void setAdmin(boolean admin) {
-        this.admin = admin;
+        // no-op: admin status is resolved from RoleResolver, not stored on session
     }
 
-    public boolean hasPermission(String permissionName) {
-        if (permissionName == null || permissionName.isBlank()) {
+    public boolean hasRole(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
             return false;
         }
         try {
-            boolean perm = hasPermission(PermissionCode.valueOf(permissionName.trim()));
-            return perm;
+            return hasRole(RoleCode.valueOf(roleName.trim()));
         } catch (IllegalArgumentException ex) {
             return false;
         }
     }
 
-    public boolean hasPermission(PermissionCode permission) {
-        if (isAdmin()) {
-            return true;
-        }
-        if (email == null || permission == null) {
+    public boolean hasRole(RoleCode role) {
+        if (roleResolver == null || email == null || role == null) {
             return false;
         }
-        String cacheKey = email.trim().toLowerCase() + "|" + permission.name();
-        Boolean cached = caches.getPermissionCache().getIfPresent(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-        boolean allowed = userAuthorizationDao.hasActiveGlobalPermission(email, permission);
-        caches.getPermissionCache().put(cacheKey, allowed);
-        return allowed;
+        return roleResolver.hasRole(email, role);
+    }
+
+    /** @deprecated use {@link #hasRole(String)} */
+    @Deprecated
+    public boolean hasPermission(String permissionName) {
+        return hasRole(permissionName);
     }
 
     public boolean canManageEvents() {
-        return hasPermission(PermissionCode.EVENT_CREATE)
-                || hasPermission(PermissionCode.EVENT_EDIT)
-                || hasPermission(PermissionCode.EVENT_DELETE);
+        return hasRole(RoleCode.EVENT_ADMIN);
     }
 
     public boolean canManagePayments() {
-        return hasPermission(PermissionCode.PAYMENT_READ) || hasPermission(PermissionCode.PAYMENT_WRITE);
+        return hasRole(RoleCode.TRESORIER);
+    }
+
+    public boolean canManageMemberships() {
+        return hasRole(RoleCode.TRESORIER);
     }
 
     public boolean canSeeAdminMenu() {
-        return hasPermission(PermissionCode.ADMIN_PANEL)
-                || canManageEvents()
-                || canManagePayments()
-                || hasPermission(PermissionCode.USER_IMPERSONATE)
-                || hasPermission(PermissionCode.MAIL_SEND);
+        return roleResolver != null && email != null && roleResolver.hasAnyRole(email);
+    }
+
+    public boolean canViewEventConfig() {
+        return hasRole(RoleCode.ARBITRE);
     }
 }

@@ -11,7 +11,7 @@
     <ul class="dropdown-menu">
       <li><a class="dropdown-item" href="${contextPath}/eventgroup/${group.getId()}">${msg.get("action.edit")}</a></li>
       <li><a class="dropdown-item" href="${contextPath}/event/${group.getShortname()}">${msg.get("action.view")}</a></li>
-      @if(user.hasPermission("ADMIN_PANEL"))
+      @if(user.hasRole("ADMIN"))
       <li><a class="dropdown-item" href="${contextPath}/statistics">${msg.get("event.statistics")}</a></li>
       @endif
     </ul>

@@ -1,13 +1,12 @@
 package com.github.gcolin.auth;
 
-import com.github.gcolin.auth.AuthorizationScopeType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.platform.AbstractDao;
 import com.github.gcolin.platform.Transactional;
-import com.github.gcolin.auth.UserAuthorization;
 import jakarta.persistence.TypedQuery;
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
-import com.github.gcolin.platform.AbstractDao;
+import java.util.Set;
 
 public class UserAuthorizationDao extends AbstractDao<UserAuthorization> {
 
@@ -17,33 +16,35 @@ public class UserAuthorizationDao extends AbstractDao<UserAuthorization> {
 
     public List<UserAuthorization> allOrdered() {
         TypedQuery<UserAuthorization> query = em.createQuery(
-                "SELECT ua FROM UserAuthorization ua ORDER BY ua.email, ua.permission, ua.scopeType, ua.scopeId",
+                "SELECT ua FROM UserAuthorization ua ORDER BY ua.email, ua.role, ua.scopeType, ua.scopeId",
                 UserAuthorization.class);
         return query.getResultList();
     }
 
-    public boolean hasActiveGlobalPermission(String email, PermissionCode permission) {
-        if (email == null || permission == null) {
-            return false;
+    public Set<RoleCode> findActiveGlobalRoles(String email) {
+        if (email == null || email.isBlank()) {
+            return Set.of();
         }
-        TypedQuery<Long> query = em.createQuery(
-                "SELECT COUNT(ua) FROM UserAuthorization ua"
+        TypedQuery<RoleCode> query = em.createQuery(
+                "SELECT ua.role FROM UserAuthorization ua"
                         + " WHERE ua.email = :email"
-                        + " AND ua.permission = :permission"
                         + " AND ua.scopeType = :scopeType"
                         + " AND ua.active = true"
                         + " AND (ua.validUntil IS NULL OR ua.validUntil > :now)",
-                Long.class);
+                RoleCode.class);
         query.setParameter("email", email.trim().toLowerCase());
-        query.setParameter("permission", permission);
         query.setParameter("scopeType", AuthorizationScopeType.GLOBAL);
         query.setParameter("now", LocalDateTime.now());
-        return query.getSingleResult() > 0;
+        List<RoleCode> roles = query.getResultList();
+        if (roles.isEmpty()) {
+            return Set.of();
+        }
+        return EnumSet.copyOf(roles);
     }
 
     public UserAuthorization upsert(
             String email,
-            PermissionCode permission,
+            RoleCode role,
             AuthorizationScopeType scopeType,
             Integer scopeId,
             LocalDateTime validUntil,
@@ -54,12 +55,11 @@ public class UserAuthorizationDao extends AbstractDao<UserAuthorization> {
         AuthorizationScopeType normalizedScopeType = scopeType == null ? AuthorizationScopeType.GLOBAL : scopeType;
         Integer normalizedScopeId = normalizedScopeType == AuthorizationScopeType.GLOBAL ? null : scopeId;
 
-        UserAuthorization existing =
-                findByNaturalKey(normalizedEmail, permission, normalizedScopeType, normalizedScopeId);
+        UserAuthorization existing = findByNaturalKey(normalizedEmail, role, normalizedScopeType, normalizedScopeId);
         if (existing == null) {
             existing = new UserAuthorization();
             existing.setEmail(normalizedEmail);
-            existing.setPermission(permission);
+            existing.setRole(role);
             existing.setScopeType(normalizedScopeType);
             existing.setScopeId(normalizedScopeId);
         }
@@ -76,15 +76,15 @@ public class UserAuthorizationDao extends AbstractDao<UserAuthorization> {
     }
 
     private UserAuthorization findByNaturalKey(
-            String email, PermissionCode permission, AuthorizationScopeType scopeType, Integer scopeId) {
+            String email, RoleCode role, AuthorizationScopeType scopeType, Integer scopeId) {
         TypedQuery<UserAuthorization> query = em.createQuery(
                 "SELECT ua FROM UserAuthorization ua WHERE ua.email = :email"
-                        + " AND ua.permission = :permission"
+                        + " AND ua.role = :role"
                         + " AND ua.scopeType = :scopeType"
                         + " AND ((:scopeId IS NULL AND ua.scopeId IS NULL) OR ua.scopeId = :scopeId)",
                 UserAuthorization.class);
         query.setParameter("email", email);
-        query.setParameter("permission", permission);
+        query.setParameter("role", role);
         query.setParameter("scopeType", scopeType);
         query.setParameter("scopeId", scopeId);
         return query.getResultStream().findFirst().orElse(null);

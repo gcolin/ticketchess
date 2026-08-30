@@ -1,9 +1,9 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.event.EventOption;
 import com.github.gcolin.event.EventOptionType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.event.PapiUlploadService;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.EventDao;
@@ -47,7 +47,7 @@ public class EventPapiApi {
     private static final Logger logger = LoggerFactory.getLogger(EventPapiApi.class);
 
     @GET
-    @RequirePermission(PermissionCode.EVENT_READ)
+    @RequireRole(RoleCode.ARBITRE)
     public Response papi(@PathParam("id") Integer eventId) {
         EventCache cache = eventService.buildCache(eventId);
         List<DisplayPlayer> players = filterCancelledPlayers(cache);
@@ -78,7 +78,7 @@ public class EventPapiApi {
 
     @POST
     @Path("upload")
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     @Produces(MediaType.TEXT_PLAIN)
     public Response uploadToFfe(@PathParam("id") Integer eventId) {
         EventCache cache = eventService.buildCache(eventId);

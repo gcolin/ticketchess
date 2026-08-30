@@ -2,14 +2,14 @@ package com.github.gcolin.event;
 
 import com.github.gcolin.platform.Config;
 import com.github.gcolin.auth.LoggedOnly;
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.player.CustomPlayer;
 import com.github.gcolin.event.Event;
 import com.github.gcolin.event.EventCollectionOptionType;
 import com.github.gcolin.event.EventInfo;
 import com.github.gcolin.event.EventOption;
 import com.github.gcolin.event.EventOptionType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerPendingSubscription;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.Transactional;
@@ -187,7 +187,7 @@ public class EventApi {
             }
             player.setRating(p, event.getEventType());
             if (p.isEditable()
-                    && (loggerUser.hasPermission(PermissionCode.EVENT_EDIT)
+                    && (loggerUser.hasRole(RoleCode.EVENT_ADMIN)
                             || (p instanceof CustomPlayer
                                     && loggerUser.getEmail().equals(((CustomPlayer) p).getCreationUser())))) {
                 player.setEditable(true);
@@ -255,7 +255,7 @@ public class EventApi {
             }
             player.setPendingQueueAhead(ahead);
             if (p.isEditable()
-                    && (loggerUser.hasPermission(PermissionCode.EVENT_EDIT)
+                    && (loggerUser.hasRole(RoleCode.EVENT_ADMIN)
                             || (p instanceof CustomPlayer
                                     && loggerUser.getEmail().equals(((CustomPlayer) p).getCreationUser())))) {
                 player.setEditable(true);
@@ -522,7 +522,7 @@ public class EventApi {
 
     @GET
     @Path("new")
-    @RequirePermission(PermissionCode.EVENT_CREATE)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     public JteHtml newE(@PathParam("id") Integer id) {
         return edit(null, null);
     }
@@ -577,16 +577,24 @@ public class EventApi {
 
     @GET
     @Path("{id:\\d+}/edit")
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.ARBITRE)
     public JteHtml edit(@PathParam("id") Integer id, @QueryParam("success") String success) {
         Map<String, Object> model = new HashMap<String, Object>();
+        boolean canEdit = loggerUser.hasRole(RoleCode.EVENT_ADMIN);
+        model.put("readOnly", !canEdit);
         if (id != null && id != 0) {
             Event event = eventService.find(id);
             EventInfo eventInfo = eventInfoService.findByEventId(id);
             if (eventInfo != null) {
                 model.put("eventInfo", eventInfo);
             }
-            model.put("eventOptions", loadEventOptions(id));
+            Map<String, String> eventOptions = loadEventOptions(id);
+            if (!canEdit) {
+                eventOptions.remove(EventOptionType.FFE_PASSWORD.name());
+                eventOptions.remove(EventOptionType.CHESS_EVENT_PASSWORD.name());
+                eventOptions.remove(EventOptionType.CHESS_EVENT_USER.name());
+            }
+            model.put("eventOptions", eventOptions);
             model.put("event", event);
         } else {
             model.put("event", new Event());
@@ -599,7 +607,7 @@ public class EventApi {
 
     @POST
     @Path("{id:\\d+}/description/preview")
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.TEXT_HTML)
     public Response previewDescription(
@@ -611,7 +619,7 @@ public class EventApi {
     }
 
     @POST
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     @Consumes({MediaType.APPLICATION_FORM_URLENCODED, MediaType.MULTIPART_FORM_DATA})
     public Response postEventEdit(
             @FormParam("descriptionOnly") @DefaultValue("false") boolean descriptionOnly,

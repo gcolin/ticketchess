@@ -27,9 +27,7 @@ public class PlayerSubscriptionAdminPendingTest extends PlaywrightBaseTest {
         assertTrue(loginButton.isVisible());
         loginButton.click();
 
-        Locator editButton = page.locator("#edit");
-        assertTrue(editButton.isVisible());
-        editButton.click();
+        navigateToEventEdit(page, EVENT_ID);
 
         Locator maxSubscriptions = page.locator("#event_maxsubscriptions");
         assertTrue(maxSubscriptions.isVisible());

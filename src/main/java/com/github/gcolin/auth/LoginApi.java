@@ -71,15 +71,12 @@ public class LoginApi {
         loggedUser.setEmail(email);
         loggedUser.setUsername(claims.getIssuer() == null || claims.getIssuer().isBlank() ? email : claims.getIssuer());
         loggedUser.setLogged(true);
-        boolean isAdmin = config.getAdmins().contains(email);
-        loggedUser.setAdmin(isAdmin);
         caches.getDebtCache().invalidateAll();
-        caches.getPermissionCache().invalidateAll();
+        caches.getRoleCache().invalidateAll();
 
         String rememberJwt = Jwts.builder()
                 .subject(email)
                 .issuer(loggedUser.getUsername())
-                .claim("admin", isAdmin)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
                 .signWith(config.getKeys(), Config.JWT_ALGORITHM)

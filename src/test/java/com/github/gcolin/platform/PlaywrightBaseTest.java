@@ -71,6 +71,14 @@ public abstract class PlaywrightBaseTest {
         return url.split("\\?")[0];
     }
 
+    protected void navigateToEventEdit(Page page, String eventId) {
+        page.navigate(BASE_URL + "/event/" + eventId + "/edit");
+    }
+
+    protected void openEventActionsMenu(Page page) {
+        page.locator(".dropdown:has(a.dropdown-item) button[data-bs-toggle='dropdown']").first().click();
+    }
+
     @AfterEach
     public void cleanupContext() throws Exception {
         if (browserContext != null) {

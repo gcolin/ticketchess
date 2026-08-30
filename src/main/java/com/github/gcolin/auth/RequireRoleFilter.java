@@ -12,18 +12,19 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 @Provider
 @Priority(Priorities.AUTHORIZATION)
-public class RequirePermissionFilter implements ContainerRequestFilter {
+public class RequireRoleFilter implements ContainerRequestFilter {
 
     @Context
     private ResourceInfo resourceInfo;
 
     @Override
     public void filter(ContainerRequestContext requestContext) throws IOException {
-        RequirePermission requiredPermission = findRequiredPermission();
-        if (requiredPermission == null) {
+        RequireRole requiredRole = findRequiredRole();
+        if (requiredRole == null) {
             return;
         }
 
@@ -37,23 +38,26 @@ public class RequirePermissionFilter implements ContainerRequestFilter {
             return;
         }
 
-        PermissionCode permission = requiredPermission.value();
-        if (!user.hasPermission(permission)) {
+        RoleCode role = requiredRole.value();
+        RoleCode[] alternatives = requiredRole.or();
+        boolean allowed = user.hasRole(role)
+                || (alternatives.length > 0 && Arrays.stream(alternatives).anyMatch(user::hasRole));
+        if (!allowed) {
             requestContext.abortWith(Response.status(Response.Status.FORBIDDEN)
-                    .entity("missing permission: " + permission.name())
+                    .entity("missing role: " + role.name())
                     .type(MediaType.TEXT_PLAIN)
                     .build());
         }
     }
 
-    private RequirePermission findRequiredPermission() {
+    private RequireRole findRequiredRole() {
         if (resourceInfo == null) {
             return null;
         }
 
         Method method = resourceInfo.getResourceMethod();
         if (method != null) {
-            RequirePermission methodAnnotation = method.getAnnotation(RequirePermission.class);
+            RequireRole methodAnnotation = method.getAnnotation(RequireRole.class);
             if (methodAnnotation != null) {
                 return methodAnnotation;
             }
@@ -63,6 +67,6 @@ public class RequirePermissionFilter implements ContainerRequestFilter {
         if (resourceClass == null) {
             return null;
         }
-        return resourceClass.getAnnotation(RequirePermission.class);
+        return resourceClass.getAnnotation(RequireRole.class);
     }
 }

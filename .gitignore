@@ -60,6 +60,9 @@ package-lock.json
 .vscode/
 *.code-workspace
 
+# Cursor (skills, rules, config locale)
+.cursor/
+
 # IDE - NetBeans
 nbproject/
 .nb-gradle/

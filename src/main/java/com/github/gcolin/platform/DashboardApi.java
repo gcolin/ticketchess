@@ -1,9 +1,9 @@
 package com.github.gcolin.platform;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.Transactional;
 import com.github.gcolin.player.DisplayPlayer;
@@ -32,7 +32,7 @@ public class DashboardApi {
     private ClubSeasonFilter clubSeasonFilter;
 
     @GET
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     @Transactional
     public JteHtml page(@QueryParam("seasonId") Integer seasonId) {
         Map<String, Object> model = new HashMap<>();

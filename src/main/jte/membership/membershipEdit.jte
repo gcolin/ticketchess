@@ -12,6 +12,7 @@
 @param com.github.gcolin.membership.MembershipStatus[] statuses
 @param java.util.List<com.github.gcolin.membership.MembershipOptionSubscription> membershipOptions
 @param java.util.List<com.github.gcolin.membership.MembershipOption> availableOptions
+@param java.util.List<com.github.gcolin.membership.License> licenses
 @param Object opt
 @param com.github.gcolin.membership.MembershipOption option
 @param java.util.List<com.github.gcolin.membership.MembershipOption> options
@@ -21,6 +22,8 @@
 @param Object type
 !{i18ntitle = msg.get("page.membershipEdit");}
 !{title = i18ntitle;}
+!{java.util.List<com.github.gcolin.membership.License> safeLicenses = licenses != null ? licenses : java.util.List.of();}
+!{String effectiveLicenseType = membership.getLicenseType() != null && !membership.getLicenseType().isBlank() ? membership.getLicenseType() : com.github.gcolin.membership.Membership.DEFAULT_LICENSE_TYPE;}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -77,6 +80,19 @@
                   <option value="${memStatus.name()}" selected>${msg.get("clubRegister.membershipStatus." + memStatus)}</option>
                   @else
                   <option value="${memStatus.name()}">${msg.get("clubRegister.membershipStatus." + memStatus)}</option>
+                  @endif
+                @endfor
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="membership_license_type" class="form-label">${msg.get("admin.membership.licenseType")}</label>
+              <select id="membership_license_type" name="licenseType" class="form-select">
+                @for(var lic : safeLicenses)
+                  @if(effectiveLicenseType.equals(lic.getName()))
+                  <option value="${lic.getName()}" selected>${msg.get("clubRegister.membershipOptions.license" + lic.getName())}</option>
+                  @else
+                  <option value="${lic.getName()}">${msg.get("clubRegister.membershipOptions.license" + lic.getName())}</option>
                   @endif
                 @endfor
               </select>

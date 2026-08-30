@@ -1,7 +1,7 @@
 package com.github.gcolin.auth;
 
-import com.github.gcolin.auth.RequirePermission;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.auth.ActiveLoggedUsers;
 import com.github.gcolin.auth.ActiveSession;
 import jakarta.inject.Inject;
@@ -17,7 +17,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("logged-users")
-@RequirePermission(PermissionCode.ADMIN_PANEL)
+@RequireRole(RoleCode.ADMIN)
 public class LoggedUsersApi {
 
     private static final DateTimeFormatter LAST_SEEN_FORMAT =

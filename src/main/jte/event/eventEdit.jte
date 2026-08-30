@@ -29,6 +29,7 @@
 @param String selectedPairing
 @param String status
 @param Object type
+@param boolean readOnly
 !{i18ntitle = msg.get("action.edit");}
 !{title = i18ntitle;}
 !{if (eventOptions == null) eventOptions = new java.util.HashMap<String, String>();}
@@ -52,6 +53,9 @@
                 <li class="breadcrumb-item active" aria-current="page">@if(event.getId() != null)${msg.get("action.editEvent")}@else${msg.get("action.newEvent")}@endif</li>
             </ol>
         </nav>
+        @if(readOnly)
+        <div class="alert alert-info" role="status">${msg.get("event.readOnlyConfig")}</div>
+        @endif
         <div class="bg-body p-3 rounded mb-3">
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
@@ -274,11 +278,13 @@
                         </div>
 
                         <!-- Submit -->
+                        @if(!readOnly)
                         <div class="d-flex justify-content-end">
                             <button id="event_submit" type="submit" class="btn btn-primary">
                                 &#128190; ${msg.get("action.save")}
                             </button>
                         </div>
+                        @endif
 
                     </form>
                 </div>
@@ -318,11 +324,13 @@
                         </div>
 
                         <!-- Submit -->
+                        @if(!readOnly)
                         <div class="d-flex justify-content-end">
                             <button id="event_description_submit" type="submit" class="btn btn-primary">
                                 &#128190; ${msg.get("action.save")}
                             </button>
                         </div>
+                        @endif
 
                     </form>
                 </div>
@@ -370,6 +378,7 @@
                             </div>
                         </div>
 
+                        @if(!readOnly)
                         <div class="mb-3">
                             <label class="form-label">${msg.get("event.ffePassword")}</label>
                             <input id="event_ffe_password" type="text" name="ffePassword"
@@ -389,6 +398,7 @@
                                    value="${eventOptions.get("CHESS_EVENT_PASSWORD") != null ? eventOptions.get("CHESS_EVENT_PASSWORD") : ""}" class="form-control" autocomplete="new-password">
                             <div class="form-text">${msg.get("event.chessEventPassword.help")}</div>
                         </div>
+                        @endif
 
                         <div class="mb-3 form-check">
 !{pointageValue = eventOptions.getOrDefault("POINTAGE", "0");}
@@ -402,11 +412,13 @@
                             <label class="form-check-label" for="event_pointage">${msg.get("event.pointage")}</label>
                         </div>
 
+                        @if(!readOnly)
                         <div class="d-flex justify-content-end">
                             <button id="event_options_submit" type="submit" class="btn btn-primary">
                                 &#128190; ${msg.get("action.save")}
                             </button>
                         </div>
+                        @endif
 
                     </form>
                 </div>
@@ -416,6 +428,13 @@
     </div>
 </div>
 @template.platform.footer(contextPath=contextPath, pageConfig=pageConfig, msg=msg)
+@if(readOnly)
+<script>
+document.querySelectorAll('.js-event-edit-form input, .js-event-edit-form select, .js-event-edit-form textarea, .js-event-edit-form button').forEach(function (el) {
+  el.disabled = true;
+});
+</script>
+@endif
 @if(event.getId() != null)
 <script>
 (function () {

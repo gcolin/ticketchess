@@ -1,8 +1,8 @@
 package com.github.gcolin.auth;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.platform.Config;
-import com.github.gcolin.auth.PermissionCode;
 import com.github.gcolin.platform.Transactional;
 import com.github.gcolin.payment.PaymentDao;
 import com.github.gcolin.registration.PlayerSubscriptionDao;
@@ -17,7 +17,7 @@ import java.util.TreeSet;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("logas")
-@RequirePermission(PermissionCode.USER_IMPERSONATE)
+@RequireRole(RoleCode.ADMIN)
 public class LogAsApi {
 
     @Inject

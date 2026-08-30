@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.Set;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Assertions;
@@ -28,6 +29,7 @@ public class LoggedUserTest {
     private HttpServletRequest request;
     private Config config;
     private UserAuthorizationDao userAuthorizationDao;
+    private RoleResolver roleResolver;
 
     @BeforeEach
     void setUp() {
@@ -37,8 +39,13 @@ public class LoggedUserTest {
         config = Mockito.mock(Config.class);
         userAuthorizationDao = Mockito.mock(UserAuthorizationDao.class);
 
+        Cache<String, Boolean> roleCache = Mockito.mock(Cache.class);
+        Mockito.when(caches.getRoleCache()).thenReturn(roleCache);
+        Mockito.when(caches.getPermissionCache()).thenReturn(roleCache);
+
+        roleResolver = new RoleResolver(config, userAuthorizationDao, roleCache);
         loggedUser = new LoggedUser();
-        LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);
+        LoggedUser.wire(loggedUser, caches, debtService, request, config, roleResolver);
         loggedUser.initFromCookies();
     }
 
@@ -64,12 +71,13 @@ public class LoggedUserTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void testSyncFromRememberMeCookieUsesAdminClaim() {
+    public void testLegacyAdminClaimDoesNotBypassAuthorization() {
         SecretKey keys =
                 Keys.hmacShaKeyFor("9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b".getBytes());
 
         Mockito.when(config.getKeys()).thenReturn(keys);
         Mockito.when(config.getAdmins()).thenReturn(Collections.emptySet());
+        Mockito.when(userAuthorizationDao.findActiveGlobalRoles("dev@test.com")).thenReturn(Collections.emptySet());
 
         String jwt = Jwts.builder()
                 .subject("dev@test.com")
@@ -87,16 +95,14 @@ public class LoggedUserTest {
         Mockito.when(request.getSession(false)).thenReturn(session);
 
         Cache<String, Double> debtCache = Mockito.mock(Cache.class);
-        Cache<String, Boolean> permissionCache = Mockito.mock(Cache.class);
         Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
-        Mockito.when(caches.getPermissionCache()).thenReturn(permissionCache);
 
         loggedUser = new LoggedUser();
-        LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);
+        LoggedUser.wire(loggedUser, caches, debtService, request, config, roleResolver);
         loggedUser.initFromCookies();
 
         Assertions.assertTrue(loggedUser.isLogged());
-        Assertions.assertTrue(loggedUser.isAdmin());
+        Assertions.assertFalse(loggedUser.isAdmin());
         Assertions.assertEquals("dev@test.com", loggedUser.getEmail());
     }
 
@@ -106,12 +112,11 @@ public class LoggedUserTest {
                 Keys.hmacShaKeyFor("9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b".getBytes());
 
         Mockito.when(config.getKeys()).thenReturn(keys);
-        Mockito.when(config.getAdmins()).thenReturn(Collections.emptySet());
+        Mockito.when(config.getAdmins()).thenReturn(Set.of("dev@test.com"));
 
         String jwt = Jwts.builder()
                 .subject("dev@test.com")
                 .issuer("Dev")
-                .claim("admin", true)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
                 .signWith(config.getKeys(), Config.JWT_ALGORITHM)
@@ -124,9 +129,7 @@ public class LoggedUserTest {
         Mockito.when(request.getSession(false)).thenReturn(session);
 
         Cache<String, Double> debtCache = Mockito.mock(Cache.class);
-        Cache<String, Boolean> permissionCache = Mockito.mock(Cache.class);
         Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
-        Mockito.when(caches.getPermissionCache()).thenReturn(permissionCache);
 
         loggedUser.setLogged(false);
 
@@ -140,13 +143,15 @@ public class LoggedUserTest {
     @SuppressWarnings("unchecked")
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    public void testInitFromCookiesWithValidAdminToken(boolean isAdmin) {
+    public void testInitFromCookiesUsesConfigAdminsNotJwt(boolean isAdmin) {
         SecretKey keys =
                 Keys.hmacShaKeyFor("9f3b2a8c5d4e7f1b2c9a0d6e3f1b4c7a8d2e5f9c1b0a3d6e4f7c8b9a2d1e6f3b".getBytes());
 
         Set<String> admins = isAdmin ? Set.of("alice@example.com") : Collections.emptySet();
         Mockito.when(config.getKeys()).thenReturn(keys);
         Mockito.when(config.getAdmins()).thenReturn(admins);
+        Mockito.when(userAuthorizationDao.findActiveGlobalRoles("alice@example.com"))
+                .thenReturn(Collections.emptySet());
 
         String jwt = Jwts.builder()
                 .subject("alice@example.com")
@@ -163,12 +168,10 @@ public class LoggedUserTest {
         Mockito.when(request.getSession(false)).thenReturn(session);
 
         Cache<String, Double> debtCache = Mockito.mock(Cache.class);
-        Cache<String, Boolean> permissionCache = Mockito.mock(Cache.class);
         Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
-        Mockito.when(caches.getPermissionCache()).thenReturn(permissionCache);
 
         loggedUser = new LoggedUser();
-        LoggedUser.wire(loggedUser, caches, debtService, request, config, userAuthorizationDao);
+        LoggedUser.wire(loggedUser, caches, debtService, request, config, roleResolver);
         loggedUser.initFromCookies();
 
         Assertions.assertTrue(loggedUser.isLogged());
@@ -177,6 +180,17 @@ public class LoggedUserTest {
         Assertions.assertEquals("Alice", loggedUser.getUsername());
         Mockito.verify(debtCache).invalidateAll();
         Mockito.verify(session).setAttribute("auth.email", "alice@example.com");
-        Mockito.verify(session).setAttribute("auth.admin", isAdmin);
+    }
+
+    @Test
+    public void testEventAdminInheritsArbitreRole() {
+        loggedUser.setEmail("arbiter@example.com");
+        Mockito.when(config.getAdmins()).thenReturn(Collections.emptySet());
+        Mockito.when(userAuthorizationDao.findActiveGlobalRoles("arbiter@example.com"))
+                .thenReturn(EnumSet.of(RoleCode.EVENT_ADMIN));
+
+        Assertions.assertTrue(loggedUser.hasRole(RoleCode.ARBITRE));
+        Assertions.assertTrue(loggedUser.canViewEventConfig());
+        Assertions.assertFalse(loggedUser.hasRole(RoleCode.TRESORIER));
     }
 }

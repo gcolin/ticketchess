@@ -1,7 +1,7 @@
 package com.github.gcolin.player;
 
-import com.github.gcolin.auth.RequirePermission;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.player.LuceneDb;
 import com.github.gcolin.player.Player;
 import com.github.gcolin.platform.ModelUtils;
@@ -28,7 +28,7 @@ public class ClubApi {
     @GET
     @Path("{ref}/composition")
     @Produces(MediaType.TEXT_PLAIN)
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     public String composition(@PathParam("ref") int ref) {
         List<Player> players;
         try {

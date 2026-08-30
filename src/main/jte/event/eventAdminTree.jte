@@ -48,7 +48,7 @@
               </div>
             </div>
           </div>
-          @if(user.hasPermission("EVENT_CREATE"))
+          @if(user.hasRole("EVENT_ADMIN"))
           <div class="col-12 col-md-4">
             <div class="d-flex align-items-start gap-3">
               <div>

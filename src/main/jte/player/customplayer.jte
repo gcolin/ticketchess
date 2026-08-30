@@ -77,7 +77,7 @@
             </div>
           </div>
 
-          @if(user.hasPermission("EVENT_EDIT"))
+          @if(user.canManageEvents())
             <div class="mb-3">
               <label class="form-label" for="creationUser">creationUser</label>
               <input type="text" id="creationUser" name="creationUser" value="${player.getCreationUser() != null ? player.getCreationUser() : ""}" class="form-control">

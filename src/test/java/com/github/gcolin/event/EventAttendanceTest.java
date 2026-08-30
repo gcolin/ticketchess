@@ -33,6 +33,7 @@ public class EventAttendanceTest extends PlaywrightBaseTest {
 
         // Attendance was moved from the event page to the desk page.
         assertEquals(0, page.locator(".js-attendance").count());
+        openEventActionsMenu(page);
         assertThat(page.locator("#desk")).isVisible();
 
         page.close();

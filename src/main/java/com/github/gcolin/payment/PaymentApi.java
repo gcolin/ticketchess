@@ -1,14 +1,14 @@
 package com.github.gcolin.payment;
 
 import com.github.gcolin.auth.LoggedOnly;
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.registration.PlayerSubscriptionOption;
 import com.github.gcolin.platform.Transactional;
@@ -98,7 +98,7 @@ public class PaymentApi {
     private EventPaymentsReportService eventPaymentsReportService;
 
     @GET
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public JteHtml page(
             @QueryParam("page") @DefaultValue("0") @Min(0) Integer page,
             @QueryParam("size") @DefaultValue("25") @Max(100) @Min(1) Integer size,
@@ -157,14 +157,14 @@ public class PaymentApi {
 
     @GET
     @Path("new")
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public JteHtml newPayment() {
         return editPayment(null);
     }
 
     @GET
     @Path("{id:\\d+}/edit")
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public JteHtml editPayment(@PathParam("id") Integer id) {
         Payment payment;
         List<PlayerSubscription> currentSubs = List.of();
@@ -261,7 +261,7 @@ public class PaymentApi {
     @POST
     @Path("save")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    @RequirePermission(PermissionCode.PAYMENT_WRITE)
+    @RequireRole(RoleCode.TRESORIER)
     @Transactional
     public Response save(
             @FormParam("id") Integer id,
@@ -563,7 +563,7 @@ public class PaymentApi {
     @GET
     @Path("export/csv")
     @Produces("text/csv")
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public Response exportCsv(@QueryParam("seasonId") Integer seasonId) {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         List<Payment> payments = paymentService.all(scope);
@@ -593,7 +593,7 @@ public class PaymentApi {
     @GET
     @Path("export/csv/details")
     @Produces("text/csv")
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public Response exportCsvDetails(@QueryParam("seasonId") Integer seasonId) {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         List<Payment> payments = paymentService.all(scope);
@@ -642,7 +642,7 @@ public class PaymentApi {
     @GET
     @Path("export/pdf")
     @Produces("application/pdf")
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public Response exportAccountingPdf(@QueryParam("seasonId") Integer seasonId) {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         byte[] pdf = eventPaymentsReportService.generateForAccounting(paymentService.findPaid(scope), scope);
@@ -657,7 +657,7 @@ public class PaymentApi {
 
     @GET
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     @Path("export")
     public PagedList<Payment> export(
             @QueryParam("page") @DefaultValue("0") @Min(0) Integer page,
@@ -673,7 +673,7 @@ public class PaymentApi {
     @GET
     @Path("{payment_id:\\d+}")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public Payment exportById(@PathParam("payment_id") Integer payment_id) {
         Payment payment = paymentService.find(payment_id);
         return payment;
@@ -682,14 +682,14 @@ public class PaymentApi {
     @GET
     @Path("{payment_id:\\d+}/sub")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     public List<PlayerSubscription> subById(@PathParam("payment_id") Integer payment_id) {
         return playerSubscriptionService.findByPaymentId(payment_id);
     }
 
     @GET
     @Path("audit")
-    @RequirePermission(PermissionCode.PAYMENT_READ)
+    @RequireRole(RoleCode.TRESORIER)
     @Transactional
     public JteHtml audit(@QueryParam("seasonId") Integer seasonId) {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
@@ -742,7 +742,7 @@ public class PaymentApi {
 
     @POST
     @Path("audit/fix/{payment_id:\\d+}")
-    @RequirePermission(PermissionCode.PAYMENT_WRITE)
+    @RequireRole(RoleCode.TRESORIER)
     @Transactional
     public Response auditFix(
             @PathParam("payment_id") Integer paymentId, @FormParam("seasonId") Integer seasonId) {
@@ -795,8 +795,8 @@ public class PaymentApi {
         boolean isOwner = loggerUser.getEmail() != null
                 && payment.getUserEmail() != null
                 && loggerUser.getEmail().equalsIgnoreCase(payment.getUserEmail());
-        boolean isAdmin = loggerUser.isAdmin();
-        if (!isOwner && !isAdmin) {
+        boolean isTreasurer = loggerUser.hasRole(RoleCode.TRESORIER);
+        if (!isOwner && !isTreasurer) {
             throw new WebApplicationException(Response.Status.FORBIDDEN);
         }
         if (payment.getStatus() != com.github.gcolin.payment.PaymentStatus.PAID) {

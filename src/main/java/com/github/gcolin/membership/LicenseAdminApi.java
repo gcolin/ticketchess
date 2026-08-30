@@ -1,10 +1,10 @@
 package com.github.gcolin.membership;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.membership.License;
 import com.github.gcolin.membership.LicensePrice;
 import com.github.gcolin.membership.MembershipOptionAccessRule;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.membership.LicenseDao;
 import com.github.gcolin.membership.LicensePriceDao;
 import jakarta.inject.Inject;
@@ -23,7 +23,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("license-admin")
-@RequirePermission(PermissionCode.ADMIN_PANEL)
+@RequireRole(RoleCode.TRESORIER)
 public class LicenseAdminApi {
 
     @Inject

@@ -255,6 +255,7 @@ public class ClubRegisterApi {
         membership.setBirthDate(birthdate);
         membership.setClubRef(0);
         membership.setStatus(MembershipStatus.PENDING_APPROVAL);
+        membership.setLicenseType(Membership.normalizeLicenseType(licenseType));
 
         int totalAmountCents = 0;
         if (manualPlayer) {

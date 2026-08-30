@@ -12,6 +12,7 @@ import jakarta.xml.bind.annotation.XmlAccessType;
 import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import com.github.gcolin.platform.TimedEntity;
 
 @Entity
@@ -19,6 +20,8 @@ import com.github.gcolin.platform.TimedEntity;
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Membership extends TimedEntity {
+
+    public static final String DEFAULT_LICENSE_TYPE = "A";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,6 +51,9 @@ public class Membership extends TimedEntity {
 
     @Column(name = "amountcents", nullable = false)
     private int amountCents;
+
+    @Column(name = "license_type", length = 10)
+    private String licenseType;
 
     public Membership() {}
 
@@ -144,5 +150,20 @@ public class Membership extends TimedEntity {
 
     public void setAmountCents(int amountCents) {
         this.amountCents = amountCents;
+    }
+
+    public String getLicenseType() {
+        return licenseType;
+    }
+
+    public void setLicenseType(String licenseType) {
+        this.licenseType = licenseType;
+    }
+
+    public static String normalizeLicenseType(String licenseType) {
+        if (licenseType == null || licenseType.isBlank()) {
+            return DEFAULT_LICENSE_TYPE;
+        }
+        return licenseType.trim().toUpperCase(Locale.ROOT);
     }
 }

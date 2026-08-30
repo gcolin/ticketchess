@@ -1,7 +1,7 @@
 package com.github.gcolin.player;
 
-import com.github.gcolin.auth.RequirePermission;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.player.LuceneDb;
 import com.github.gcolin.player.Player;
 import jakarta.inject.Inject;
@@ -23,7 +23,7 @@ public class PlayerApi {
     @GET
     @Path("{licence}")
     @Produces({MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON})
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     public Player getPlayers(@PathParam("licence") String licence) {
         try {
             Player p = luceneDb.searchJoueur(licence);

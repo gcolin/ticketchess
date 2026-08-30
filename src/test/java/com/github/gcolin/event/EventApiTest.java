@@ -33,6 +33,7 @@ import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.EventGroupFilter;
 import com.github.gcolin.player.Find;
 import com.github.gcolin.auth.LoggedUser;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.RegisterService;
 import com.github.gcolin.event.EventCollectionDao;
 import com.github.gcolin.event.EventCollectionOptionDao;
@@ -178,6 +179,10 @@ class EventApiTest {
         inject(api, "eventGroupService", eventGroupDao);
         inject(api, "eventCollectionService", eventCollectionDao);
 
+        LoggedUser loggedUser = mock(LoggedUser.class);
+        when(loggedUser.hasRole(RoleCode.EVENT_ADMIN)).thenReturn(true);
+        inject(api, "loggerUser", loggedUser);
+
         JteHtml html = api.edit(5, "save");
         Map<String, Object> model = html.getModel();
 
@@ -201,6 +206,10 @@ class EventApiTest {
             when(eventGroupDao.all()).thenReturn(List.of());
             inject(api, "eventGroupService", eventGroupDao);
             inject(api, "eventCollectionService", eventCollectionDao);
+
+            LoggedUser loggedUser = mock(LoggedUser.class);
+            when(loggedUser.hasRole(RoleCode.EVENT_ADMIN)).thenReturn(true);
+            inject(api, "loggerUser", loggedUser);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

@@ -1,8 +1,8 @@
 package com.github.gcolin.platform;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.platform.Config;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.platform.AbstractMail;
 import com.github.gcolin.registration.CancelMail;
 import com.github.gcolin.auth.LoginMail;
@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Path("admin/mail")
-@RequirePermission(PermissionCode.MAIL_SEND)
+@RequireRole(RoleCode.ADMIN)
 public class AdminMailApi {
 
     @Inject

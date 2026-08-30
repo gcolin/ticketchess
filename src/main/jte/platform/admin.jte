@@ -42,12 +42,12 @@
   content = @`
     @template.platform.adminPageHeader(title=msg.get("page.admin"), helpText=msg.get("help.adminHub"))
 
-    @if(user.hasPermission("EVENT_CREATE") || user.hasPermission("EVENT_EDIT"))
+    @if(user.hasRole("EVENT_ADMIN") || user.hasRole("ADMIN") || user.canManagePayments())
       @template.platform.adminPanel(
         heading=msg.get("admin.section.event"),
         content = @`
         <div class="row g-3">
-          @if(user.hasPermission("EVENT_EDIT"))
+          @if(user.hasRole("EVENT_ADMIN"))
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/admin/events">
                 <div class="card-body">
@@ -90,8 +90,8 @@
               </a>
             </div>
           @endif
-
-          <div class="col-12 col-md-6 col-xl-4">
+          @if(user.hasRole("EVENT_ADMIN"))
+            <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/dashboard">
                 <div class="card-body">
                   <div class="d-flex align-items-start gap-3">
@@ -104,6 +104,8 @@
                 </div>
               </a>
             </div>
+          @endif
+          @if(user.hasRole("TRESORIER") || user.hasRole("EVENT_ADMIN"))
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/statistics">
                 <div class="card-body">
@@ -117,17 +119,18 @@
                 </div>
               </a>
             </div>
+          @endif
         </div>
         `
       )
     @endif
 
-    @if(user.hasPermission("EVENT_EDIT") || user.hasPermission("ADMIN_PANEL") || user.hasPermission("USER_IMPERSONATE"))
+    @if(user.hasRole("EVENT_ADMIN") || user.hasRole("ADMIN"))
       @template.platform.adminPanel(
         heading=msg.get("admin.section.users"),
         content = @`
         <div class="row g-3">
-          @if(user.hasPermission("EVENT_EDIT"))
+          @if(user.hasRole("EVENT_ADMIN"))
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/customplayer">
                 <div class="card-body">
@@ -142,7 +145,7 @@
               </a>
             </div>
           @endif
-          @if(user.hasPermission("ADMIN_PANEL"))
+          @if(user.hasRole("ADMIN"))
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/database/manual-players">
                 <div class="card-body">
@@ -182,8 +185,19 @@
                 </div>
               </a>
             </div>
-          @endif
-          @if(user.hasPermission("USER_IMPERSONATE"))
+            <div class="col-12 col-md-6 col-xl-4">
+              <a class="card h-100 text-decoration-none" href="${contextPath}/user-authorization">
+                <div class="card-body">
+                  <div class="d-flex align-items-start gap-3">
+                    <i class="bi bi-shield-lock fs-3 text-primary"></i>
+                    <div>
+                      <h3 class="h5 mb-1">${msg.get("menu.userAuthorizations")}</h3>
+                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.userAuthorizationsDesc")}</p>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </div>
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/logas">
                 <div class="card-body">
@@ -198,32 +212,17 @@
               </a>
             </div>
           @endif
-          @if(user.hasPermission("ADMIN_PANEL"))
-            <div class="col-12 col-md-6 col-xl-4">
-              <a class="card h-100 text-decoration-none" href="${contextPath}/user-authorization">
-                <div class="card-body">
-                  <div class="d-flex align-items-start gap-3">
-                    <i class="bi bi-shield-lock fs-3 text-primary"></i>
-                    <div>
-                      <h3 class="h5 mb-1">${msg.get("menu.userAuthorizations")}</h3>
-                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.userAuthorizationsDesc")}</p>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            </div>
-          @endif
         </div>
         `
       )
     @endif
 
-    @if(user.hasPermission("EVENT_EDIT") || user.hasPermission("ADMIN_PANEL"))
+    @if(user.hasRole("TRESORIER") || user.hasRole("ADMIN"))
       @template.platform.adminPanel(
         heading=msg.get("admin.section.membership"),
         content = @`
         <div class="row g-3">
-          @if(user.hasPermission("EVENT_EDIT"))
+          @if(user.canManageMemberships())
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/membership">
                 <div class="card-body">
@@ -237,8 +236,6 @@
                 </div>
               </a>
             </div>
-          @endif
-          @if(user.hasPermission("ADMIN_PANEL"))
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/membership-option-admin">
                 <div class="card-body">
@@ -271,67 +268,63 @@
       )
     @endif
 
-    @if(user.hasPermission("ADMIN_PANEL") || user.hasPermission("MAIL_SEND"))
+    @if(user.hasRole("ADMIN"))
       @template.platform.adminPanel(
         heading=msg.get("admin.section.system"),
         content = @`
         <div class="row g-3">
-          @if(user.hasPermission("ADMIN_PANEL"))
-            <div class="col-12 col-md-6 col-xl-4">
-              <a class="card h-100 text-decoration-none" href="${contextPath}/admin/org">
-                <div class="card-body">
-                  <div class="d-flex align-items-start gap-3">
-                    <i class="bi bi-bank fs-3 text-primary"></i>
-                    <div>
-                      <h3 class="h5 mb-1">${msg.get("page.adminOrg")}</h3>
-                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.ribDesc")}</p>
-                    </div>
+          <div class="col-12 col-md-6 col-xl-4">
+            <a class="card h-100 text-decoration-none" href="${contextPath}/admin/org">
+              <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-bank fs-3 text-primary"></i>
+                  <div>
+                    <h3 class="h5 mb-1">${msg.get("page.adminOrg")}</h3>
+                    <p class="text-body-secondary mb-0">${msg.get("admin.tile.ribDesc")}</p>
                   </div>
                 </div>
-              </a>
-            </div>
-            <div class="col-12 col-md-6 col-xl-4">
-              <a class="card h-100 text-decoration-none" href="${contextPath}/admin/seasons">
-                <div class="card-body">
-                  <div class="d-flex align-items-start gap-3">
-                    <i class="bi bi-calendar-range fs-3 text-primary"></i>
-                    <div>
-                      <h3 class="h5 mb-1">${msg.get("page.seasons")}</h3>
-                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.seasonsDesc")}</p>
-                    </div>
+              </div>
+            </a>
+          </div>
+          <div class="col-12 col-md-6 col-xl-4">
+            <a class="card h-100 text-decoration-none" href="${contextPath}/admin/clear-cache">
+              <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-arrow-clockwise fs-3 text-primary"></i>
+                  <div>
+                    <h3 class="h5 mb-1">${msg.get("action.clearCache")}</h3>
+                    <p class="text-body-secondary mb-0">${msg.get("admin.tile.clearCacheDesc")}</p>
                   </div>
                 </div>
-              </a>
-            </div>
-            <div class="col-12 col-md-6 col-xl-4">
-              <a class="card h-100 text-decoration-none" href="${contextPath}/admin/clear-cache">
-                <div class="card-body">
-                  <div class="d-flex align-items-start gap-3">
-                    <i class="bi bi-arrow-clockwise fs-3 text-primary"></i>
-                    <div>
-                      <h3 class="h5 mb-1">${msg.get("action.clearCache")}</h3>
-                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.clearCacheDesc")}</p>
-                    </div>
+              </div>
+            </a>
+          </div>
+          <div class="col-12 col-md-6 col-xl-4">
+            <a class="card h-100 text-decoration-none" href="${contextPath}/admin/mail">
+              <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-envelope fs-3 text-primary"></i>
+                  <div>
+                    <h3 class="h5 mb-1">${msg.get("page.adminMail")}</h3>
+                    <p class="text-body-secondary mb-0">${msg.get("admin.tile.mailDesc")}</p>
                   </div>
                 </div>
-              </a>
-            </div>
-          @endif
-          @if(user.hasPermission("MAIL_SEND"))
-            <div class="col-12 col-md-6 col-xl-4">
-              <a class="card h-100 text-decoration-none" href="${contextPath}/admin/mail">
-                <div class="card-body">
-                  <div class="d-flex align-items-start gap-3">
-                    <i class="bi bi-envelope fs-3 text-primary"></i>
-                    <div>
-                      <h3 class="h5 mb-1">${msg.get("page.adminMail")}</h3>
-                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.mailDesc")}</p>
-                    </div>
+              </div>
+            </a>
+          </div>
+          <div class="col-12 col-md-6 col-xl-4">
+            <a class="card h-100 text-decoration-none" href="${contextPath}/admin/seasons">
+              <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-calendar-range fs-3 text-primary"></i>
+                  <div>
+                    <h3 class="h5 mb-1">${msg.get("page.seasons")}</h3>
+                    <p class="text-body-secondary mb-0">${msg.get("admin.tile.seasonsDesc")}</p>
                   </div>
                 </div>
-              </a>
-            </div>
-          @endif
+              </div>
+            </a>
+          </div>
         </div>
         `
       )

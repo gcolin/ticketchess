@@ -1,9 +1,9 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.event.EventCollection;
 import com.github.gcolin.event.EventCollectionOptionType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.platform.Caches;
 import com.github.gcolin.registration.RegisterService;
 import com.github.gcolin.event.EventCollectionDao;
@@ -28,7 +28,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("eventcollection")
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.EVENT_ADMIN)
 public class EventCollectionApi {
 
     @Inject

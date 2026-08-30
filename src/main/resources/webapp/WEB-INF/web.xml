@@ -87,7 +87,7 @@
                 com.github.gcolin.auth.UserAuthorizationApi,
                 com.github.gcolin.event.StatisticsApi,
                 com.github.gcolin.auth.LoggedUserTrackerFilter,
-                com.github.gcolin.auth.RequirePermissionFilter,
+                com.github.gcolin.auth.RequireRoleFilter,
                 com.github.gcolin.auth.LoggedOnlyFilter
             </param-value>
         </init-param>

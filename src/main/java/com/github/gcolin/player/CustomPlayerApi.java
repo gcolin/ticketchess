@@ -1,9 +1,9 @@
 package com.github.gcolin.player;
 
 import com.github.gcolin.auth.LoggedOnly;
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.player.CustomPlayer;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.PagedList;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
@@ -60,7 +60,7 @@ public class CustomPlayerApi {
     UriInfo uriInfo;
 
     @GET
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     public JteHtml players(
             @QueryParam("page") @DefaultValue("1") @Min(1) Integer page,
             @QueryParam("size") @DefaultValue("25") @Max(100) @Min(1) Integer size) {
@@ -158,7 +158,7 @@ public class CustomPlayerApi {
 
         if (id != null) {
             player.setId(id);
-            if (loggerUser.hasPermission(PermissionCode.EVENT_EDIT)) {
+            if (loggerUser.hasRole(RoleCode.EVENT_ADMIN)) {
                 player.setCreationUser(loggerUser.getEmail());
             }
         } else {

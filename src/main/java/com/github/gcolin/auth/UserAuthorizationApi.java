@@ -1,8 +1,8 @@
 package com.github.gcolin.auth;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.auth.AuthorizationScopeType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.platform.Caches;
 import com.github.gcolin.auth.LoggedUser;
 import com.github.gcolin.auth.UserAuthorizationDao;
@@ -22,7 +22,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("user-authorization")
-@RequirePermission(PermissionCode.ADMIN_PANEL)
+@RequireRole(RoleCode.ADMIN)
 public class UserAuthorizationApi {
 
     @Inject
@@ -41,7 +41,7 @@ public class UserAuthorizationApi {
     public JteHtml page() {
         Map<String, Object> model = new HashMap<>();
         model.put("authorizations", userAuthorizationDao.allOrdered());
-        model.put("permissions", Arrays.asList(PermissionCode.values()));
+        model.put("roles", Arrays.asList(RoleCode.values()));
         model.put("scopeTypes", Arrays.asList(AuthorizationScopeType.values()));
         return new JteHtml(model, "auth/userauthorization.jte");
     }
@@ -51,19 +51,19 @@ public class UserAuthorizationApi {
             @FormParam("toRemove") String toRemove,
             @FormParam("id") Integer id,
             @FormParam("email") String email,
-            @FormParam("permission") String permission,
+            @FormParam("role") String role,
             @FormParam("scopeType") String scopeType,
             @FormParam("scopeId") String scopeId,
             @FormParam("validUntil") String validUntil) {
         if ("true".equals(toRemove)) {
             if (id != null) {
                 userAuthorizationDao.remove(id);
-                caches.getPermissionCache().invalidateAll();
+                caches.getRoleCache().invalidateAll();
             }
             return redirectToPage();
         }
 
-        PermissionCode permissionCode = PermissionCode.valueOf(permission);
+        RoleCode roleCode = RoleCode.valueOf(role);
         AuthorizationScopeType authorizationScopeType = AuthorizationScopeType.valueOf(scopeType);
         Integer parsedScopeId = parseNullableInteger(scopeId);
 
@@ -75,12 +75,12 @@ public class UserAuthorizationApi {
 
         userAuthorizationDao.upsert(
                 email,
-                permissionCode,
+                roleCode,
                 authorizationScopeType,
                 parsedScopeId,
                 parseNullableDateTime(validUntil),
                 user == null ? null : user.getEmail());
-        caches.getPermissionCache().invalidateAll();
+        caches.getRoleCache().invalidateAll();
 
         return redirectToPage();
     }

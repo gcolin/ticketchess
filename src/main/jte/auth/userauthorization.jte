@@ -8,7 +8,7 @@
 @param String title
 @param com.github.gcolin.auth.LoggedUser user
 @param java.util.List<com.github.gcolin.auth.UserAuthorization> authorizations
-@param java.util.List<com.github.gcolin.auth.PermissionCode> permissions
+@param java.util.List<com.github.gcolin.auth.RoleCode> roles
 @param java.util.List<com.github.gcolin.auth.AuthorizationScopeType> scopeTypes
 !{i18ntitle = msg.get("page.userAuthorizations");}
 !{title = i18ntitle;}
@@ -30,6 +30,7 @@
       content = @`
         <form method="post" action="${contextPath}/user-authorization" id="userAuthorizationForm">
           <input type="hidden" name="toRemove" value="false">
+          <input type="hidden" name="scopeType" value="GLOBAL">
 
           <div class="row g-3">
             <div class="col-12 col-lg-6">
@@ -38,34 +39,12 @@
             </div>
 
             <div class="col-12 col-lg-6">
-              <label class="form-label" for="permission">${msg.get("label.permission")}</label>
-              <select class="form-select" id="permission" name="permission" required>
-                @for(var perm : permissions)
-                  <option value="${perm}">${msg.get("permission." + perm)}</option>
+              <label class="form-label" for="role">${msg.get("label.role")}</label>
+              <select class="form-select" id="role" name="role" required>
+                @for(var roleOption : roles)
+                  <option value="${roleOption}">${msg.get("role." + roleOption)}</option>
                 @endfor
               </select>
-            </div>
-
-            <div class="col-12">
-              <fieldset class="border rounded-3 p-3 mb-0">
-                <legend class="float-none w-auto px-2 fs-6 mb-2">${msg.get("label.scope")}</legend>
-                <p class="form-text mt-0 mb-3">${msg.get("help.userAuthorization.scope")}</p>
-                <div class="row g-3">
-                  <div class="col-12 col-md-6">
-                    <label class="form-label" for="scopeType">${msg.get("label.scopeType")}</label>
-                    <select class="form-select" id="scopeType" name="scopeType" required>
-                      @for(var scopeType : scopeTypes)
-                        <option value="${scopeType}">${msg.get("scopeType." + scopeType)}</option>
-                      @endfor
-                    </select>
-                  </div>
-                  <div class="col-12 col-md-6" id="scopeIdWrap">
-                    <label class="form-label" for="scopeId">${msg.get("label.scopeId")}</label>
-                    <input class="form-control" type="number" id="scopeId" name="scopeId" min="1" step="1" inputmode="numeric" disabled>
-                    <div class="form-text">${msg.get("help.userAuthorization.scopeId")}</div>
-                  </div>
-                </div>
-              </fieldset>
             </div>
 
             <div class="col-12 col-md-6">
@@ -96,9 +75,7 @@
             <tr>
               <th scope="col">#</th>
               <th scope="col">${msg.get("payment.email")}</th>
-              <th scope="col">${msg.get("label.permission")}</th>
-              <th scope="col">${msg.get("label.scopeType")}</th>
-              <th scope="col">${msg.get("label.scopeId")}</th>
+              <th scope="col">${msg.get("label.role")}</th>
               <th scope="col">${msg.get("label.validUntil")}</th>
               <th scope="col">${msg.get("label.action")}</th>
             </tr>
@@ -108,21 +85,7 @@
               <tr>
                 <td>${authorization.getId()}</td>
                 <td><code class="text-body">${authorization.getEmail()}</code></td>
-                <td>${msg.get("permission." + authorization.getPermission())}</td>
-                <td>
-                  @if(authorization.getScopeType() != null && authorization.getScopeType().name().equals("GLOBAL"))
-                    <span class="badge text-bg-light border">${msg.get("userAuthorization.scopeGlobal")}</span>
-                  @elseif(authorization.getScopeType() != null)
-                    ${msg.get("scopeType." + authorization.getScopeType())}
-                  @endif
-                </td>
-                <td>
-                  @if(authorization.getScopeId() != null)
-                    ${authorization.getScopeId()}
-                  @else
-                    <span class="text-body-secondary">—</span>
-                  @endif
-                </td>
+                <td>${msg.get("role." + authorization.getRole())}</td>
                 <td>
                   @if(authorization.getValidUntil() != null)
                     ${authorization.getValidUntil().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}
@@ -147,30 +110,5 @@
         <p class="text-body-secondary mb-0">${msg.get("info.noData")}</p>
       @endif
     `)
-  `,
-  scripts = @`
-    <script type="text/javascript">
-      (function () {
-        const scopeTypeSelect = document.getElementById('scopeType');
-        const scopeIdInput = document.getElementById('scopeId');
-        const scopeIdWrap = document.getElementById('scopeIdWrap');
-        if (!scopeTypeSelect || !scopeIdInput || !scopeIdWrap) {
-          return;
-        }
-
-        function syncScopeIdField() {
-          const isGlobal = scopeTypeSelect.value === 'GLOBAL';
-          scopeIdInput.disabled = isGlobal;
-          scopeIdInput.required = !isGlobal;
-          scopeIdWrap.classList.toggle('opacity-50', isGlobal);
-          if (isGlobal) {
-            scopeIdInput.value = '';
-          }
-        }
-
-        scopeTypeSelect.addEventListener('change', syncScopeIdField);
-        syncScopeIdField();
-      })();
-    </script>
   `
 )

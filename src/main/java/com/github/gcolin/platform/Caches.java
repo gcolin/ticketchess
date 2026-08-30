@@ -61,6 +61,10 @@ public class Caches {
         return permissionCache;
     }
 
+    public Cache<String, Boolean> getRoleCache() {
+        return permissionCache;
+    }
+
     public Cache<String, EventCache> getEvent() {
         return event;
     }

@@ -25,7 +25,6 @@ public class EventDeskEndpointConfigurator extends ServerEndpointConfig.Configur
     @Override
     public void modifyHandshake(ServerEndpointConfig sec, HandshakeRequest request, HandshakeResponse response) {
         String email = null;
-        boolean admin = false;
         boolean authorized = false;
         Integer eventId = extractEventId(request);
         try {
@@ -34,7 +33,6 @@ public class EventDeskEndpointConfigurator extends ServerEndpointConfig.Configur
             if (ticketClaims != null && "desk".equals(ticketClaims.get("scope", String.class))) {
                 if (eventId != null && ticketAllowsEvent(ticketClaims, eventId)) {
                     email = ticketClaims.getSubject();
-                    admin = Boolean.TRUE.equals(ticketClaims.get("admin", Boolean.class));
                     sec.getUserProperties().put("allowedEventIds", extractAllowedEventIds(ticketClaims, eventId));
                 }
             }
@@ -43,10 +41,8 @@ public class EventDeskEndpointConfigurator extends ServerEndpointConfig.Configur
                 Object httpSessionObj = request.getHttpSession();
                 if (httpSessionObj instanceof HttpSession httpSession) {
                     Object sessionEmail = httpSession.getAttribute("auth.email");
-                    Object sessionAdmin = httpSession.getAttribute("auth.admin");
                     if (sessionEmail instanceof String s && !s.isBlank()) {
                         email = s;
-                        admin = Boolean.TRUE.equals(sessionAdmin);
                     }
                 }
             }
@@ -55,18 +51,16 @@ public class EventDeskEndpointConfigurator extends ServerEndpointConfig.Configur
                 Claims claims = parseCookieClaims(request, config);
                 if (claims != null) {
                     email = claims.getSubject();
-                    admin = config.getAdmins().contains(email);
                 }
             }
 
             EventDeskService deskService = AppContext.get().eventDeskService();
-            authorized = email != null && deskService.hasEventEditPermission(email, admin);
+            authorized = email != null && deskService.hasDeskAccess(email);
         } catch (RuntimeException e) {
             logger.warn("desk websocket handshake auth failed: {}", e.toString());
             authorized = false;
         }
         sec.getUserProperties().put("email", email);
-        sec.getUserProperties().put("admin", admin);
         sec.getUserProperties().put("authorized", authorized);
         if (!authorized) {
             logger.warn(

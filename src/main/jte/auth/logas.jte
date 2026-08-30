@@ -36,10 +36,6 @@
                 <label for="name" class="form-label">${msg.get("logas.displayName")}</label>
                 <input type="text" class="form-control" id="name" name="name" required>
               </div>
-              <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="admin" name="admin" value="true">
-                <label class="form-check-label" for="admin">${msg.get("logas.asAdmin")}</label>
-              </div>
               <button type="submit" class="btn btn-primary">${msg.get("logas.submit")}</button>
             </form>
         `)

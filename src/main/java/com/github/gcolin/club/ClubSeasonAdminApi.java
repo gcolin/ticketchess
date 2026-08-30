@@ -1,7 +1,7 @@
 package com.github.gcolin.club;
 
-import com.github.gcolin.auth.PermissionCode;
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RoleCode;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.platform.JteHtml;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@RequirePermission(PermissionCode.ADMIN_PANEL)
+@RequireRole(RoleCode.ADMIN)
 @Path("admin/seasons")
 public class ClubSeasonAdminApi {
 

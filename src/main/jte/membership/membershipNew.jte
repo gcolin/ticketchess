@@ -9,8 +9,10 @@
 @param com.github.gcolin.auth.LoggedUser user
 @param com.github.gcolin.membership.Membership membership
 @param com.github.gcolin.membership.MembershipStatus[] statuses
+@param java.util.List<com.github.gcolin.membership.License> licenses
 !{i18ntitle = msg.get("page.membershipNew");}
 !{title = i18ntitle;}
+!{java.util.List<com.github.gcolin.membership.License> safeLicenses = licenses != null ? licenses : java.util.List.of();}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -64,6 +66,19 @@
               <select id="membership_status" name="status" class="form-select" required>
                 @for(var memStatus : statuses)
                   <option value="${memStatus.name()}">${msg.get("clubRegister.membershipStatus." + memStatus)}</option>
+                @endfor
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="membership_license_type" class="form-label">${msg.get("admin.membership.licenseType")}</label>
+              <select id="membership_license_type" name="licenseType" class="form-select">
+                @for(var lic : safeLicenses)
+                  @if(com.github.gcolin.membership.Membership.DEFAULT_LICENSE_TYPE.equals(lic.getName()))
+                  <option value="${lic.getName()}" selected>${msg.get("clubRegister.membershipOptions.license" + lic.getName())}</option>
+                  @else
+                  <option value="${lic.getName()}">${msg.get("clubRegister.membershipOptions.license" + lic.getName())}</option>
+                  @endif
                 @endfor
               </select>
             </div>

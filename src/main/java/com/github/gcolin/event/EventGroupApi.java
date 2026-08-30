@@ -1,8 +1,8 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.event.EventGroup;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.platform.Caches;
 import com.github.gcolin.event.EventGroupDao;
 import jakarta.inject.Inject;
@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.EVENT_ADMIN)
 @Path("eventgroup")
 public class EventGroupApi {
 

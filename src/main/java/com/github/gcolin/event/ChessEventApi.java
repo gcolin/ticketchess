@@ -1,5 +1,7 @@
 package com.github.gcolin.event;
 
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import jakarta.inject.Inject;
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @Path("chessevent")
+@RequireRole(RoleCode.EVENT_ADMIN)
 public class ChessEventApi {
 
     private static final Jsonb JSONB = JsonbBuilder.create();

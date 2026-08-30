@@ -26,6 +26,7 @@ public class EventDeskTest extends PlaywrightBaseTest {
         login(page);
 
         page.navigate(BASE_URL + "/event/3");
+        openEventActionsMenu(page);
         assertThat(page.locator("#desk")).isVisible();
         page.locator("#desk").click();
         page.waitForURL("**/event/3/desk");
@@ -86,9 +87,9 @@ public class EventDeskTest extends PlaywrightBaseTest {
         assertThat(paidCheckbox).isChecked();
 
         page.navigate(BASE_URL + "/payment");
-        Locator cashRow = page.locator("table.table tbody tr").filter(new Locator.FilterOptions().setHasText("CASH"));
+        Locator cashRow = page.locator("table.table tbody tr").filter(new Locator.FilterOptions().setHasText("Espèces"));
         assertThat(cashRow.first()).isVisible();
-        assertThat(cashRow.first()).containsText("PAID");
+        assertThat(cashRow.first()).containsText("Payé");
         assertThat(cashRow.first()).containsText("10,00");
 
         page.close();

@@ -70,10 +70,10 @@ public class PlayerSubscriptionOptionTest extends PlaywrightBaseTest {
 
         page.navigate(BASE_URL + "/payment");
         Locator cashRow = page.locator("table.table tbody tr")
-                .filter(new Locator.FilterOptions().setHasText("CASH"))
+                .filter(new Locator.FilterOptions().setHasText("Espèces"))
                 .filter(new Locator.FilterOptions().setHasText("5,00"));
         assertThat(cashRow.first()).isVisible();
-        assertThat(cashRow.first()).containsText("PAID");
+        assertThat(cashRow.first()).containsText("Payé");
 
         page.close();
     }

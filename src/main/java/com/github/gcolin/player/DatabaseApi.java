@@ -1,7 +1,7 @@
 package com.github.gcolin.player;
 
-import com.github.gcolin.auth.RequirePermission;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.player.LuceneDb;
 import com.github.gcolin.player.ManualPlayerEntry;
 import com.github.gcolin.player.Player;
@@ -34,7 +34,6 @@ import com.github.gcolin.platform.JteHtml;
 import com.github.gcolin.platform.ModelUtils;
 
 @Path("database")
-@RequirePermission(PermissionCode.ADMIN_PANEL)
 public class DatabaseApi {
 
     @Inject
@@ -46,12 +45,14 @@ public class DatabaseApi {
     private static Logger logger = LoggerFactory.getLogger(DatabaseApi.class);
 
     @GET
+    @RequireRole(RoleCode.ADMIN)
     public JteHtml page() {
         return new JteHtml(Collections.emptyMap(), "player/database.jte");
     }
 
     @GET
     @Path("ffe")
+    @RequireRole(RoleCode.ADMIN)
     @Produces(MediaType.TEXT_PLAIN)
     public String getFfeInfo() {
         File file = luceneDb.getMdbFile();
@@ -65,6 +66,7 @@ public class DatabaseApi {
 
     @GET
     @Path("ffe/download")
+    @RequireRole(RoleCode.ADMIN)
     public Response downloadAndExtractFfeDb() {
         try {
             luceneDb.downloadAndExtractFFeDb();
@@ -77,6 +79,7 @@ public class DatabaseApi {
 
     @GET
     @Path("fide")
+    @RequireRole(RoleCode.ADMIN)
     @Produces(MediaType.TEXT_PLAIN)
     public String getFideInfo() {
         File file = luceneDb.getFideFile();
@@ -90,6 +93,7 @@ public class DatabaseApi {
 
     @GET
     @Path("fide/download")
+    @RequireRole(RoleCode.ADMIN)
     public Response downloadAndExtractFideDb() {
         try {
             luceneDb.downloadFideDB();
@@ -102,6 +106,7 @@ public class DatabaseApi {
 
     @GET
     @Path("reload")
+    @RequireRole(RoleCode.ADMIN)
     public Response reload() {
         try {
             luceneDb.load(true);
@@ -114,6 +119,7 @@ public class DatabaseApi {
 
     @GET
     @Path("manual-players")
+    @RequireRole(RoleCode.ADMIN)
     public JteHtml manualPlayersPage(@QueryParam("status") String status) throws IOException {
         Map<String, Object> model = new HashMap<>();
         model.put("players", luceneDb.getManualPlayers());
@@ -124,6 +130,7 @@ public class DatabaseApi {
 
     @POST
     @Path("manual-players")
+    @RequireRole(RoleCode.ADMIN)
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response addManualPlayer(
             @FormParam("nrffe") String nrffe,
@@ -164,6 +171,7 @@ public class DatabaseApi {
 
     @POST
     @Path("manual-players/delete")
+    @RequireRole(RoleCode.ADMIN)
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response deleteManualPlayer(@FormParam("key") String key) {
         try {
@@ -180,6 +188,7 @@ public class DatabaseApi {
 
     @GET
     @Path("manual-players/prefill")
+    @RequireRole(RoleCode.ADMIN)
     @Produces(MediaType.APPLICATION_JSON)
     public Player prefillManualPlayer(@QueryParam("nrffe") String nrffe, @QueryParam("fide") String fide) {
         try {

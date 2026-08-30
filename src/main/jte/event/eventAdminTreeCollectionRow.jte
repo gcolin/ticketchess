@@ -11,7 +11,7 @@
     <ul class="dropdown-menu">
       <li><a class="dropdown-item" href="${contextPath}/eventcollection/${collection.getId()}">${msg.get("action.edit")}</a></li>
       <li><a class="dropdown-item" href="${contextPath}/eventcollection/${collection.getId()}/statistics">${msg.get("event.statistics")}</a></li>
-      @if(user.hasPermission("MAIL_SEND"))
+      @if(user.canManageEvents())
       <li><a class="dropdown-item" href="${contextPath}/eventcollection/${collection.getId()}/mail">${msg.get("mail.send")}</a></li>
       @endif
     </ul>

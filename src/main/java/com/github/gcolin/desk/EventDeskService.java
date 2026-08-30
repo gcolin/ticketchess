@@ -2,12 +2,12 @@ package com.github.gcolin.desk;
 
 import com.github.gcolin.platform.ServiceUtils;
 
-import com.github.gcolin.auth.AuthorizationScopeType;
+import com.github.gcolin.auth.RoleCode;
+import com.github.gcolin.auth.RoleResolver;
+import com.github.gcolin.auth.UserAuthorizationDao;
+import com.github.gcolin.platform.AppContext;
+import com.github.gcolin.platform.Config;
 import com.github.gcolin.event.Event;
-import com.github.gcolin.payment.Payment;
-import com.github.gcolin.payment.PaymentStatus;
-import com.github.gcolin.payment.PaymentType;
-import com.github.gcolin.auth.PermissionCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.registration.PlayerSubscriptionOption;
 import com.github.gcolin.player.DisplayPlayer;
@@ -18,6 +18,9 @@ import com.github.gcolin.event.EventType;
 import com.github.gcolin.player.IPlayer;
 import com.github.gcolin.registration.PlayerSubscriptionOptionStatus;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
+import com.github.gcolin.payment.Payment;
+import com.github.gcolin.payment.PaymentStatus;
+import com.github.gcolin.payment.PaymentType;
 import com.github.gcolin.payment.PaymentMail;
 import com.github.gcolin.platform.Caches;
 import com.github.gcolin.platform.RequestContext;
@@ -37,7 +40,6 @@ import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.github.gcolin.auth.UserAuthorization;
 
 public class EventDeskService {
 
@@ -229,28 +231,18 @@ public class EventDeskService {
         return acked;
     }
 
-    public boolean hasEventEditPermission(String email, boolean admin) {
-        if (admin) {
-            return true;
-        }
+    public boolean hasDeskAccess(String email) {
         if (email == null || email.isBlank()) {
             return false;
         }
+        Config config = AppContext.get().config();
+        Caches caches = AppContext.get().caches();
         EntityManager em = emf.createEntityManager();
         try {
-            TypedQuery<Long> query = em.createQuery(
-                    "SELECT COUNT(ua) FROM UserAuthorization ua"
-                            + " WHERE ua.email = :email"
-                            + " AND ua.permission = :permission"
-                            + " AND ua.scopeType = :scopeType"
-                            + " AND ua.active = true"
-                            + " AND (ua.validUntil IS NULL OR ua.validUntil > :now)",
-                    Long.class);
-            query.setParameter("email", email.trim().toLowerCase());
-            query.setParameter("permission", PermissionCode.EVENT_EDIT);
-            query.setParameter("scopeType", AuthorizationScopeType.GLOBAL);
-            query.setParameter("now", LocalDateTime.now());
-            return query.getSingleResult() > 0;
+            UserAuthorizationDao dao = new UserAuthorizationDao();
+            dao.setEm(em);
+            RoleResolver roleResolver = new RoleResolver(config, dao, caches.getRoleCache());
+            return roleResolver.hasRole(email, RoleCode.ARBITRE);
         } finally {
             em.close();
         }

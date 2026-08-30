@@ -1,10 +1,10 @@
 package com.github.gcolin.registration;
 
 import com.github.gcolin.auth.LoggedOnly;
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.player.CustomPlayer;
 import com.github.gcolin.event.Event;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerPendingSubscription;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.Transactional;
@@ -272,7 +272,7 @@ public class EventRegisterApi {
 
     @GET
     @Path("{subId}")
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     public JteHtml registeredit(@PathParam("id") Integer eventId, @PathParam("subId") Integer subId) {
         PlayerSubscription sub = playerSubscriptionService.findWithEvent(subId);
         Map<String, Object> model = new HashMap<>();
@@ -285,7 +285,7 @@ public class EventRegisterApi {
     @POST
     @Path("{subId}")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.EVENT_ADMIN)
     @Transactional
     public Response registerEditSave(
             @FormParam("eventId") Integer eventId,
@@ -368,7 +368,7 @@ public class EventRegisterApi {
     @POST
     @Path("{subId}/attendance")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    @RequirePermission(PermissionCode.EVENT_EDIT)
+    @RequireRole(RoleCode.ARBITRE)
     @Transactional
     public Response markAttendance(
             @PathParam("id") Integer eventId,

@@ -1,7 +1,7 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.event.EventDao;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -16,7 +16,7 @@ public class EventCsvApi {
     private EventDao eventService;
 
     @GET
-    @RequirePermission(PermissionCode.EVENT_READ)
+    @RequireRole(RoleCode.ARBITRE)
     public Response papi(@PathParam("id") Integer eventId) {
 
         String filename = eventId + ".csv";

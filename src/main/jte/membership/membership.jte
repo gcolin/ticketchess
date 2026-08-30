@@ -20,7 +20,6 @@
 !{title = i18ntitle;}
 !{java.util.List<com.github.gcolin.platform.SelectItem> safeSeasons = seasons != null ? seasons : java.util.List.of();}
 !{java.util.List<com.github.gcolin.membership.Membership> safeMemberships = memberships != null ? memberships : java.util.List.of();}
-!{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -38,10 +37,9 @@
         <form method="get" action="${contextPath}/membership" class="d-flex align-items-center mb-0">
           @template.platform.seasonFilter(msg=msg, seasons=safeSeasons, seasonId=seasonId, selectId="membership_season", autoSubmit=true, inline=true)
         </form>
-        <div class="d-flex gap-2 ms-md-auto">
+        <div class="d-flex align-items-center gap-2 ms-md-auto">
           <a class="btn btn-success" href="${contextPath}/membership/new">${msg.get("action.addMembership")}</a>
-          <a class="btn  btn-secondary" href="${contextPath}/membership/export/csv${seasonParam}">${msg.get("action.exportCsv")}</a>
-          <a class="btn  btn-secondary" href="${contextPath}/membership/export/pdf${seasonParam}">${msg.get("action.exportMembershipsPdf")}</a>
+          @template.membership.membershipPageActionsMenu(contextPath=contextPath, msg=msg, seasonId=seasonId)
         </div>
       `)
       <table class="table table-striped align-middle mb-0 mt-3">
@@ -82,7 +80,7 @@
                 @endif
               </td>
               <td>
-                <a class="btn btn-sm btn-outline-primary" href="${contextPath}/membership/${mem.getId()}/edit">${msg.get("action.edit")}</a>
+                @template.membership.membershipRowActionsMenu(contextPath=contextPath, msg=msg, membership=mem, seasonId=seasonId)
               </td>
             </tr>
           @else

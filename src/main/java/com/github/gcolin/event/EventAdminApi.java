@@ -1,9 +1,9 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.platform.JteHtml;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.EVENT_ADMIN)
 @Path("admin/events")
 public class EventAdminApi {
 

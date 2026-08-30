@@ -1,9 +1,9 @@
 package com.github.gcolin.desk;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.platform.Config;
 import com.github.gcolin.event.Event;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.desk.EventDeskEventDto;
 import com.github.gcolin.desk.EventDeskService;
 import com.github.gcolin.auth.LoggedUser;
@@ -24,7 +24,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("event/{id:\\d+}/desk")
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.ARBITRE)
 public class EventDeskApi {
 
     private static final Jsonb JSONB = JsonbBuilder.create();
@@ -54,7 +54,6 @@ public class EventDeskApi {
                 .claim("eventId", eventId)
                 .claim("eventIds", eventIds)
                 .claim("scope", "desk")
-                .claim("admin", loggedUser.isAdmin())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 12))
                 .signWith(config.getKeys(), Config.JWT_ALGORITHM)

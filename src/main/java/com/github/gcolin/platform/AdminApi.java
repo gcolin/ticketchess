@@ -2,8 +2,8 @@ package com.github.gcolin.platform;
 
 import com.github.gcolin.auth.LoggedOnly;
 import com.github.gcolin.auth.LoggedUser;
-import com.github.gcolin.auth.PermissionCode;
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RoleCode;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.payment.RibService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -130,10 +130,10 @@ public class AdminApi {
 
     @GET
     @Path("clear-cache")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     public Response clearCache() {
         caches.getDebtCache().invalidateAll();
-        caches.getPermissionCache().invalidateAll();
+        caches.getRoleCache().invalidateAll();
         caches.getAllEvents().invalidateAll();
         caches.getEvent().invalidateAll();
         caches.getNotifications().invalidateAll();
@@ -148,7 +148,7 @@ public class AdminApi {
 
     @GET
     @Path("rib")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     public Response ribRedirect() {
         URI requestUri = uriInfo.getRequestUri();
         String query = requestUri == null ? null : requestUri.getRawQuery();
@@ -162,7 +162,7 @@ public class AdminApi {
 
     @GET
     @Path("org")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     public JteHtml orgPage(
             @QueryParam("success") @DefaultValue("") String success,
             @QueryParam("error") @DefaultValue("") String error,
@@ -201,7 +201,7 @@ public class AdminApi {
 
     @POST
     @Path("org/config")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public Response saveConfig(MultivaluedMap<String, String> form) {
         String tab = formValue(form, "tab");
@@ -231,7 +231,7 @@ public class AdminApi {
 
     @POST
     @Path("org/rib")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Consumes({"application/pdf", "application/x-pdf", "application/octet-stream", "*/*"})
     @Produces(MediaType.APPLICATION_JSON)
     public Response uploadRib(InputStream file) {
@@ -255,7 +255,7 @@ public class AdminApi {
 
     @DELETE
     @Path("org/rib")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteRib() {
         try {
@@ -269,7 +269,7 @@ public class AdminApi {
 
     @POST
     @Path("org/logo")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Consumes({"image/png", "image/jpeg", "image/webp", "application/octet-stream"})
     @Produces(MediaType.APPLICATION_JSON)
     public Response uploadLogo(InputStream file) {
@@ -294,7 +294,7 @@ public class AdminApi {
 
     @DELETE
     @Path("org/logo")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteLogo() {
         try {
@@ -309,7 +309,7 @@ public class AdminApi {
 
     @POST
     @Path("org/background")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Consumes({"image/png", "image/jpeg", "image/webp", "application/octet-stream"})
     @Produces(MediaType.APPLICATION_JSON)
     public Response uploadBackground(InputStream file) {
@@ -334,7 +334,7 @@ public class AdminApi {
 
     @DELETE
     @Path("org/background")
-    @RequirePermission(PermissionCode.ADMIN_PANEL)
+    @RequireRole(RoleCode.ADMIN)
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteBackground() {
         try {

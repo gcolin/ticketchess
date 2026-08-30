@@ -1,8 +1,8 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.event.EventCollection;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.event.StatisticsReport;
 import com.github.gcolin.event.StatisticsReportService;
@@ -20,7 +20,7 @@ import java.util.List;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("eventcollection/{id:\\d+}/statistics")
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.EVENT_ADMIN)
 public class EventCollectionStatisticsApi {
 
     @Inject

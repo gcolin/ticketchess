@@ -1,7 +1,7 @@
 package com.github.gcolin.registration;
 
-import com.github.gcolin.auth.RequirePermission;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.registration.PlayerSubscriptionOption;
 import com.github.gcolin.platform.Transactional;
@@ -28,7 +28,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("event/{id:\\d+}/register/{subId:\\d+}/option")
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.EVENT_ADMIN)
 public class PlayerSubscriptionOptionApi {
 
     @Inject

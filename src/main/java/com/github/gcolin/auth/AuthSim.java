@@ -1,15 +1,11 @@
 package com.github.gcolin.auth;
 
-import com.github.gcolin.auth.RequirePermission;
 import com.github.gcolin.platform.Config;
-import com.github.gcolin.auth.PermissionCode;
 import com.github.gcolin.platform.Caches;
-import com.github.gcolin.auth.LoggedUser;
 import io.jsonwebtoken.Jwts;
 import jakarta.inject.Inject;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
@@ -47,25 +43,19 @@ public class AuthSim {
 
     @GET
     @Path("logAs")
-    @RequirePermission(PermissionCode.USER_IMPERSONATE)
-    public Response logAs(
-            @QueryParam("email") String email,
-            @QueryParam("name") String name,
-            @QueryParam("admin") @DefaultValue("false") boolean admin) {
+    @RequireRole(RoleCode.ADMIN)
+    public Response logAs(@QueryParam("email") String email, @QueryParam("name") String name) {
         requireImpersonationAllowed();
         loggerUser.setEmail(email);
         loggerUser.setUsername(name);
         loggerUser.setLogged(true);
-        boolean effectiveAdmin = admin || config.getAdmins().contains(email);
-        loggerUser.setAdmin(effectiveAdmin);
         caches.getDebtCache().invalidateAll();
-        caches.getPermissionCache().invalidateAll();
-        rememberAuthInSession(email, effectiveAdmin);
+        caches.getRoleCache().invalidateAll();
+        rememberAuthInSession(email);
 
         String jwt = Jwts.builder()
                 .subject(email)
                 .issuer(name)
-                .claim("admin", effectiveAdmin)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))
                 .signWith(config.getKeys(), Config.JWT_ALGORITHM)
@@ -88,15 +78,13 @@ public class AuthSim {
         loggerUser.setEmail(properties.getProperty("auth.USER_EMAIL"));
         loggerUser.setUsername(properties.getProperty("auth.USER_NAME"));
         loggerUser.setLogged(true);
-        loggerUser.setAdmin(true);
         caches.getDebtCache().invalidateAll();
-        caches.getPermissionCache().invalidateAll();
-        rememberAuthInSession(loggerUser.getEmail(), true);
+        caches.getRoleCache().invalidateAll();
+        rememberAuthInSession(loggerUser.getEmail());
 
         String jwt = Jwts.builder()
                 .subject(loggerUser.getEmail())
                 .issuer(loggerUser.getUsername())
-                .claim("admin", true)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30)) // 30 jours
                 .signWith(config.getKeys(), Config.JWT_ALGORITHM)
@@ -120,10 +108,9 @@ public class AuthSim {
         }
     }
 
-    private void rememberAuthInSession(String email, boolean admin) {
+    private void rememberAuthInSession(String email) {
         if (request != null) {
             request.getSession(true).setAttribute("auth.email", email);
-            request.getSession(true).setAttribute("auth.admin", admin);
         }
     }
 

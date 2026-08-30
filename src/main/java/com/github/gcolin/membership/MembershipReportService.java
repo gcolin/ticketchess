@@ -8,12 +8,15 @@ import java.io.ByteArrayOutputStream;
 import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.TreeMap;
 import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Element;
@@ -42,21 +45,29 @@ public class MembershipReportService {
     }
 
     public byte[] generate(
-            List<Membership> memberships, Map<Integer, List<String>> optionsByMembership, SeasonScope scope) {
+            List<Membership> memberships,
+            Map<Integer, List<String>> optionsByMembership,
+            Map<String, MembershipSummaryLine> summaryByName,
+            SeasonScope scope) {
         List<Membership> sorted = memberships.stream()
                 .sorted(Comparator.comparing(Membership::getId, Comparator.nullsLast(Integer::compareTo))
                         .reversed())
                 .toList();
         int totalCents = sorted.stream().mapToInt(Membership::getAmountCents).sum();
+        int approvedTotalCents = sorted.stream()
+                .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
+                .mapToInt(Membership::getAmountCents)
+                .sum();
         String reportNumber = "ADH-"
                 + (scope.isFiltered() ? "S" + scope.getSeasonId() + "-" : "")
                 + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
 
-        Document document = new Document(PageSize.A4.rotate(), 36, 36, 50, 50);
+        Document document = new Document(PageSize.A4, 36, 36, 50, 50);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             PdfWriter writer = PdfWriter.getInstance(document, baos);
-            ResourceBundle bundle = ResourceBundle.getBundle("messages", Locale.getDefault());
+            Locale locale = resolveLocale();
+            ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);
             String vatNotice = properties.getProperty(
                     "invoice.vat.notice", bundle.getString("statistics.payments.vatNotice"));
             String footerContact = properties.getProperty(
@@ -70,32 +81,46 @@ public class MembershipReportService {
             Font normalFont = new Font(Font.HELVETICA, 9);
             Font smallFont = new Font(Font.HELVETICA, 8);
 
-            addSellerHeader(document, normalFont, smallFont);
+            addSellerHeader(document, bundle, locale, normalFont, smallFont);
             document.add(new Paragraph(bundle.getString("membership.report.title"), titleFont));
             document.add(new Paragraph(
-                    MessageFormat.format(bundle.getString("statistics.payments.reportNumber"), reportNumber),
+                    formatMessage(locale, bundle.getString("statistics.payments.reportNumber"), reportNumber),
                     normalFont));
             document.add(new Paragraph(
-                    MessageFormat.format(
-                            bundle.getString("statistics.payments.issuedAt"), LocalDate.now().format(DATE_FORMAT)),
+                    formatMessage(
+                            locale,
+                            bundle.getString("statistics.payments.issuedAt"),
+                            LocalDate.now().format(DATE_FORMAT)),
                     normalFont));
             if (scope.isFiltered()) {
                 String period = scope.getStart().toLocalDate().format(DATE_FORMAT)
                         + " — "
                         + scope.getEnd().toLocalDate().format(DATE_FORMAT);
                 document.add(new Paragraph(
-                        MessageFormat.format(bundle.getString("statistics.payments.period"), period), normalFont));
+                        formatMessage(locale, bundle.getString("statistics.payments.period"), period), normalFont));
             }
             document.add(new Paragraph(" "));
             document.add(new Paragraph(
-                    MessageFormat.format(bundle.getString("membership.report.count"), sorted.size()), sectionFont));
+                    formatMessage(locale, bundle.getString("membership.report.count"), sorted.size()), sectionFont));
             document.add(new Paragraph(
-                    MessageFormat.format(
+                    formatMessage(
+                            locale,
                             bundle.getString("membership.report.totalAmount"),
                             formatEuros(ServiceUtils.toEuros((long) totalCents))),
                     normalFont));
+            document.add(new Paragraph(
+                    formatMessage(
+                            locale,
+                            bundle.getString("membership.report.totalApprovedAmount"),
+                            formatEuros(ServiceUtils.toEuros((long) approvedTotalCents))),
+                    normalFont));
+            document.add(new Paragraph(" "));
+            document.add(new Paragraph(bundle.getString("membership.report.detail"), sectionFont));
+            document.add(new Paragraph(" "));
+            document.add(buildOptionSummaryTable(bundle, summaryByName, headerFont, normalFont));
             document.add(new Paragraph(" "));
             document.add(buildTable(bundle, sorted, optionsByMembership, headerFont, normalFont));
+            addOptionSections(document, bundle, locale, sorted, optionsByMembership, sectionFont, headerFont, normalFont);
 
             document.close();
             return baos.toByteArray();
@@ -146,6 +171,155 @@ public class MembershipReportService {
         return table;
     }
 
+    private PdfPTable buildOptionSummaryTable(
+            ResourceBundle bundle,
+            Map<String, MembershipSummaryLine> summaryByName,
+            Font headerFont,
+            Font normalFont)
+            throws DocumentException {
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(80);
+        table.setHorizontalAlignment(Element.ALIGN_LEFT);
+        table.setWidths(new float[] {34f, 10f, 12f, 22f, 22f});
+
+        addHeaderCell(table, bundle.getString("membership.report.optionOrLicense"), headerFont);
+        addHeaderCell(table, bundle.getString("membership.report.optionCount"), headerFont);
+        addHeaderCell(table, bundle.getString("membership.report.approvedCount"), headerFont);
+        addHeaderCell(table, bundle.getString("admin.membership.amount"), headerFont);
+        addHeaderCell(table, bundle.getString("membership.report.approvedAmount"), headerFont);
+
+        Map<String, MembershipSummaryLine> lines = summaryByName == null ? Map.of() : summaryByName;
+        for (Map.Entry<String, MembershipSummaryLine> entry : lines.entrySet()) {
+            MembershipSummaryLine line = entry.getValue();
+            table.addCell(new Phrase(entry.getKey(), normalFont));
+            PdfPCell countCell = new PdfPCell(new Phrase(String.valueOf(line.count()), normalFont));
+            countCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(countCell);
+            PdfPCell approvedCountCell =
+                    new PdfPCell(new Phrase(String.valueOf(line.approvedCount()), normalFont));
+            approvedCountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(approvedCountCell);
+            PdfPCell amountCell =
+                    new PdfPCell(new Phrase(formatEuros(ServiceUtils.toEuros((long) line.amountCents())), normalFont));
+            amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(amountCell);
+            PdfPCell approvedAmountCell = new PdfPCell(
+                    new Phrase(formatEuros(ServiceUtils.toEuros((long) line.approvedAmountCents())), normalFont));
+            approvedAmountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(approvedAmountCell);
+        }
+        return table;
+    }
+
+    private void addOptionSections(
+            Document document,
+            ResourceBundle bundle,
+            Locale locale,
+            List<Membership> memberships,
+            Map<Integer, List<String>> optionsByMembership,
+            Font sectionFont,
+            Font headerFont,
+            Font normalFont)
+            throws DocumentException {
+        String noOptionLabel = bundle.getString("membership.report.noOption");
+        Map<String, List<Membership>> membersByOption = buildMembersByOption(memberships, optionsByMembership, noOptionLabel);
+        if (membersByOption.isEmpty()) {
+            return;
+        }
+
+        document.newPage();
+        document.add(new Paragraph(bundle.getString("membership.report.byOption"), sectionFont));
+        document.add(new Paragraph(" "));
+
+        for (String optionName : sortedOptionNames(membersByOption, noOptionLabel)) {
+            List<Membership> members = membersByOption.get(optionName);
+            document.add(new Paragraph(
+                    formatMessage(locale, bundle.getString("membership.report.optionMemberCount"), optionName, members.size()),
+                    sectionFont));
+            document.add(new Paragraph(" "));
+            document.add(buildOptionMemberTable(bundle, members, headerFont, normalFont));
+            document.add(new Paragraph(" "));
+        }
+    }
+
+    private Map<String, List<Membership>> buildMembersByOption(
+            List<Membership> memberships,
+            Map<Integer, List<String>> optionsByMembership,
+            String noOptionLabel) {
+        Map<String, List<Membership>> membersByOption = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        List<Membership> withoutOptions = new ArrayList<>();
+        for (Membership membership : memberships) {
+            List<String> options = membership.getId() == null
+                    ? List.of()
+                    : optionsByMembership.getOrDefault(membership.getId(), List.of());
+            if (options.isEmpty()) {
+                withoutOptions.add(membership);
+                continue;
+            }
+            for (String option : options) {
+                if (option == null || option.isBlank()) {
+                    continue;
+                }
+                membersByOption.computeIfAbsent(option.trim(), key -> new ArrayList<>()).add(membership);
+            }
+        }
+        Map<String, List<Membership>> ordered = new LinkedHashMap<>();
+        membersByOption.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER))
+                .forEach(entry -> ordered.put(entry.getKey(), entry.getValue()));
+        if (!withoutOptions.isEmpty()) {
+            ordered.put(noOptionLabel, withoutOptions);
+        }
+        return ordered;
+    }
+
+    private static List<String> sortedOptionNames(Map<String, List<Membership>> membersByOption, String noOptionLabel) {
+        List<String> optionNames = new ArrayList<>(membersByOption.keySet());
+        optionNames.sort((left, right) -> {
+            if (left.equals(noOptionLabel)) {
+                return 1;
+            }
+            if (right.equals(noOptionLabel)) {
+                return -1;
+            }
+            return left.compareToIgnoreCase(right);
+        });
+        return optionNames;
+    }
+
+    private PdfPTable buildOptionMemberTable(
+            ResourceBundle bundle, List<Membership> members, Font headerFont, Font normalFont)
+            throws DocumentException {
+        PdfPTable table = new PdfPTable(3);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[] {20f, 40f, 40f});
+
+        addHeaderCell(table, bundle.getString("admin.membership.nrFfe"), headerFont);
+        addHeaderCell(table, bundle.getString("label.lastname"), headerFont);
+        addHeaderCell(table, bundle.getString("label.firstname"), headerFont);
+
+        List<Membership> sortedMembers = members.stream()
+                .sorted(Comparator.comparing(Membership::getLastname, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(Membership::getFirstname, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(Membership::getId, Comparator.nullsLast(Integer::compareTo)))
+                .toList();
+
+        for (Membership membership : sortedMembers) {
+            table.addCell(new Phrase(nullToEmpty(membership.getNrFfe()), normalFont));
+            table.addCell(new Phrase(nullToEmpty(membership.getLastname()), normalFont));
+            table.addCell(new Phrase(nullToEmpty(membership.getFirstname()), normalFont));
+        }
+        return table;
+    }
+
+    private static Locale resolveLocale() {
+        return Locale.FRENCH;
+    }
+
+    private static String formatMessage(Locale locale, String pattern, Object... args) {
+        return new MessageFormat(pattern, locale).format(args);
+    }
+
     private static String statusLabel(ResourceBundle bundle, MembershipStatus status) {
         if (status == null) {
             return "";
@@ -157,7 +331,9 @@ public class MembershipReportService {
         return status.name();
     }
 
-    private void addSellerHeader(Document document, Font normalFont, Font smallFont) throws DocumentException {
+    private void addSellerHeader(
+            Document document, ResourceBundle bundle, Locale locale, Font normalFont, Font smallFont)
+            throws DocumentException {
         String sellerName = Config.configured(properties, "invoice.seller.name", "org.name");
         String sellerAddress1 = Config.configured(properties, "invoice.seller.address1", "org.address");
         String sellerAddress2 = Config.configured(properties, "invoice.seller.address2", null);
@@ -181,16 +357,24 @@ public class MembershipReportService {
                 smallFont,
                 joinNotBlank(
                         " | ",
-                        isBlank(sellerEmail) ? "" : "Email: " + sellerEmail,
-                        isBlank(sellerPhone) ? "" : "Tel: " + sellerPhone,
+                        isBlank(sellerEmail)
+                                ? ""
+                                : formatMessage(locale, bundle.getString("membership.report.seller.email"), sellerEmail),
+                        isBlank(sellerPhone)
+                                ? ""
+                                : formatMessage(locale, bundle.getString("membership.report.seller.phone"), sellerPhone),
                         sellerWebsite));
         addLineIfNotBlank(
                 document,
                 smallFont,
                 joinNotBlank(
                         " | ",
-                        isBlank(sellerSiret) ? "" : "SIRET: " + sellerSiret,
-                        isBlank(sellerRna) ? "" : "RNA: " + sellerRna));
+                        isBlank(sellerSiret)
+                                ? ""
+                                : formatMessage(locale, bundle.getString("membership.report.seller.siret"), sellerSiret),
+                        isBlank(sellerRna)
+                                ? ""
+                                : formatMessage(locale, bundle.getString("membership.report.seller.rna"), sellerRna)));
         addLineIfNotBlank(document, smallFont, sellerPrefecture);
         document.add(new Paragraph(" "));
     }

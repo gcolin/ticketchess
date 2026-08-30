@@ -1,12 +1,12 @@
 package com.github.gcolin.membership;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionAccessRule;
 import com.github.gcolin.membership.MembershipOptionType;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.membership.LicenseDao;
 import com.github.gcolin.membership.MembershipOptionDao;
 import jakarta.inject.Inject;
@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
-@RequirePermission(PermissionCode.ADMIN_PANEL)
+@RequireRole(RoleCode.TRESORIER)
 @Path("membership-option-admin")
 public class MembershipOptionAdminApi {
 

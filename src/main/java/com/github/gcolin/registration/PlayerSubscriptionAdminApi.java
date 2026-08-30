@@ -1,10 +1,10 @@
 package com.github.gcolin.registration;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.player.CustomPlayer;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerPendingSubscription;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.player.IPlayer;
@@ -33,7 +33,7 @@ import java.util.Map;
 import com.github.gcolin.platform.JteHtml;
 
 @Path("playersubscription-admin")
-@RequirePermission(PermissionCode.EVENT_EDIT)
+@RequireRole(RoleCode.EVENT_ADMIN)
 public class PlayerSubscriptionAdminApi {
 
     @Inject

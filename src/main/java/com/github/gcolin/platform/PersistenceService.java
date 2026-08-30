@@ -1,5 +1,6 @@
 package com.github.gcolin.platform;
 
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.event.EventCollectionOptionType;
 import com.github.gcolin.event.EventOptionType;
 import com.zaxxer.hikari.HikariDataSource;
@@ -21,16 +22,22 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PersistenceService {
 
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger logger = LoggerFactory.getLogger(PersistenceService.class);
+    private static final Pattern CHECK_CONSTRAINT_ENUM_VALUE =
+            Pattern.compile("'([A-Z][A-Z0-9_]*)'");
 
     private final Config config;
     private EntityManagerFactory emf;
@@ -156,9 +163,15 @@ public class PersistenceService {
     private void applySchemaPatches() {
         try (Connection connection = dataSource.getConnection()) {
             applyClubSeasonCurrentColumn(connection);
+            applyMembershipLicenseTypeColumn(connection);
+            migratePermissionsToRoles(connection);
             if (isH2()) {
                 applyH2EnumColumnPatch(connection, "eventoption", EventOptionType.class);
                 applyH2EnumColumnPatch(connection, "eventcollectionoption", EventCollectionOptionType.class);
+            } else {
+                applyPostgresEnumCheckConstraintPatch(connection, "eventoption", EventOptionType.class);
+                applyPostgresEnumCheckConstraintPatch(
+                        connection, "eventcollectionoption", EventCollectionOptionType.class);
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to apply schema patches", e);
@@ -188,6 +201,78 @@ public class PersistenceService {
         }
         tableColumnsCache.remove(tableKey);
         logger.info("Updated {}.option_type enum to match {}", table, enumClass.getSimpleName());
+    }
+
+    private void applyPostgresEnumCheckConstraintPatch(
+            Connection connection, String table, Class<? extends Enum<?>> enumClass) throws SQLException {
+        if (!postgresTableHasColumn(connection, table, "option_type")) {
+            return;
+        }
+
+        String constraintName = table + "_option_type_check";
+        Set<String> expectedValues = enumValues(enumClass);
+        Set<String> currentValues = readPostgresCheckConstraintEnumValues(connection, constraintName);
+        if (currentValues.equals(expectedValues)) {
+            logger.debug("{}.option_type check constraint already up to date", table);
+            return;
+        }
+
+        String enumValues = expectedValues.stream()
+                .map(value -> "'" + value.replace("'", "''") + "'")
+                .collect(Collectors.joining(", "));
+
+        try (Statement st = connection.createStatement()) {
+            st.execute("ALTER TABLE " + table + " DROP CONSTRAINT IF EXISTS " + constraintName);
+            st.execute("ALTER TABLE " + table + " ADD CONSTRAINT " + constraintName + " CHECK (option_type IN ("
+                    + enumValues
+                    + "))");
+        }
+        logger.info("Updated {}.option_type check constraint to match {}", table, enumClass.getSimpleName());
+    }
+
+    private Set<String> readPostgresCheckConstraintEnumValues(Connection connection, String constraintName)
+            throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = ?")) {
+            ps.setString(1, constraintName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return Set.of();
+                }
+                return parseEnumNamesFromCheckConstraint(rs.getString(1));
+            }
+        }
+    }
+
+    static Set<String> parseEnumNamesFromCheckConstraint(String constraintDef) {
+        if (constraintDef == null || constraintDef.isBlank()) {
+            return Set.of();
+        }
+        Set<String> values = new TreeSet<>();
+        Matcher matcher = CHECK_CONSTRAINT_ENUM_VALUE.matcher(constraintDef);
+        while (matcher.find()) {
+            values.add(matcher.group(1));
+        }
+        return values;
+    }
+
+    private static Set<String> enumValues(Class<? extends Enum<?>> enumClass) {
+        return Arrays.stream(enumClass.getEnumConstants())
+                .map(Enum::name)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
+
+    private boolean postgresTableHasColumn(Connection connection, String table, String column) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT COUNT(*) FROM information_schema.columns "
+                        + "WHERE table_schema = 'public' AND table_name = ? AND column_name = ?")) {
+            ps.setString(1, table.toLowerCase(Locale.ROOT));
+            ps.setString(2, column.toLowerCase(Locale.ROOT));
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1) > 0;
+            }
+        }
     }
 
     private boolean isH2EnumColumn(Connection connection, String table, String column) throws SQLException {
@@ -242,6 +327,178 @@ public class PersistenceService {
         }
         tableColumnsCache.remove("CLUB_SEASON");
         logger.info("Added club_season.is_current column with default false for existing rows");
+    }
+
+    private void applyMembershipLicenseTypeColumn(Connection connection) throws SQLException {
+        if (isH2()) {
+            if (!tableExists(connection, "MEMBERSHIP") || columnExists(connection, "MEMBERSHIP", "LICENSE_TYPE")) {
+                return;
+            }
+            try (Statement st = connection.createStatement()) {
+                st.execute("ALTER TABLE membership ADD COLUMN license_type VARCHAR(10)");
+            }
+            tableColumnsCache.remove("MEMBERSHIP");
+        } else {
+            try (Statement st = connection.createStatement()) {
+                st.execute("ALTER TABLE membership ADD COLUMN IF NOT EXISTS license_type VARCHAR(10)");
+            }
+        }
+        logger.info("Ensured membership.license_type column exists");
+    }
+
+    private void migratePermissionsToRoles(Connection connection) throws SQLException {
+        if (!tableExists(connection, "USER_AUTHORIZATION")) {
+            return;
+        }
+
+        prepareUserAuthorizationRoleColumnForMigration(connection);
+
+        boolean hasPermissionColumn = columnExists(connection, "USER_AUTHORIZATION", "PERMISSION");
+        boolean hasRoleColumn = columnExists(connection, "USER_AUTHORIZATION", "ROLE");
+        String valueColumn = hasPermissionColumn ? "permission" : (hasRoleColumn ? "role" : null);
+        if (valueColumn == null) {
+            return;
+        }
+
+        Map<String, String> mapping = Map.ofEntries(
+                Map.entry("USER_IMPERSONATE", "ADMIN"),
+                Map.entry("ADMIN_PANEL", "ADMIN"),
+                Map.entry("ADMIN_USER", "ADMIN"),
+                Map.entry("PAYMENT_READ", "TRESORIER"),
+                Map.entry("PAYMENT_WRITE", "TRESORIER"),
+                Map.entry("EVENT_CREATE", "EVENT_ADMIN"),
+                Map.entry("EVENT_EDIT", "EVENT_ADMIN"),
+                Map.entry("EVENT_DELETE", "EVENT_ADMIN"),
+                Map.entry("MAIL_SEND", "EVENT_ADMIN"),
+                Map.entry("EVENT_READ", "ARBITRE"));
+
+        for (Map.Entry<String, String> entry : mapping.entrySet()) {
+            String sql = "UPDATE user_authorization SET " + valueColumn + " = ? WHERE " + valueColumn + " = ?";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, entry.getValue());
+                ps.setString(2, entry.getKey());
+                int updated = ps.executeUpdate();
+                if (updated > 0) {
+                    logger.info(
+                            "Migrated {} user_authorization grant(s) from {} to role {}",
+                            updated,
+                            entry.getKey(),
+                            entry.getValue());
+                }
+            }
+        }
+
+        Set<String> validRoles = Set.of("ADMIN", "TRESORIER", "ARBITRE", "EVENT_ADMIN");
+        try (PreparedStatement ps = connection.prepareStatement(
+                "DELETE FROM user_authorization WHERE " + valueColumn + " NOT IN (?, ?, ?, ?)")) {
+            int index = 1;
+            for (String role : validRoles) {
+                ps.setString(index++, role);
+            }
+            int deleted = ps.executeUpdate();
+            if (deleted > 0) {
+                logger.info("Removed {} user_authorization grant(s) with unrecognized values", deleted);
+            }
+        }
+
+        deduplicateUserAuthorizations(connection, valueColumn);
+
+        if (hasPermissionColumn && !hasRoleColumn) {
+            if (isH2()) {
+                try (Statement st = connection.createStatement()) {
+                    st.execute("ALTER TABLE user_authorization ALTER COLUMN permission RENAME TO role");
+                }
+            } else {
+                try (Statement st = connection.createStatement()) {
+                    st.execute("ALTER TABLE user_authorization RENAME COLUMN permission TO role");
+                }
+            }
+            logger.info("Renamed user_authorization.permission column to role");
+        }
+
+        finalizeUserAuthorizationRoleColumn(connection);
+    }
+
+    private void prepareUserAuthorizationRoleColumnForMigration(Connection connection) throws SQLException {
+        if (isH2()) {
+            for (String column : List.of("PERMISSION", "ROLE")) {
+                if (!columnExists(connection, "USER_AUTHORIZATION", column)) {
+                    continue;
+                }
+                if (!isH2EnumColumn(connection, "USER_AUTHORIZATION", column)) {
+                    continue;
+                }
+                String sqlColumn = column.toLowerCase(Locale.ROOT);
+                try (Statement st = connection.createStatement()) {
+                    st.execute(
+                            "ALTER TABLE user_authorization ALTER COLUMN " + sqlColumn + " VARCHAR(64) NOT NULL");
+                }
+                tableColumnsCache.remove("USER_AUTHORIZATION");
+                logger.info("Converted user_authorization.{} from legacy ENUM to VARCHAR(64)", sqlColumn);
+                return;
+            }
+            return;
+        }
+
+        for (String column : List.of("permission", "role")) {
+            if (!postgresTableHasColumn(connection, "user_authorization", column)) {
+                continue;
+            }
+            String constraintName = "user_authorization_" + column + "_check";
+            Set<String> currentValues = readPostgresCheckConstraintEnumValues(connection, constraintName);
+            if (currentValues.isEmpty()) {
+                continue;
+            }
+            Set<String> expectedValues = enumValues(RoleCode.class);
+            if (currentValues.equals(expectedValues)) {
+                return;
+            }
+            try (Statement st = connection.createStatement()) {
+                st.execute("ALTER TABLE user_authorization DROP CONSTRAINT IF EXISTS " + constraintName);
+            }
+            logger.info("Dropped legacy {} check constraint before role migration", constraintName);
+            return;
+        }
+    }
+
+    private void finalizeUserAuthorizationRoleColumn(Connection connection) throws SQLException {
+        if (!columnExists(connection, "USER_AUTHORIZATION", "ROLE") || isH2()) {
+            return;
+        }
+        if (!postgresTableHasColumn(connection, "user_authorization", "role")) {
+            return;
+        }
+        String constraintName = "user_authorization_role_check";
+        Set<String> expectedValues = enumValues(RoleCode.class);
+        Set<String> currentValues = readPostgresCheckConstraintEnumValues(connection, constraintName);
+        if (currentValues.equals(expectedValues)) {
+            return;
+        }
+        String enumValues = expectedValues.stream()
+                .map(value -> "'" + value.replace("'", "''") + "'")
+                .collect(Collectors.joining(", "));
+        try (Statement st = connection.createStatement()) {
+            st.execute("ALTER TABLE user_authorization DROP CONSTRAINT IF EXISTS " + constraintName);
+            st.execute("ALTER TABLE user_authorization ADD CONSTRAINT " + constraintName + " CHECK (role IN ("
+                    + enumValues
+                    + "))");
+        }
+        logger.info("Updated user_authorization.role check constraint to match RoleCode");
+    }
+
+    private void deduplicateUserAuthorizations(Connection connection, String valueColumn) throws SQLException {
+        String sql =
+                "DELETE FROM user_authorization ua WHERE ua.id NOT IN ("
+                        + "SELECT MIN(u2.id) FROM user_authorization u2 "
+                        + "GROUP BY u2.email, u2."
+                        + valueColumn
+                        + ", u2.scope_type, u2.scope_id)";
+        try (Statement st = connection.createStatement()) {
+            int deleted = st.executeUpdate(sql);
+            if (deleted > 0) {
+                logger.info("Deduplicated {} user_authorization grant(s)", deleted);
+            }
+        }
     }
 
     private boolean tableExists(Connection connection, String table) throws SQLException {

@@ -111,16 +111,13 @@ public class OauthCallbackApi {
             loggedUser.setEmail(email);
             loggedUser.setUsername(username);
             loggedUser.setLogged(true);
-            loggedUser.setAdmin(config.getAdmins().contains(email));
             caches.getDebtCache().invalidateAll();
-            caches.getPermissionCache().invalidateAll();
+            caches.getRoleCache().invalidateAll();
 
             String idToken = json.optString("id_token", null);
-            boolean isAdmin = loggedUser.isAdmin();
             String jwt = Jwts.builder()
                     .subject(email)
                     .issuer(username)
-                    .claim("admin", isAdmin)
                     .id(idToken)
                     .issuedAt(new Date())
                     .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 30))

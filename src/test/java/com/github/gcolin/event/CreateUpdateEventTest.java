@@ -38,9 +38,7 @@ public class CreateUpdateEventTest extends PlaywrightBaseTest {
         assertTrue(bouton.isVisible());
         bouton.click();
 
-        bouton = page.locator("#newevent");
-        assertTrue(bouton.isVisible());
-        bouton.click();
+        page.navigate(BASE_URL + "/event/new");
 
         Locator name = page.locator("#event_name");
         assertTrue(name.isVisible());
@@ -103,13 +101,13 @@ public class CreateUpdateEventTest extends PlaywrightBaseTest {
         assertThat(infoDiv).containsText(info);
 
         String eventUrl = page.url();
+        String eventId = eventUrl.replaceAll(".*/event/(\\d+).*", "$1");
 
-        Locator edit = page.locator("#edit");
-        assertTrue(edit.isVisible());
-        edit.click();
+        navigateToEventEdit(page, eventId);
 
         page.selectOption("#event_status", new SelectOption().setLabel("Inscriptions ouvertes"));
 
+        eventSubmit = page.locator("#event_submit");
         eventSubmit.click();
 
         assertTrue(editInfo.isVisible());
@@ -170,8 +168,7 @@ public class CreateUpdateEventTest extends PlaywrightBaseTest {
         assertTrue(infoDiv.isVisible());
         assertThat(infoDiv).containsText("hola muchachos!");
 
-        assertTrue(edit.isVisible());
-        edit.click();
+        navigateToEventEdit(page, eventId);
 
         page.selectOption("#event_status", new SelectOption().setLabel("En cours"));
 

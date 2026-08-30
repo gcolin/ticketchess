@@ -1,8 +1,8 @@
 package com.github.gcolin.event;
 
-import com.github.gcolin.auth.RequirePermission;
+import com.github.gcolin.auth.RequireRole;
 import com.github.gcolin.event.Event;
-import com.github.gcolin.auth.PermissionCode;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.player.LuceneDb;
 import com.github.gcolin.event.EventType;
@@ -44,7 +44,7 @@ public class EventLicenceCheckApi {
     private Find find;
 
     @GET
-    @RequirePermission(PermissionCode.EVENT_READ)
+    @RequireRole(RoleCode.ARBITRE)
     public Response licenceCheck(@PathParam("id") Integer eventId) throws IOException {
 
         Event event = eventDao.find(eventId);

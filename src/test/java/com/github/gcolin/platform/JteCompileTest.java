@@ -199,7 +199,9 @@ class JteCompileTest {
         model.put("notifs", List.of());
         model.put("notif", new com.github.gcolin.notification.Notification());
         model.put("authorizations", List.of());
+        model.put("roles", java.util.Arrays.asList(com.github.gcolin.auth.RoleCode.values()));
         model.put("permissions", List.of());
+        model.put("readOnly", false);
         model.put("scopeTypes", List.of());
         model.put("sessions", List.of());
         model.put("sessionCount", 0);

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,7 +51,7 @@ class MembershipApiTest {
         m2.setId(5);
 
         when(membershipDao.all(any(SeasonScope.class))).thenReturn(new ArrayList<>(List.of(m1, m2)));
-        when(subscriptionDao.all()).thenReturn(List.of());
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
@@ -83,7 +84,7 @@ class MembershipApiTest {
         sub.setMembership(m);
 
         when(membershipDao.all(any(SeasonScope.class))).thenReturn(new ArrayList<>(List.of(m)));
-        when(subscriptionDao.all()).thenReturn(List.of(sub));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of(sub));
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
@@ -108,6 +109,9 @@ class MembershipApiTest {
         inject(api, "membershipDao", mock(MembershipDao.class));
         inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        when(licenseDao.all()).thenReturn(List.of());
+        inject(api, "licenseDao", licenseDao);
 
         JteHtml html = api.createPage();
         Map<String, Object> model = html.getModel();
@@ -131,7 +135,7 @@ class MembershipApiTest {
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        Response response = api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500);
+        Response response = api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, null);
 
         assertEquals(303, response.getStatus());
         verify(membershipDao).persist(any(Membership.class));
@@ -153,11 +157,55 @@ class MembershipApiTest {
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", null, null);
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", null, null, null);
 
         assertEquals(1, captured.size());
         assertEquals(0, captured.get(0).getAmountCents());
         assertEquals(MembershipStatus.PENDING_APPROVAL, captured.get(0).getStatus());
+    }
+
+    @Test
+    void createShouldPersistLicenseType() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        List<Membership> captured = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(inv -> {
+            captured.add(inv.getArgument(0));
+            return null;
+        }).when(membershipDao).persist(any(Membership.class));
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
+
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, "a");
+
+        assertEquals(1, captured.size());
+        assertEquals("A", captured.get(0).getLicenseType());
+    }
+
+    @Test
+    void createShouldDefaultLicenseTypeToAWhenBlank() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        List<Membership> captured = new ArrayList<>();
+        org.mockito.Mockito.doAnswer(inv -> {
+            captured.add(inv.getArgument(0));
+            return null;
+        }).when(membershipDao).persist(any(Membership.class));
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
+
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, "");
+
+        assertEquals(1, captured.size());
+        assertEquals("A", captured.get(0).getLicenseType());
     }
 
     // --- editPage ---
@@ -169,17 +217,20 @@ class MembershipApiTest {
         MembershipDao membershipDao = mock(MembershipDao.class);
         MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
         MembershipOptionDao membershipOptionDao = mock(MembershipOptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
 
         Membership m = new Membership();
         m.setId(10);
 
         when(membershipDao.find(10)).thenReturn(m);
-        when(subscriptionDao.all()).thenReturn(List.of());
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
         when(membershipOptionDao.all()).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of());
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
         inject(api, "membershipOptionDao", membershipOptionDao);
+        inject(api, "licenseDao", licenseDao);
 
         JteHtml html = api.editPage(10);
         Map<String, Object> model = html.getModel();
@@ -218,7 +269,7 @@ class MembershipApiTest {
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        Response response = api.update(5, "user@test.com", "B99", "Smith", "Jane", "1990-05-05", "PAID", 2000);
+        Response response = api.update(5, "user@test.com", "B99", "Smith", "Jane", "1990-05-05", "PAID", 2000, "B");
 
         assertEquals(303, response.getStatus());
         verify(membershipDao).merge(m);
@@ -236,7 +287,7 @@ class MembershipApiTest {
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
 
         assertThrows(NotFoundException.class,
-                () -> api.update(77, "u", "n", "l", "f", "d", "APPROVED", 100));
+                () -> api.update(77, "u", "n", "l", "f", "d", "APPROVED", 100, null));
     }
 
     // --- addOption ---
@@ -367,6 +418,52 @@ class MembershipApiTest {
         assertThrows(BadRequestException.class, () -> api.removeOption(1, 10));
     }
 
+    // --- delete ---
+
+    @Test
+    void deleteShouldRemoveSubscriptionsAndMembershipAndRedirect() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+
+        Membership membership = new Membership();
+        membership.setId(4);
+
+        MembershipOptionSubscription sub = new MembershipOptionSubscription();
+        sub.setId(8);
+        sub.setMembership(membership);
+
+        when(membershipDao.find(4)).thenReturn(membership);
+        when(subscriptionDao.findByMembershipIds(List.of(4))).thenReturn(List.of(sub));
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "uriInfo", mockUriInfoMultiPath(URI.create("http://localhost:8080/membership?seasonId=2")));
+
+        Response response = api.delete(4, 2);
+
+        assertEquals(303, response.getStatus());
+        verify(subscriptionDao).remove(8);
+        verify(membershipDao).remove(4);
+        assertEquals(URI.create("http://localhost:8080/membership?seasonId=2"), response.getLocation());
+    }
+
+    @Test
+    void deleteShouldThrowNotFoundWhenMembershipMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        when(membershipDao.find(99)).thenReturn(null);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+
+        assertThrows(NotFoundException.class, () -> api.delete(99, null));
+    }
+
     @Test
     void exportCsvShouldIncludeMembershipsAndOptions() throws Exception {
         MembershipApi api = new MembershipApi();
@@ -393,7 +490,7 @@ class MembershipApiTest {
         subscription.setMembershipOption(option);
 
         when(membershipDao.all(any(SeasonScope.class))).thenReturn(List.of(membership));
-        when(subscriptionDao.all()).thenReturn(List.of(subscription));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of(subscription));
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
@@ -412,6 +509,7 @@ class MembershipApiTest {
         MembershipApi api = new MembershipApi();
         MembershipDao membershipDao = mock(MembershipDao.class);
         MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
         ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
         MembershipReportService reportService = mock(MembershipReportService.class);
         SeasonScope scope = SeasonScope.all();
@@ -419,13 +517,16 @@ class MembershipApiTest {
 
         when(seasonFilter.resolve(3)).thenReturn(scope);
         when(membershipDao.all(scope)).thenReturn(List.of());
-        when(subscriptionDao.all()).thenReturn(List.of());
-        when(reportService.generate(List.of(), Map.of(), scope)).thenReturn(pdf);
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of());
+        when(reportService.generate(List.of(), Map.of(), Map.of(), scope)).thenReturn(pdf);
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
         inject(api, "clubSeasonFilter", seasonFilter);
         inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", mock(LicensePriceService.class));
 
         Response response = api.exportPdf(3);
 
@@ -433,7 +534,272 @@ class MembershipApiTest {
         assertSame(pdf, response.getEntity());
         assertTrue(response.getHeaderString("Content-Disposition").startsWith("attachment; filename=adhesions-"));
         verify(membershipDao).all(scope);
-        verify(reportService).generate(List.of(), Map.of(), scope);
+        verify(reportService).generate(List.of(), Map.of(), Map.of(), scope);
+    }
+
+    @Test
+    void exportPdfShouldCountPersistedLicenseType() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership membership = new Membership();
+        membership.setId(1);
+        membership.setLicenseType("A");
+        membership.setAmountCents(4000);
+        membership.setBirthDate("2000-01-01");
+        membership.setStatus(MembershipStatus.APPROVED);
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(membership));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A"), new License("B")));
+        when(reportService.generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", mock(LicensePriceService.class));
+
+        Response response = api.exportPdf(null);
+
+        assertEquals(200, response.getStatus());
+        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        assertEquals(1, summaryCaptor.getValue().get("Licence A").count());
+        assertEquals(1, summaryCaptor.getValue().get("Licence A").approvedCount());
+        assertEquals(4000, summaryCaptor.getValue().get("Licence A").amountCents());
+        assertEquals(4000, summaryCaptor.getValue().get("Licence A").approvedAmountCents());
+    }
+
+    @Test
+    void exportPdfShouldCountPersistedLicenseTypeB() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership membership = new Membership();
+        membership.setId(1);
+        membership.setLicenseType("B");
+        membership.setAmountCents(2500);
+        membership.setBirthDate("2000-01-01");
+        membership.setStatus(MembershipStatus.APPROVED);
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(membership));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A"), new License("B")));
+        when(reportService.generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", mock(LicensePriceService.class));
+
+        api.exportPdf(null);
+
+        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        assertEquals(1, summaryCaptor.getValue().get("Licence B").count());
+        assertEquals(1, summaryCaptor.getValue().get("Licence B").approvedCount());
+        assertEquals(2500, summaryCaptor.getValue().get("Licence B").amountCents());
+        assertEquals(2500, summaryCaptor.getValue().get("Licence B").approvedAmountCents());
+    }
+
+    @Test
+    void exportPdfShouldInferLicenseBWhenTypeMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        LicensePriceService licensePriceService = mock(LicensePriceService.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership membership = new Membership();
+        membership.setId(1);
+        membership.setAmountCents(2500);
+        membership.setBirthDate("2000-01-01");
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(membership));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A"), new License("B")));
+        when(licensePriceService.getLicensePrice(org.mockito.ArgumentMatchers.anyString(), eq('B')))
+                .thenReturn(2500);
+        when(reportService.generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", licensePriceService);
+
+        api.exportPdf(null);
+
+        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        assertEquals(1, summaryCaptor.getValue().get("Licence B").count());
+    }
+
+    @Test
+    void exportPdfShouldDefaultLicenseATypeWhenMissingAndAmountUnknown() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        LicensePriceService licensePriceService = mock(LicensePriceService.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership membership = new Membership();
+        membership.setId(1);
+        membership.setAmountCents(16400);
+        membership.setBirthDate("2000-01-01");
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(membership));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A"), new License("B")));
+        when(reportService.generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", licensePriceService);
+
+        api.exportPdf(null);
+
+        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(membership)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        assertEquals(1, summaryCaptor.getValue().get("Licence A").count());
+        assertEquals(16400, summaryCaptor.getValue().get("Licence A").amountCents());
+        assertEquals(0, summaryCaptor.getValue().get("Licence A").approvedAmountCents());
+    }
+
+    @Test
+    void exportPdfShouldSumApprovedAmountOnly() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership approved = new Membership();
+        approved.setId(1);
+        approved.setLicenseType("A");
+        approved.setAmountCents(4000);
+        approved.setBirthDate("2000-01-01");
+        approved.setStatus(MembershipStatus.APPROVED);
+
+        Membership pending = new Membership();
+        pending.setId(2);
+        pending.setLicenseType("B");
+        pending.setAmountCents(2500);
+        pending.setBirthDate("2000-01-01");
+        pending.setStatus(MembershipStatus.PENDING_APPROVAL);
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(approved, pending));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A"), new License("B")));
+        when(reportService.generate(
+                        eq(List.of(approved, pending)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", mock(LicensePriceService.class));
+
+        api.exportPdf(null);
+
+        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(approved, pending)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        assertEquals(4000, summaryCaptor.getValue().get("Licence A").approvedAmountCents());
+        assertEquals(1, summaryCaptor.getValue().get("Licence A").approvedCount());
+        assertEquals(2500, summaryCaptor.getValue().get("Licence B").amountCents());
+        assertEquals(0, summaryCaptor.getValue().get("Licence B").approvedAmountCents());
+        assertEquals(0, summaryCaptor.getValue().get("Licence B").approvedCount());
     }
 
     // --- helpers ---
