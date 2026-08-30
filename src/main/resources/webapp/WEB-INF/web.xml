@@ -52,6 +52,7 @@
                 com.github.gcolin.event.EventAdminApi,
                 com.github.gcolin.event.EventApi,
                 com.github.gcolin.event.EventCsvApi,
+                com.github.gcolin.event.ChessEventApi,
                 com.github.gcolin.desk.EventDeskApi,
                 com.github.gcolin.event.EventLicenceCheckApi,
                 com.github.gcolin.event.EventGroupApi,

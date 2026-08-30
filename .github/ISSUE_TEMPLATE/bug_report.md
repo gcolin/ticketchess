@@ -1,7 +1,7 @@
 ---
-name: Bug report
+name: Rapport de bug
 about: Signaler un bug
-title: "[Bug] "
+title: "[Anomalie] "
 labels: bug
 ---
 

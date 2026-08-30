@@ -59,4 +59,17 @@ public class EventCollectionOptionDao extends AbstractDao<EventCollectionOption>
             return null;
         }
     }
+
+    public EventCollection findByOptionValue(EventCollectionOptionType optionType, String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        TypedQuery<EventCollection> query = em.createQuery(
+                "SELECT o.eventCollection FROM EventCollectionOption o"
+                        + " WHERE o.optionType = :optionType AND o.value = :value",
+                EventCollection.class);
+        query.setParameter("optionType", optionType);
+        query.setParameter("value", value.trim());
+        return query.getResultStream().findFirst().orElse(null);
+    }
 }

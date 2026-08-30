@@ -376,6 +376,20 @@
                                    value="${eventOptions.get("FFE_PASSWORD") != null ? eventOptions.get("FFE_PASSWORD") : ""}" class="form-control" autocomplete="new-password">
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label">${msg.get("event.chessEventUser")}</label>
+                            <input id="event_chess_event_user" type="text" name="chessEventUser"
+                                   value="${eventOptions.get("CHESS_EVENT_USER") != null ? eventOptions.get("CHESS_EVENT_USER") : ""}" class="form-control" autocomplete="username">
+                            <div class="form-text">${msg.get("event.chessEventUser.help")}</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">${msg.get("event.chessEventPassword")}</label>
+                            <input id="event_chess_event_password" type="text" name="chessEventPassword"
+                                   value="${eventOptions.get("CHESS_EVENT_PASSWORD") != null ? eventOptions.get("CHESS_EVENT_PASSWORD") : ""}" class="form-control" autocomplete="new-password">
+                            <div class="form-text">${msg.get("event.chessEventPassword.help")}</div>
+                        </div>
+
                         <div class="mb-3 form-check">
 !{pointageValue = eventOptions.getOrDefault("POINTAGE", "0");}
                             @if("1".equals(pointageValue))

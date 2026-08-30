@@ -18,6 +18,7 @@
 @param Object p
 @param String status
 @param Object type
+@param String chessEventId
 !{i18ntitle = createMode ? msg.get("action.createGeneric") : msg.get("action.edit");}
 !{title = i18ntitle;}
 !{page = "admin";}
@@ -63,6 +64,11 @@
             <div class="col-12 col-md-4 col-lg-3">
               <label class="form-label" for="eventcollection_maxsubscribe">${msg.get("eventcollection.maxSubscribe")}</label>
               <input id="eventcollection_maxsubscribe" type="text" inputmode="numeric" pattern="[0-9]*" name="maxSubscribe" value="@if(eventCollection.getMaxSubscribe() != null)${String.valueOf(eventCollection.getMaxSubscribe())}@endif" placeholder="${msg.get("eventcollection.maxSubscribe.placeholder")}" class="form-control">
+            </div>
+            <div class="col-12 col-md-6 col-lg-4">
+              <label class="form-label" for="eventcollection_chesseventid">${msg.get("eventcollection.chessEventId")}</label>
+              <input id="eventcollection_chesseventid" type="text" name="chessEventId" value="${chessEventId != null ? chessEventId : ""}" class="form-control" placeholder="${msg.get("eventcollection.chessEventId.placeholder")}">
+              <div class="form-text">${msg.get("eventcollection.chessEventId.help")}</div>
             </div>
             <div class="col-12 col-md-auto">
               <button type="submit" class="btn btn-primary">@if(createMode)${msg.get("action.createGeneric")}@else${msg.get("action.save")}@endif</button>

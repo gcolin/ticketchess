@@ -68,7 +68,8 @@ public class EventCollectionApi {
             @FormParam("action") String action,
             @FormParam("id") Integer id,
             @FormParam("name") String name,
-            @FormParam("maxSubscribe") String maxSubscribe) {
+            @FormParam("maxSubscribe") String maxSubscribe,
+            @FormParam("chessEventId") String chessEventId) {
 
         String normalizedMaxSubscribe = normalizeOptionalInteger(maxSubscribe);
         if (maxSubscribe != null && normalizedMaxSubscribe == null) {
@@ -96,6 +97,10 @@ public class EventCollectionApi {
                     eventCollection.getId(),
                     EventCollectionOptionType.MAX_SUBSCRIPTIONS,
                     normalizedMaxSubscribe);
+            eventCollectionOptionService.setOption(
+                    eventCollection.getId(),
+                    EventCollectionOptionType.CHESS_EVENT_ID,
+                    trim(chessEventId));
             invalidateEventCaches();
             registerService.promoteNextPendingSubscriptionInCollection(eventCollection);
             return redirectToEdit(eventCollection.getId(), "save");
@@ -129,6 +134,8 @@ public class EventCollectionApi {
                 eventCollection.getId(),
                 EventCollectionOptionType.MAX_SUBSCRIPTIONS,
                 normalizedMaxSubscribe);
+        eventCollectionOptionService.setOption(
+                eventCollection.getId(), EventCollectionOptionType.CHESS_EVENT_ID, trim(chessEventId));
         invalidateEventCaches();
         return redirectToEdit(eventCollection.getId(), "save");
     }
@@ -140,6 +147,7 @@ public class EventCollectionApi {
         model.put("eventCollection", new EventCollection());
         model.put("createMode", true);
         model.put("error", error);
+        model.put("chessEventId", "");
         return new JteHtml(model, "event/eventcollectionEdit.jte");
     }
 
@@ -162,6 +170,10 @@ public class EventCollectionApi {
         model.put("success", success);
         model.put("error", error);
         model.put("createMode", false);
+        model.put(
+                "chessEventId",
+                eventCollectionOptionService.findOptionValue(
+                        eventCollection.getId(), EventCollectionOptionType.CHESS_EVENT_ID));
         return new JteHtml(model, "event/eventcollectionEdit.jte");
     }
 

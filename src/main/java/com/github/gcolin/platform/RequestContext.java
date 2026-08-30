@@ -13,6 +13,7 @@ import com.github.gcolin.event.EventInfoDao;
 import com.github.gcolin.event.EventOptionDao;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.PapiUlploadService;
+import com.github.gcolin.event.ChessEventService;
 import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.membership.LicenseDao;
@@ -73,6 +74,7 @@ public final class RequestContext {
     private EventGroupFilter eventGroupFilter;
     private PapiService papiService;
     private PapiUlploadService papiUlploadService;
+    private ChessEventService chessEventService;
 
     private RequestContext() {}
 
@@ -523,5 +525,18 @@ public final class RequestContext {
             papiUlploadService = new PapiUlploadService();
         }
         return papiUlploadService;
+    }
+
+    public ChessEventService chessEventService() {
+        if (chessEventService == null) {
+            chessEventService = new ChessEventService(
+                    eventDao(),
+                    eventCollectionDao(),
+                    eventCollectionOptionDao(),
+                    eventOptionDao(),
+                    playerSubscriptionDao(),
+                    AppContext.get().luceneDb());
+        }
+        return chessEventService;
     }
 }

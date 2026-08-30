@@ -1,11 +1,15 @@
-site_name: Ticketchess Documentation
-site_description: Documentation utilisateur et guides operationnels Ticketchess
-site_dir: site
-docs_dir: .
+site_name: Ticket Chess — Documentation
+site_description: Documentation utilisateur et guides opérationnels Ticket Chess
+site_dir: ../../../target/mkdocs-site
+docs_dir: content
 use_directory_urls: false
 
+validation:
+  links:
+    unrecognized_links: ignore
+
 theme:
-  name: mkdocs
+  name: readthedocs
 
 plugins:
   - search
@@ -26,4 +30,6 @@ nav:
   - Accueil: index.md
   - Manuel utilisateur: MANUEL_UTILISATEUR.md
   - Manuel utilisateur (1 page): MANUEL_UTILISATEUR_1PAGE.md
-  - Checklist benevoles guichet: CHECKLIST_BENEVOLES_GUICHET.md
+  - Manuel organisateur: MANUEL_ORGANISATEUR.md
+  - Synchronisation SharlyChess: SYNCHRO_SHARLYCHESS.md
+  - Liste de contrôle pour les bénévoles: CHECKLIST_BENEVOLES_GUICHET.md

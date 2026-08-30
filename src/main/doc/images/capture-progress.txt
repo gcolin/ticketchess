@@ -1,5 +1,0 @@
-start
-step1-ok
-step2-ok
-step3-ok
-step4-ok

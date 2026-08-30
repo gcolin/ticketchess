@@ -66,4 +66,33 @@ public class EventOptionDao extends AbstractDao<EventOption> {
             return null;
         }
     }
+
+    public List<Integer> findEventIdsByChessEventCredentials(String userId, String password) {
+        if (userId == null || userId.isBlank() || password == null) {
+            return List.of();
+        }
+        TypedQuery<Integer> query = em.createQuery(
+                "SELECT u.event.id FROM EventOption u, EventOption p"
+                        + " WHERE u.event.id = p.event.id"
+                        + " AND u.optionType = :userType AND u.value = :userId"
+                        + " AND p.optionType = :passType AND p.value = :password",
+                Integer.class);
+        query.setParameter("userType", EventOptionType.CHESS_EVENT_USER);
+        query.setParameter("passType", EventOptionType.CHESS_EVENT_PASSWORD);
+        query.setParameter("userId", userId.trim());
+        query.setParameter("password", password);
+        return query.getResultList();
+    }
+
+    public boolean chessEventUserExists(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return false;
+        }
+        TypedQuery<Long> query = em.createQuery(
+                "SELECT COUNT(o) FROM EventOption o WHERE o.optionType = :type AND o.value = :userId",
+                Long.class);
+        query.setParameter("type", EventOptionType.CHESS_EVENT_USER);
+        query.setParameter("userId", userId.trim());
+        return query.getSingleResult() > 0;
+    }
 }

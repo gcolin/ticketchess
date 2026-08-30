@@ -14,15 +14,15 @@ Merci de votre intérêt pour Ticket Chess ! Ce guide décrit comment proposer d
 cp params.properties.example params.properties
 ```
 
-Définir `testmode=true` pour le développement local sans OAuth. Ne committez jamais `params.properties`.
+Définissez `testmode=true` pour le développement local sans OAuth. Ne versionnez jamais `params.properties`.
 
-## Workflow
+## Processus de contribution
 
-1. Forkez le dépôt et créez une branche depuis `main` ou `develop`.
+1. Créez un fork du dépôt, puis une branche à partir de `master`.
 2. Apportez vos modifications.
-3. Formatez le code : `mvn spotless:apply`
-4. Lancez les tests : `mvn clean verify -P integration`
-5. Ouvrez une pull request avec une description claire du changement et du contexte.
+3. Lancez les tests : `mvn clean verify -P integration`
+4. Mettez à jour la documentation si le changement affecte les utilisateurs ou les organisateurs (`src/main/doc/`).
+5. Ouvrez une demande d'intégration (*pull request*) avec une description claire du changement et de son contexte.
 
 ## Tests
 
@@ -30,27 +30,37 @@ Définir `testmode=true` pour le développement local sans OAuth. Ne committez j
 |----------|-------------|
 | `mvn test` | Tests unitaires (sans intégration) |
 | `mvn test -P integration` | Suite complète incluant Playwright |
-| `mvn clean verify -P integration` | Équivalent pipeline CI |
+| `mvn clean verify -P integration` | Équivalent à la chaîne d'intégration continue |
 
 Les tests d'intégration nécessitent Playwright (installé automatiquement par Maven lors du premier lancement).
+
+Documentation MkDocs (depuis `src/main/doc`) :
+
+```bash
+pip install mkdocs
+mkdocs build --strict
+```
 
 ## Conventions de code
 
 - Respecter le style existant (packages `com.github.gcolin.*`).
-- Appliquer Spotless avant chaque commit : `mvn spotless:apply`
-- Préférer des changements ciblés — une PR par sujet fonctionnel.
+- Préférer des changements ciblés — une demande d'intégration par sujet fonctionnel.
 - Les messages de commit doivent être explicites (éviter « fix », « wip », etc.).
 
 ## Architecture (aperçu)
 
-- **API REST** : Jersey (`@Path`, `@Inject` via HK2 / `JerseyDiFeature`)
+- **API REST** : Jersey (`@Path`, `@Inject` au moyen de HK2 et de `JerseyDiFeature`)
 - **Templates** : JTE (`src/main/jte/`)
 - **Persistance** : JPA / Hibernate, `RequestContext` par requête
-- **Config** : `params.properties` via `Config`, surchargeable avec `CONFIG_DIR`
+- **Configuration** : `params.properties` chargé par `Config`, avec surcharge possible grâce à `CONFIG_DIR`
 
 ## Sécurité
 
-Si vous découvrez une vulnérabilité, **ne pas** ouvrir d'issue publique. Consultez [SECURITY.md](SECURITY.md).
+Si vous découvrez une vulnérabilité, **n'ouvrez pas** de ticket public. Consultez [SECURITY.md](SECURITY.md).
+
+## Code de conduite
+
+Ce projet adhère au [Contributor Covenant](CODE_OF_CONDUCT.md). En participant, vous vous engagez à respecter ce code.
 
 ## Licence
 

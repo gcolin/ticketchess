@@ -145,6 +145,9 @@ emails/
 
 db.sql
 h2/
+
+# MkDocs build output (legacy path)
+src/main/doc/site/
 .aider*
 /venv/
 

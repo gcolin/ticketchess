@@ -1,4 +1,4 @@
-## Summary
+## Résumé
 
 <!-- Décrivez le changement en 1–3 phrases -->
 
@@ -6,17 +6,16 @@
 
 - [ ] Correction de bug
 - [ ] Nouvelle fonctionnalité
-- [ ] Refactoring
+- [ ] Remaniement du code
 - [ ] Documentation
 - [ ] Tests
 
-## Checklist
+## Liste de contrôle
 
-- [ ] `mvn spotless:apply` exécuté
-- [ ] `mvn clean verify -P integration` passe localement
-- [ ] Aucun secret ni donnée personnelle dans le diff
+- [ ] Les tests (`mvn clean verify -P integration`) passent localement
+- [ ] Aucun secret ni aucune donnée personnelle dans les modifications
 - [ ] Documentation mise à jour si nécessaire
 
-## Test plan
+## Plan de test
 
 <!-- Comment vérifier le changement ? -->

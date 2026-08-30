@@ -1,5 +1,7 @@
 package com.github.gcolin.platform;
 
+import com.github.gcolin.event.EventCollectionOptionType;
+import com.github.gcolin.event.EventOptionType;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
@@ -15,12 +17,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,8 +156,52 @@ public class PersistenceService {
     private void applySchemaPatches() {
         try (Connection connection = dataSource.getConnection()) {
             applyClubSeasonCurrentColumn(connection);
+            if (isH2()) {
+                applyH2EnumColumnPatch(connection, "eventoption", EventOptionType.class);
+                applyH2EnumColumnPatch(connection, "eventcollectionoption", EventCollectionOptionType.class);
+            }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to apply schema patches", e);
+        }
+    }
+
+    private boolean isH2() {
+        return "h2".equalsIgnoreCase(config.getProperties().getProperty("db.type", "h2"));
+    }
+
+    private void applyH2EnumColumnPatch(Connection connection, String table, Class<? extends Enum<?>> enumClass)
+            throws SQLException {
+        String tableKey = table.toUpperCase();
+        if (!tableExists(connection, tableKey) || !columnExists(connection, tableKey, "OPTION_TYPE")) {
+            return;
+        }
+        if (!isH2EnumColumn(connection, tableKey, "OPTION_TYPE")) {
+            return;
+        }
+
+        String enumValues = Arrays.stream(enumClass.getEnumConstants())
+                .map(value -> "'" + value.name() + "'")
+                .collect(Collectors.joining(", "));
+        String sql = "ALTER TABLE " + table + " ALTER COLUMN option_type ENUM(" + enumValues + ") NOT NULL";
+        try (Statement st = connection.createStatement()) {
+            st.execute(sql);
+        }
+        tableColumnsCache.remove(tableKey);
+        logger.info("Updated {}.option_type enum to match {}", table, enumClass.getSimpleName());
+    }
+
+    private boolean isH2EnumColumn(Connection connection, String table, String column) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
+                        + "WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = ? AND COLUMN_NAME = ?")) {
+            ps.setString(1, table);
+            ps.setString(2, column);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return false;
+                }
+                return "ENUM".equalsIgnoreCase(rs.getString(1));
+            }
         }
     }
 

@@ -15,6 +15,7 @@ import com.github.gcolin.event.EventOptionDao;
 import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.PapiUlploadService;
+import com.github.gcolin.event.ChessEventService;
 import com.github.gcolin.event.StatisticsReportService;
 import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
@@ -97,6 +98,7 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(req(RequestContext::eventGroupFilter)).to(EventGroupFilter.class);
                 bindFactory(req(RequestContext::papiService)).to(PapiService.class);
                 bindFactory(req(RequestContext::papiUlploadService)).to(PapiUlploadService.class);
+                bindFactory(req(RequestContext::chessEventService)).to(ChessEventService.class);
                 bindFactory(req(RequestContext::loggedUser)).to(LoggedUser.class);
             }
         });

@@ -1,16 +1,16 @@
 ---
-name: Feature request
+name: Demande de fonctionnalité
 about: Proposer une amélioration
-title: "[Feature] "
+title: "[Fonctionnalité] "
 labels: enhancement
 ---
 
 ## Problème ou besoin
 
-<!-- Quel cas d'usage cette fonctionnalité adresse-t-elle ? -->
+<!-- À quel cas d'usage cette fonctionnalité répond-elle ? -->
 
 ## Solution proposée
 
 ## Alternatives envisagées
 
-## Contexte additionnel
+## Informations complémentaires

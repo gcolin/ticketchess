@@ -1,0 +1,30 @@
+# PostgreSQL pour le développement local.
+# Depuis la racine du dépôt : cd src/docker && docker compose up -d
+#
+# Puis dans params.properties :
+#   db.host=localhost:5432
+#   db.name=ticketchess
+#   db.user=ticket_user
+#   db.pass=ticket_pass
+#   db.type=postgres
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ticketchess-postgres
+    environment:
+      POSTGRES_DB: ticketchess
+      POSTGRES_USER: ticket_user
+      POSTGRES_PASSWORD: ticket_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ticketchess_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticket_user -d ticketchess"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ticketchess_pgdata:
