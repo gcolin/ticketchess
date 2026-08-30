@@ -161,7 +161,7 @@ Voir [src/docker/docker-compose.yml](src/docker/docker-compose.yml) pour les val
 
 ## 7. Exemple de déploiement en production sur un Raspberry Pi
 
-Cet exemple déploie le JAR sur `pi@<hôte-integration>` dans
+Cet exemple déploie le JAR sur `pi@<hôte-integration>` (adresse IP ou nom DNS de votre serveur) dans
 `/mnt/nvme/ticketchess`. Les secrets ne figurent ni dans les commandes ni
 dans le fichier Docker Compose.
 

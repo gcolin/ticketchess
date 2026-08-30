@@ -6,7 +6,10 @@ $ErrorActionPreference = "Stop"
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..\..\..")
 $JarPath = Join-Path $RepoRoot "target\ticket-chess-1.0.0-fat.jar"
-$RemoteHost = "pi@<hôte-integration>"
+$RemoteHost = $env:TICKETCHESS_INTEGRATION_HOST
+if (-not $RemoteHost) {
+    throw "Set TICKETCHESS_INTEGRATION_HOST (e.g. pi@192.168.x.x) before publishing."
+}
 $RemoteDir = "/mnt/nvme/ticketchess/test"
 $Remote = "${RemoteHost}:${RemoteDir}"
 $ResetScript = "${RemoteDir}/reset.sh"

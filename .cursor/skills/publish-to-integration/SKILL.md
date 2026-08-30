@@ -9,7 +9,7 @@ description: >-
 
 # Publish to Integration
 
-Deploy `target/ticket-chess-1.0.0-fat.jar` to the integration server:
+Deploy `target/ticket-chess-1.0.0-fat.jar` to the integration server (set `TICKETCHESS_INTEGRATION_HOST`, e.g. `pi@192.168.x.x`):
 
 ```
 pi@<hôte-integration>:/mnt/nvme/ticketchess/test
@@ -59,7 +59,7 @@ After a successful SCP and reset:
 |-------|--------|
 | JAR missing | Run `mvn package -P pack -DskipTests` |
 | `scp` not found (Windows) | Install OpenSSH Client (Settings → Apps → Optional features) |
-| Host key / auth failure | Ensure SSH key or password access to `pi@<hôte-integration>` works (`ssh pi@<hôte-integration>`) |
-| Network unreachable | Confirm machine is on the same LAN as `<hôte-integration>` |
+| Host key / auth failure | Ensure SSH key or password access to the integration host works (`ssh pi@<hôte-integration>`) |
+| Network unreachable | Confirm machine can reach the integration host on your LAN |
 
 Do not change the remote path or host unless the user explicitly requests it.
