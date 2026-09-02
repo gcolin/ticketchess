@@ -51,6 +51,29 @@ class ClubSeasonFilterTest {
     void resolveShouldReturnAllSeasonsWhenSeasonIdIsZero() {
         SeasonScope scope = filter.resolve(ClubSeasonFilter.ALL_SEASONS_ID);
         assertFalse(scope.isFiltered());
+        assertFalse(scope.isSeasonIdFiltered());
+    }
+
+    @Test
+    void resolveShouldFilterBySeasonIdWhenExplicitSeasonSelected() {
+        ClubSeason season2025 = season(1, "2025", false);
+        season2025.setStartDate(LocalDate.of(2025, 9, 1));
+        season2025.setEndDate(LocalDate.of(2026, 8, 31));
+        when(clubSeasonDao.find(1)).thenReturn(season2025);
+
+        SeasonScope scope = filter.resolve(1);
+
+        assertTrue(scope.isSeasonIdFiltered());
+        assertTrue(scope.isFiltered());
+        assertEquals(1, scope.getSeasonId());
+    }
+
+    @Test
+    void effectiveSeasonIdShouldIgnoreAllSeasonsSelection() {
+        ClubSeason current = season(2, "2026", true);
+        when(clubSeasonDao.findCurrent()).thenReturn(current);
+
+        assertEquals(2, filter.effectiveSeasonId(ClubSeasonFilter.ALL_SEASONS_ID));
     }
 
     private static ClubSeason season(int id, String name, boolean current) {

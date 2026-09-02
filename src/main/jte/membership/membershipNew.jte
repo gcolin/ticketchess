@@ -10,9 +10,13 @@
 @param com.github.gcolin.membership.Membership membership
 @param com.github.gcolin.membership.MembershipStatus[] statuses
 @param java.util.List<com.github.gcolin.membership.License> licenses
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.membershipNew");}
 !{title = i18ntitle;}
 !{java.util.List<com.github.gcolin.membership.License> safeLicenses = licenses != null ? licenses : java.util.List.of();}
+!{java.util.List<com.github.gcolin.platform.SelectItem> safeSeasons = seasons != null ? seasons : java.util.List.of();}
+!{Integer effectiveSeasonId = seasonId;}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -66,6 +70,21 @@
               <select id="membership_status" name="status" class="form-select" required>
                 @for(var memStatus : statuses)
                   <option value="${memStatus.name()}">${msg.get("clubRegister.membershipStatus." + memStatus)}</option>
+                @endfor
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="membership_season" class="form-label">${msg.get("label.season")}</label>
+              <select id="membership_season" name="seasonId" class="form-select" required>
+                @for(var seasonItem : safeSeasons)
+                  @if(!"0".equals(seasonItem.getValue()))
+                    @if(effectiveSeasonId != null && effectiveSeasonId.toString().equals(seasonItem.getValue()))
+                    <option value="${seasonItem.getValue()}" selected>${seasonItem.getLabel()}</option>
+                    @else
+                    <option value="${seasonItem.getValue()}">${seasonItem.getLabel()}</option>
+                    @endif
+                  @endif
                 @endfor
               </select>
             </div>

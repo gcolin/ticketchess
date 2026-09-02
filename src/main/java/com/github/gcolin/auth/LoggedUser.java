@@ -93,6 +93,32 @@ public class LoggedUser implements Serializable {
         return result;
     }
 
+    public double getEventDebt() {
+        if (email == null) {
+            return 0;
+        }
+        String cacheKey = email + ":event";
+        Double result = caches.getDebtCache().getIfPresent(cacheKey);
+        if (result == null) {
+            result = debtService.calculateEventDebt(email);
+            caches.getDebtCache().put(cacheKey, result);
+        }
+        return result;
+    }
+
+    public double getMembershipDebt() {
+        if (email == null) {
+            return 0;
+        }
+        String cacheKey = email + ":membership";
+        Double result = caches.getDebtCache().getIfPresent(cacheKey);
+        if (result == null) {
+            result = debtService.calculateMembershipDebt(email, com.github.gcolin.club.SeasonScope.all());
+            caches.getDebtCache().put(cacheKey, result);
+        }
+        return result;
+    }
+
     public String getUsername() {
         return username;
     }

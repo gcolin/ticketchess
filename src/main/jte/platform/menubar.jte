@@ -30,8 +30,8 @@
                 @if(user.isLogged())
                 <li class="nav-item">
                     <a id="myevents" class="nav-link ${"myevents".equals(page) ? "active" : ""}" href="${contextPath}/event/my">${msg.get("menu.myevents")}
-                        @if(user.getDebt() > 0)
-                            <span class="badge bg-warning text-dark">${String.format(java.util.Locale.US, "%.2f", user.getDebt())} ${msg.get("info.topaid")}</span>
+                        @if(user.getEventDebt() > 0)
+                            <span class="badge bg-warning text-dark">${String.format(java.util.Locale.US, "%.2f", user.getEventDebt())} ${msg.get("info.topaid")}</span>
                         @endif
                     </a>
                 </li>
@@ -51,7 +51,10 @@
                     @if(pageConfig.isClubRegisterEnabled())
                     <li class="nav-item me-2">
                         <a id="registerNav" class="nav-link ${"clubregister".equals(page) ? "active" : ""}" href="${contextPath}/club-register">
-                            ${msg.get("action.registerClub")}
+                            ${msg.get("action.myMembership")}
+                            @if(user.getMembershipDebt() > 0)
+                                <span class="badge bg-warning text-dark">${String.format(java.util.Locale.US, "%.2f", user.getMembershipDebt())} ${msg.get("info.topaid")}</span>
+                            @endif
                         </a>
                     </li>
                     @endif

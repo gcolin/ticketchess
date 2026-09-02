@@ -17,6 +17,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -58,6 +61,15 @@ public class PersistenceService {
         emf = Persistence.createEntityManagerFactory("myPU", props);
         backfillMembershipTimestamps();
         initH2FromPostgresDumpIfNeeded();
+        backfillMembershipSeasonIdsAfterBootstrap();
+    }
+
+    private void backfillMembershipSeasonIdsAfterBootstrap() {
+        try (Connection connection = dataSource.getConnection()) {
+            backfillMembershipSeasonIds(connection);
+        } catch (SQLException e) {
+            logger.warn("Failed to backfill membership season ids after bootstrap", e);
+        }
     }
 
     public EntityManagerFactory getEmf() {
@@ -164,6 +176,8 @@ public class PersistenceService {
         try (Connection connection = dataSource.getConnection()) {
             applyClubSeasonCurrentColumn(connection);
             applyMembershipLicenseTypeColumn(connection);
+            applyMembershipSeasonColumns(connection);
+            applyMembershipPaymentColumn(connection);
             migratePermissionsToRoles(connection);
             if (isH2()) {
                 applyH2EnumColumnPatch(connection, "eventoption", EventOptionType.class);
@@ -345,6 +359,160 @@ public class PersistenceService {
         }
         logger.info("Ensured membership.license_type column exists");
     }
+
+    private void applyMembershipSeasonColumns(Connection connection) throws SQLException {
+        if (isH2()) {
+            if (tableExists(connection, "MEMBERSHIP") && !columnExists(connection, "MEMBERSHIP", "SEASON_ID")) {
+                try (Statement st = connection.createStatement()) {
+                    st.execute("ALTER TABLE membership ADD COLUMN season_id INTEGER");
+                }
+                tableColumnsCache.remove("MEMBERSHIP");
+            }
+            if (tableExists(connection, "MEMBERSHIP_OPTION") && !columnExists(connection, "MEMBERSHIP_OPTION", "SEASON_ID")) {
+                try (Statement st = connection.createStatement()) {
+                    st.execute("ALTER TABLE membership_option ADD COLUMN season_id INTEGER");
+                }
+                tableColumnsCache.remove("MEMBERSHIP_OPTION");
+            }
+        } else {
+            try (Statement st = connection.createStatement()) {
+                st.execute("ALTER TABLE membership ADD COLUMN IF NOT EXISTS season_id INTEGER");
+                st.execute("ALTER TABLE membership_option ADD COLUMN IF NOT EXISTS season_id INTEGER");
+            }
+        }
+        backfillMembershipSeasonIds(connection);
+        logger.info("Ensured membership and membership_option season_id columns exist");
+    }
+
+    private void applyMembershipPaymentColumn(Connection connection) throws SQLException {
+        if (isH2()) {
+            if (!tableExists(connection, "MEMBERSHIP") || columnExists(connection, "MEMBERSHIP", "PAYMENT_ID")) {
+                return;
+            }
+            try (Statement st = connection.createStatement()) {
+                st.execute("ALTER TABLE membership ADD COLUMN payment_id BIGINT");
+            }
+            tableColumnsCache.remove("MEMBERSHIP");
+        } else {
+            try (Statement st = connection.createStatement()) {
+                st.execute("ALTER TABLE membership ADD COLUMN IF NOT EXISTS payment_id BIGINT");
+            }
+        }
+        logger.info("Ensured membership.payment_id column exists");
+    }
+
+    private static final int MEMBERSHIP_PRE_SEASON_MONTHS = 5;
+
+    private void backfillMembershipSeasonIds(Connection connection) throws SQLException {
+        if (!tableExists(connection, "CLUB_SEASON")) {
+            return;
+        }
+        List<SeasonDates> seasons = loadClubSeasons(connection);
+        if (seasons.isEmpty()) {
+            return;
+        }
+        Integer fallbackSeasonId = resolveCurrentSeasonId(connection, seasons);
+        if (tableExists(connection, "MEMBERSHIP") && columnExists(connection, "MEMBERSHIP", "SEASON_ID")) {
+            int updated = backfillTableSeasonId(connection, "membership", seasons, MEMBERSHIP_PRE_SEASON_MONTHS, fallbackSeasonId);
+            if (updated > 0) {
+                logger.info("Backfilled season_id on {} membership row(s)", updated);
+            }
+        }
+        if (tableExists(connection, "MEMBERSHIP_OPTION") && columnExists(connection, "MEMBERSHIP_OPTION", "SEASON_ID")) {
+            int updated = backfillTableSeasonId(connection, "membership_option", seasons, 0, fallbackSeasonId);
+            if (updated > 0) {
+                logger.info("Backfilled season_id on {} membership_option row(s)", updated);
+            }
+        }
+    }
+
+    private Integer resolveCurrentSeasonId(Connection connection, List<SeasonDates> seasons) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT id FROM club_season WHERE is_current = true ORDER BY start_date DESC LIMIT 1")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return seasons.isEmpty() ? null : seasons.get(0).id();
+    }
+
+    private List<SeasonDates> loadClubSeasons(Connection connection) throws SQLException {
+        List<SeasonDates> seasons = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT id, start_date, end_date FROM club_season ORDER BY start_date DESC");
+                ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                LocalDate startDate = rs.getDate("start_date").toLocalDate();
+                LocalDate endDate = rs.getDate("end_date").toLocalDate();
+                seasons.add(new SeasonDates(rs.getInt("id"), startDate, endDate));
+            }
+        }
+        return seasons;
+    }
+
+    private int backfillTableSeasonId(
+            Connection connection,
+            String table,
+            List<SeasonDates> seasons,
+            int preSeasonMonths,
+            Integer fallbackSeasonId)
+            throws SQLException {
+        int updated = 0;
+        String selectSql = "SELECT id, created_at, updated_at, season_id FROM " + table;
+        try (PreparedStatement select = connection.prepareStatement(selectSql);
+                ResultSet rows = select.executeQuery();
+                PreparedStatement update =
+                        connection.prepareStatement("UPDATE " + table + " SET season_id = ? WHERE id = ?")) {
+            while (rows.next()) {
+                LocalDateTime timestamp = coalesceTimestamp(rows.getTimestamp("created_at"), rows.getTimestamp("updated_at"));
+                Integer seasonId = resolveSeasonId(seasons, timestamp, preSeasonMonths);
+                if (seasonId == null) {
+                    seasonId = fallbackSeasonId;
+                }
+                if (seasonId == null) {
+                    continue;
+                }
+                int currentSeasonId = rows.getInt("season_id");
+                if (!rows.wasNull() && currentSeasonId == seasonId) {
+                    continue;
+                }
+                update.setInt(1, seasonId);
+                update.setInt(2, rows.getInt("id"));
+                updated += update.executeUpdate();
+            }
+        }
+        return updated;
+    }
+
+    private static LocalDateTime coalesceTimestamp(Timestamp createdAt, Timestamp updatedAt) {
+        Timestamp value = createdAt != null ? createdAt : updatedAt;
+        return value == null ? null : value.toLocalDateTime();
+    }
+
+    private static Integer resolveSeasonId(List<SeasonDates> seasons, LocalDateTime timestamp, int preSeasonMonths) {
+        if (timestamp == null) {
+            return null;
+        }
+        LocalDate date = timestamp.toLocalDate();
+        for (SeasonDates season : seasons) {
+            if (!date.isBefore(season.startDate()) && !date.isAfter(season.endDate())) {
+                return season.id();
+            }
+        }
+        if (preSeasonMonths > 0) {
+            for (SeasonDates season : seasons) {
+                LocalDate windowStart = season.startDate().minusMonths(preSeasonMonths);
+                if (!date.isBefore(windowStart) && date.isBefore(season.startDate())) {
+                    return season.id();
+                }
+            }
+        }
+        return null;
+    }
+
+    private record SeasonDates(int id, LocalDate startDate, LocalDate endDate) {}
 
     private void migratePermissionsToRoles(Connection connection) throws SQLException {
         if (!tableExists(connection, "USER_AUTHORIZATION")) {

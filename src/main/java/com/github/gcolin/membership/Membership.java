@@ -1,13 +1,18 @@
 package com.github.gcolin.membership;
 
+import com.github.gcolin.club.ClubSeason;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import com.github.gcolin.payment.Payment;
 import jakarta.xml.bind.annotation.XmlAccessType;
 import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -54,6 +59,14 @@ public class Membership extends TimedEntity {
 
     @Column(name = "license_type", length = 10)
     private String licenseType;
+
+    @ManyToOne
+    @JoinColumn(name = "season_id", foreignKey = @ForeignKey(name = "fk_membership_season"))
+    private ClubSeason season;
+
+    @ManyToOne
+    @JoinColumn(name = "payment_id", foreignKey = @ForeignKey(name = "fk_membership_payment"))
+    private Payment payment;
 
     public Membership() {}
 
@@ -158,6 +171,22 @@ public class Membership extends TimedEntity {
 
     public void setLicenseType(String licenseType) {
         this.licenseType = licenseType;
+    }
+
+    public ClubSeason getSeason() {
+        return season;
+    }
+
+    public void setSeason(ClubSeason season) {
+        this.season = season;
+    }
+
+    public Payment getPayment() {
+        return payment;
+    }
+
+    public void setPayment(Payment payment) {
+        this.payment = payment;
     }
 
     public static String normalizeLicenseType(String licenseType) {

@@ -28,6 +28,13 @@
 @param com.github.gcolin.registration.PlayerSubscription sub
 @param Object type
 @param String clubSeasonName
+@param Double membershipDebt
+@param String stripePublic
+@param Boolean ribAvailable
+@param Boolean stripeCardMembershipsEnabled
+@param Boolean bankTransferMembershipsEnabled
+@param Boolean stripeSimulated
+@param java.util.List<com.github.gcolin.payment.Payment> paidMembershipPayments
 !{i18ntitle = msg.get("page.clubRegister");}
 !{title = i18ntitle;}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
@@ -45,6 +52,9 @@
     @endif
     @if(success != null && "confirmation".equals(success))
       <div id="alert" class="alert alert-success" role="alert">${msg.get("clubRegister.membership.confirmationSuccess")}</div>
+    @endif
+    @if(success != null && "payment".equals(success))
+      <div id="alert" class="alert alert-success" role="alert">${msg.get("clubRegister.payment.success")}</div>
     @endif
 
     <div class="bg-body p-3 rounded mb-3" id="help" style="${user.isLogged() && memberships != null && !memberships.isEmpty() && query == null ? "display:none" : ""}">
@@ -157,6 +167,95 @@
     </div>
 
     @if(user.isLogged() && query == null && memberships != null && !memberships.isEmpty())
+      @if(membershipDebt != null && membershipDebt > 0 && memberships.stream().anyMatch(mem -> mem.getStatus() != null && mem.getStatus() == com.github.gcolin.membership.MembershipStatus.APPROVED))
+        <div class="bg-body p-3 rounded mb-3">
+          <h2 class="h5 mb-3">💶 ${msg.get("clubRegister.payment.title")}</h2>
+          <div class="row g-3">
+            @if((stripePublic != null || (stripeSimulated != null ? stripeSimulated : false)) && (stripeCardMembershipsEnabled != null ? stripeCardMembershipsEnabled : true))
+            <div class="col-md-6">
+              <div class="alert alert-primary p-3 h-100">
+                <h6>💳 ${msg.get("payment.cardTitle")}</h6>
+                <p class="text-muted mb-3">${msg.get("payment.cardSecure")}</p>
+                @if(stripePublic != null)
+                <a class="btn btn-primary w-100" href="javascript:void(0)" id="paynow-membership">${msg.get("payment.payByCard")}</a>
+                @else
+                <a class="btn btn-primary w-100" href="${contextPath}/payment/membership/sim" id="paynow-membership">${msg.get("payment.payByCard")}</a>
+                @endif
+              </div>
+            </div>
+            @endif
+
+            @if(ribAvailable && (bankTransferMembershipsEnabled != null ? bankTransferMembershipsEnabled : true))
+            <div class="col-md-6">
+              <div class="alert alert-primary p-3 h-100">
+                <h6>🏦 ${msg.get("payment.bankTransferTitle")}</h6>
+                <p class="text-muted mb-3">
+                  ${msg.get("payment.bankTransferDesc")}
+                  <br />
+                  <small class="text-muted">${msg.get("payment.bankTransferNote")}</small>
+                </p>
+                <a href="${contextPath}/rib" class="btn btn-primary w-100" target="_blank">${msg.get("payment.downloadRIB")}</a>
+              </div>
+            </div>
+            @endif
+          </div>
+
+          <div class="alert alert-info mt-4 mb-0">
+            💡 <strong>${msg.get("payment.otherMeansTitle")}</strong>
+            ${msg.get("clubRegister.payment.otherMeansDesc")}
+            <br>
+            <small class="text-muted">${msg.get("payment.otherMeansNote")}</small>
+          </div>
+        </div>
+        @if(stripePublic != null)
+        <script type="text/javascript">
+          const membershipPayButton = document.getElementById('paynow-membership');
+          if (membershipPayButton) {
+            let stripePromise = null;
+            function loadStripe() {
+              if (stripePromise) return stripePromise;
+              stripePromise = new Promise((resolve, reject) => {
+                if (window.Stripe) { resolve(window.Stripe); return; }
+                const script = document.createElement('script');
+                script.src = "https://js.stripe.com/v3/";
+                script.async = true;
+                script.onload = () => resolve(window.Stripe);
+                script.onerror = () => reject(new Error("${msg.get("error.stripeLoadError")}"));
+                document.head.appendChild(script);
+              });
+              return stripePromise;
+            }
+            membershipPayButton.addEventListener('click', async () => {
+              membershipPayButton.disabled = true;
+              try {
+                const res = await fetch('${contextPath}/payment/membership/initiate', { method: 'POST' });
+                if (!res.ok) {
+                  membershipPayButton.disabled = false;
+                  alert('${msg.get("error.serverError")}');
+                  return;
+                }
+                const data = await res.json();
+                if (!data['sessionId']) {
+                  window.location.reload();
+                  return;
+                }
+                const StripeLib = await loadStripe();
+                const stripe = StripeLib('${stripePublic != null ? stripePublic : ""}');
+                const result = await stripe.redirectToCheckout({ sessionId: data['sessionId'] });
+                if (result.error) {
+                  membershipPayButton.disabled = false;
+                  alert(result.error.message);
+                }
+              } catch (e) {
+                membershipPayButton.disabled = false;
+                alert('${msg.get("error.serverError")}');
+              }
+            });
+          }
+        </script>
+        @endif
+      @endif
+
       <div id="membershipsSection" class="bg-body p-3 rounded mb-3">
         <h2 class="h5 mb-3">${msg.get("clubRegister.myMemberships.title")}</h2>
           @if(memberships.stream().anyMatch(mem -> mem.getStatus() != null && mem.getStatus() == com.github.gcolin.membership.MembershipStatus.PENDING_CONFIRMATION))
@@ -164,7 +263,7 @@
           @elseif(memberships.stream().anyMatch(mem -> mem.getStatus() != null && mem.getStatus() == com.github.gcolin.membership.MembershipStatus.PENDING_APPROVAL))
             <div class="alert alert-info" role="alert"><p class="mb-0">${msg.get("clubRegister.myMemberships.pendingApprovalInfo")}</p></div>
           @elseif(memberships.stream().anyMatch(mem -> mem.getStatus() != null && mem.getStatus() == com.github.gcolin.membership.MembershipStatus.APPROVED))
-            <div class="alert alert-info" role="alert"><p class="mb-0">${msg.get("clubRegister.myMemberships.paymentInfo")}</p></div>
+            <div class="alert alert-info" role="alert"><p class="mb-0">${msg.get("clubRegister.myMemberships.approvedPaymentInfo")}</p></div>
           @endif
         
         <div class="table-responsive">
@@ -209,6 +308,17 @@
             </tbody>
           </table>
         </div>
+
+        @if(paidMembershipPayments != null && !paidMembershipPayments.isEmpty())
+          <div class="mt-3">
+            <span>${msg.get("payment.invoiceReady")}</span>
+            @for(var pp : paidMembershipPayments)
+              <a class="btn btn-outline-success btn-sm ms-2" href="${contextPath}/payment/${pp.getId()}/invoice">
+                📄 ${msg.get("payment.downloadInvoice")} #${pp.getId()}
+              </a>
+            @endfor
+          </div>
+        @endif
       </div>
     @endif
   </main>

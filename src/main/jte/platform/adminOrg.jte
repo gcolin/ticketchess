@@ -257,6 +257,48 @@
               @endif
               <label class="form-check-label" for="stripe.simuled">${msg.get("admin.field.stripeSimuled")}</label>
             </div>
+            <div class="form-check mb-3">
+              @if(cfg.get("stripe.card.events") == null || String.valueOf(cfg.get("stripe.card.events")).isBlank() || "true".equals(String.valueOf(cfg.get("stripe.card.events"))))
+              <input class="form-check-input" type="checkbox" name="stripe.card.events" value="true" id="stripe.card.events" checked>
+              @else
+              <input class="form-check-input" type="checkbox" name="stripe.card.events" value="true" id="stripe.card.events">
+              @endif
+              <label class="form-check-label" for="stripe.card.events">${msg.get("admin.field.stripeCardEvents")}</label>
+            </div>
+            <div class="form-check mb-3">
+              @if(cfg.get("stripe.card.memberships") == null || String.valueOf(cfg.get("stripe.card.memberships")).isBlank() || "true".equals(String.valueOf(cfg.get("stripe.card.memberships"))))
+              <input class="form-check-input" type="checkbox" name="stripe.card.memberships" value="true" id="stripe.card.memberships" checked>
+              @else
+              <input class="form-check-input" type="checkbox" name="stripe.card.memberships" value="true" id="stripe.card.memberships">
+              @endif
+              <label class="form-check-label" for="stripe.card.memberships">${msg.get("admin.field.stripeCardMemberships")}</label>
+            </div>
+            @if(!ribAvailable)
+            <div class="alert alert-warning mb-3" role="alert">
+              ${msg.get("admin.stripeTransferRequiresRibBefore")}
+              <a href="${contextPath}/admin/org?tab=files#files">${msg.get("admin.tab.files")}</a>${msg.get("admin.stripeTransferRequiresRibAfter")}
+            </div>
+            @endif
+            <div class="form-check mb-3">
+              @if(!ribAvailable)
+              <input class="form-check-input" type="checkbox" value="true" id="stripe.transfer.events" disabled>
+              @elseif(cfg.get("stripe.transfer.events") == null || String.valueOf(cfg.get("stripe.transfer.events")).isBlank() || "true".equals(String.valueOf(cfg.get("stripe.transfer.events"))))
+              <input class="form-check-input" type="checkbox" name="stripe.transfer.events" value="true" id="stripe.transfer.events" checked>
+              @else
+              <input class="form-check-input" type="checkbox" name="stripe.transfer.events" value="true" id="stripe.transfer.events">
+              @endif
+              <label class="form-check-label ${!ribAvailable ? "text-body-secondary" : ""}" for="stripe.transfer.events">${msg.get("admin.field.stripeTransferEvents")}</label>
+            </div>
+            <div class="form-check mb-3">
+              @if(!ribAvailable)
+              <input class="form-check-input" type="checkbox" value="true" id="stripe.transfer.memberships" disabled>
+              @elseif(cfg.get("stripe.transfer.memberships") == null || String.valueOf(cfg.get("stripe.transfer.memberships")).isBlank() || "true".equals(String.valueOf(cfg.get("stripe.transfer.memberships"))))
+              <input class="form-check-input" type="checkbox" name="stripe.transfer.memberships" value="true" id="stripe.transfer.memberships" checked>
+              @else
+              <input class="form-check-input" type="checkbox" name="stripe.transfer.memberships" value="true" id="stripe.transfer.memberships">
+              @endif
+              <label class="form-check-label ${!ribAvailable ? "text-body-secondary" : ""}" for="stripe.transfer.memberships">${msg.get("admin.field.stripeTransferMemberships")}</label>
+            </div>
             <button class="btn btn-primary" type="submit">${msg.get("action.save")}</button>
           </form>
         </div>
@@ -265,23 +307,26 @@
           <form method="post" action="${contextPath}/admin/org/config">
             <input type="hidden" name="tab" value="oauth">
             <p class="text-body-secondary">${msg.get("help.adminOauth")}</p>
+            <div class="alert alert-info py-2 mb-3 small">${msg.get("help.adminOauthKeycloak")}</div>
+            <div class="alert alert-info py-2 mb-3 small">${msg.get("help.adminOauthGoogle")}</div>
+            <div class="alert alert-info py-2 mb-3 small">${msg.get("help.adminOauthMicrosoft")}</div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthClientId")}</label>
-              <input class="form-control" name="oauth.clientId" value="${cfg.get("oauth.clientId") != null ? cfg.get("oauth.clientId") : ""}"></div>
+              <input class="form-control" name="oauth.clientId" value="${cfg.get("oauth.clientId") != null ? cfg.get("oauth.clientId") : ""}" placeholder="${msg.get("admin.placeholder.oauthClientId")}"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthClientSecret")}</label>
               @if((secretsConfigured.get("oauth.clientSecret") != null ? secretsConfigured.get("oauth.clientSecret") : false))<span class="badge text-bg-secondary mb-1">${msg.get("admin.secret.configured")}</span>@else<span class="badge text-bg-warning mb-1">${msg.get("admin.secret.missing")}</span>@endif
               <input class="form-control" type="password" name="oauth.clientSecret" autocomplete="new-password" placeholder="${msg.get("admin.secret.placeholder")}"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthAuthorizationUrl")}</label>
-              <input class="form-control" name="oauth.authorizationUrl" value="${cfg.get("oauth.authorizationUrl") != null ? cfg.get("oauth.authorizationUrl") : ""}"></div>
+              <input class="form-control" name="oauth.authorizationUrl" value="${cfg.get("oauth.authorizationUrl") != null ? cfg.get("oauth.authorizationUrl") : ""}" placeholder="${msg.get("admin.placeholder.oauthAuthorizationUrl")}"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthTokenUrl")}</label>
-              <input class="form-control" name="oauth.tokenUrl" value="${cfg.get("oauth.tokenUrl") != null ? cfg.get("oauth.tokenUrl") : ""}"></div>
+              <input class="form-control" name="oauth.tokenUrl" value="${cfg.get("oauth.tokenUrl") != null ? cfg.get("oauth.tokenUrl") : ""}" placeholder="${msg.get("admin.placeholder.oauthTokenUrl")}"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthScope")}</label>
               <input class="form-control" name="oauth.scope" value="${cfg.get("oauth.scope") != null ? cfg.get("oauth.scope") : ""}" placeholder="openid email profile"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthLogoutUrl")}</label>
-              <input class="form-control" name="oauth.logoutUrl" value="${cfg.get("oauth.logoutUrl") != null ? cfg.get("oauth.logoutUrl") : ""}"></div>
+              <input class="form-control" name="oauth.logoutUrl" value="${cfg.get("oauth.logoutUrl") != null ? cfg.get("oauth.logoutUrl") : ""}" placeholder="${msg.get("admin.placeholder.oauthLogoutUrl")}"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthAccountUrl")}</label>
-              <input class="form-control" name="oauth.accountUrl" value="${cfg.get("oauth.accountUrl") != null ? cfg.get("oauth.accountUrl") : ""}"></div>
+              <input class="form-control" name="oauth.accountUrl" value="${cfg.get("oauth.accountUrl") != null ? cfg.get("oauth.accountUrl") : ""}" placeholder="${msg.get("admin.placeholder.oauthAccountUrl")}"></div>
             <div class="mb-3"><label class="form-label">${msg.get("admin.field.oauthUserinfoUrl")}</label>
-              <input class="form-control" name="oauth.userinfoUrl" value="${cfg.get("oauth.userinfoUrl") != null ? cfg.get("oauth.userinfoUrl") : ""}"></div>
+              <input class="form-control" name="oauth.userinfoUrl" value="${cfg.get("oauth.userinfoUrl") != null ? cfg.get("oauth.userinfoUrl") : ""}" placeholder="${msg.get("admin.placeholder.oauthUserinfoUrl")}"></div>
             <button class="btn btn-primary" type="submit">${msg.get("action.save")}</button>
           </form>
         </div>

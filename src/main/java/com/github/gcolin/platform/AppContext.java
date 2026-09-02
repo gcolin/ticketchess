@@ -54,6 +54,7 @@ public final class AppContext {
 
         DbInit dbInit = new DbInit(app.persistence.getEmf());
         dbInit.initLicenses();
+        dbInit.initClubSeason();
         dbInit.initMembershipOptions();
         dbInit.initEvents();
 

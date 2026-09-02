@@ -149,6 +149,7 @@ emails/
 
 db.sql
 h2/
+sql/
 
 # MkDocs build output (legacy path)
 src/main/doc/site/

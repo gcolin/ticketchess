@@ -1,5 +1,6 @@
 package com.github.gcolin.membership;
 
+import com.github.gcolin.club.ClubSeason;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,6 +39,10 @@ public class MembershipOption extends TimedEntity {
     @ManyToOne
     @JoinColumn(name = "license_id", foreignKey = @ForeignKey(name = "fk_membership_option_license"))
     private License license;
+
+    @ManyToOne
+    @JoinColumn(name = "season_id", foreignKey = @ForeignKey(name = "fk_membership_option_season"))
+    private ClubSeason season;
 
     public MembershipOption() {}
 
@@ -87,5 +92,13 @@ public class MembershipOption extends TimedEntity {
 
     public void setLicense(License license) {
         this.license = license;
+    }
+
+    public ClubSeason getSeason() {
+        return season;
+    }
+
+    public void setSeason(ClubSeason season) {
+        this.season = season;
     }
 }

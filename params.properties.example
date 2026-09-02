@@ -32,6 +32,10 @@ stripe.public=
 #stripe.secret=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 stripe.keyprefix=
 stripe.simuled=true
+stripe.card.events=true
+stripe.card.memberships=true
+stripe.transfer.events=true
+stripe.transfer.memberships=true
 
 # Mode développement local : true active /auth-sim (connexion admin sans OAuth).
 # En production : false + OAuth obligatoire + jwt.key personnalisé.

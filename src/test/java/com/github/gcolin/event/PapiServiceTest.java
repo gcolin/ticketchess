@@ -186,6 +186,29 @@ class PapiServiceTest {
     }
 
     @Test
+    void testTournamentRatingUsesRapidForRapidEvents() throws Exception {
+        PapiService service = new PapiService();
+        Method method = PapiService.class.getDeclaredMethod(
+                "tournamentRating", DisplayPlayer.class, com.github.gcolin.event.EventType.class);
+        method.setAccessible(true);
+
+        DisplayPlayer player = new DisplayPlayer();
+        player.setStandardRating("2100F");
+        player.setRapidRating("1950F");
+        player.setBlitzRating("1800F");
+
+        Assertions.assertEquals(
+                "1950F",
+                method.invoke(service, player, com.github.gcolin.event.EventType.RAPID));
+        Assertions.assertEquals(
+                "1800F",
+                method.invoke(service, player, com.github.gcolin.event.EventType.BLITZ));
+        Assertions.assertEquals(
+                "2100F",
+                method.invoke(service, player, com.github.gcolin.event.EventType.STANDARD));
+    }
+
+    @Test
     void testToClassElo() throws Exception {
         PapiService service = new PapiService();
         Method method = PapiService.class.getDeclaredMethod(
@@ -253,7 +276,8 @@ class PapiServiceTest {
         paid.setFirstname(null);
         paid.setCategory("SenM");
         paid.setBirthDate("2012");
-        paid.setRating("1800F");
+        paid.setStandardRating("1800F");
+        paid.setRating("1700N");
         paid.setRapidRating("1700N");
         paid.setBlitzRating("1600");
         paid.setFederation("");
@@ -270,7 +294,8 @@ class PapiServiceTest {
         unpaid.setFirstname("Alice");
         unpaid.setCategory("U10F");
         unpaid.setBirthDate("2020-01-02T10:15:30");
-        unpaid.setRating("1500");
+        unpaid.setStandardRating("1500");
+        unpaid.setRating("1400");
         unpaid.setRapidRating("1400");
         unpaid.setBlitzRating("1300");
         unpaid.setFederation("USA");
@@ -282,6 +307,7 @@ class PapiServiceTest {
         Event event = new Event();
         event.setPriceCents(1000L);
         event.setYoungPriceCents(500L);
+        event.setEventType(com.github.gcolin.event.EventType.RAPID);
 
         Database db = mock(Database.class);
         Table joueurs = mock(Table.class);
@@ -304,6 +330,8 @@ class PapiServiceTest {
         Assertions.assertEquals("ABCDEF", paidRow.get("NrFFE"));
         Assertions.assertEquals("DOE", paidRow.get("Nom"));
         Assertions.assertEquals("John", paidRow.get("Prenom"));
+        Assertions.assertEquals(1700, paidRow.get("Elo"));
+        Assertions.assertEquals(1700, paidRow.get("Rapide"));
         Assertions.assertEquals("FRA", paidRow.get("Federation"));
         Assertions.assertEquals("123456", paidRow.get("FideCode"));
         Assertions.assertEquals("MI", paidRow.get("FideTitre"));
@@ -320,6 +348,8 @@ class PapiServiceTest {
         Map<String, Object> unpaidRow = rows.get(1);
         Assertions.assertEquals("Smith", unpaidRow.get("Nom"));
         Assertions.assertEquals("Alice", unpaidRow.get("Prenom"));
+        Assertions.assertEquals(1400, unpaidRow.get("Elo"));
+        Assertions.assertEquals(1400, unpaidRow.get("Rapide"));
         Assertions.assertEquals("USA", unpaidRow.get("Federation"));
         Assertions.assertEquals(0, unpaidRow.get("InscriptionRegle"));
         Assertions.assertEquals(10d, unpaidRow.get("InscriptionDu"));

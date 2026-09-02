@@ -24,6 +24,7 @@ import com.github.gcolin.membership.MembershipOptionDao;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
 import com.github.gcolin.notification.NotificationDao;
 import com.github.gcolin.notification.Notifications;
+import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.payment.DebtService;
 import com.github.gcolin.payment.PaymentDao;
 import com.github.gcolin.player.CustomPlayerDao;
@@ -471,6 +472,7 @@ public final class RequestContext {
             debtService.setSendMail(AppContext.get().sendMail());
             debtService.setCaches(AppContext.get().caches());
             debtService.setPaymentDao(paymentDao());
+            debtService.setMembershipDao(membershipDao());
         }
         return debtService;
     }

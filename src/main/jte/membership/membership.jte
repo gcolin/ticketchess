@@ -38,7 +38,7 @@
           @template.platform.seasonFilter(msg=msg, seasons=safeSeasons, seasonId=seasonId, selectId="membership_season", autoSubmit=true, inline=true)
         </form>
         <div class="d-flex align-items-center gap-2 ms-md-auto">
-          <a class="btn btn-success" href="${contextPath}/membership/new">${msg.get("action.addMembership")}</a>
+          <a class="btn btn-success" href="${contextPath}/membership/new${seasonId != null ? "?seasonId=" + seasonId : ""}">${msg.get("action.addMembership")}</a>
           @template.membership.membershipPageActionsMenu(contextPath=contextPath, msg=msg, seasonId=seasonId)
         </div>
       `)
@@ -51,6 +51,8 @@
             <th scope="col">${msg.get("label.lastname")}</th>
             <th scope="col">${msg.get("label.firstname")}</th>
             <th scope="col">${msg.get("player.birthdate")}</th>
+            <th scope="col">${msg.get("admin.membership.licenseType")}</th>
+            <th scope="col">${msg.get("label.season")}</th>
             <th scope="col">${msg.get("label.status")}</th>
             <th scope="col">${msg.get("admin.membership.amount")}</th>
             <th scope="col">${msg.get("clubRegister.myMemberships.options")}</th>
@@ -66,6 +68,14 @@
               <td>${mem.getLastname() != null ? mem.getLastname() : ""}</td>
               <td>${mem.getFirstname() != null ? mem.getFirstname() : ""}</td>
               <td>${mem.getBirthDate() != null ? mem.getBirthDate() : ""}</td>
+              <td>
+                @if(mem.getLicenseType() != null && !mem.getLicenseType().isBlank())
+                  ${msg.get("clubRegister.membershipOptions.license" + mem.getLicenseType())}
+                @else
+                  <span class="text-body-secondary">—</span>
+                @endif
+              </td>
+              <td>${mem.getSeason() != null && mem.getSeason().getName() != null ? mem.getSeason().getName() : ""}</td>
               <td>${mem.getStatus() != null ? msg.get("clubRegister.membershipStatus." + mem.getStatus()) : ""}</td>
               <td>${mem.getAmountCents() / 100.0} €</td>
               <td>
@@ -85,7 +95,7 @@
             </tr>
           @else
             <tr>
-              <td colspan="10" class="text-center text-body-secondary">${msg.get("info.noMembership")}</td>
+              <td colspan="12" class="text-center text-body-secondary">${msg.get("info.noMembership")}</td>
             </tr>
           @endfor
         </tbody>

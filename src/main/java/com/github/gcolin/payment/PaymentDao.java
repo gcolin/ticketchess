@@ -47,6 +47,26 @@ public class PaymentDao extends AbstractDao<Payment> {
         return query.getResultStream().findFirst().orElse(null);
     }
 
+    public Payment findPendingEventPayment(String email) {
+        TypedQuery<Payment> query = em.createQuery(
+                "SELECT p FROM Payment p WHERE p.userEmail = :email AND p.status = :status"
+                        + " AND EXISTS (SELECT s FROM PlayerSubscription s WHERE s.payment = p)",
+                Payment.class);
+        query.setParameter("email", email);
+        query.setParameter("status", PaymentStatus.PENDING);
+        return query.getResultStream().findFirst().orElse(null);
+    }
+
+    public Payment findPendingMembershipPayment(String email) {
+        TypedQuery<Payment> query = em.createQuery(
+                "SELECT p FROM Payment p WHERE p.userEmail = :email AND p.status = :status"
+                        + " AND EXISTS (SELECT m FROM Membership m WHERE m.payment = p)",
+                Payment.class);
+        query.setParameter("email", email);
+        query.setParameter("status", PaymentStatus.PENDING);
+        return query.getResultStream().findFirst().orElse(null);
+    }
+
     public List<Payment> findAllPaidNotFreeByUser(String email) {
         TypedQuery<Payment> query = em.createQuery(
                 "SELECT e FROM Payment e where e.userEmail = :email AND e.status = :status AND e.type <> :type ORDER BY e.id DESC",
@@ -54,6 +74,19 @@ public class PaymentDao extends AbstractDao<Payment> {
         query.setParameter("email", email);
         query.setParameter("status", PaymentStatus.PAID);
         query.setParameter("type", PaymentType.FREE);
+        return query.getResultList();
+    }
+
+    public List<Payment> findAllPaidWithMembershipsByUser(String email) {
+        TypedQuery<Payment> query = em.createQuery(
+                "SELECT DISTINCT p FROM Payment p WHERE p.userEmail = :email AND p.status = :status"
+                        + " AND p.type <> :freeType"
+                        + " AND EXISTS (SELECT m FROM Membership m WHERE m.payment = p)"
+                        + " ORDER BY p.id DESC",
+                Payment.class);
+        query.setParameter("email", email);
+        query.setParameter("status", PaymentStatus.PAID);
+        query.setParameter("freeType", PaymentType.FREE);
         return query.getResultList();
     }
 
@@ -109,7 +142,9 @@ public class PaymentDao extends AbstractDao<Payment> {
     public PagedList<Payment> pageSearch(String search, int start, int pageSize, SeasonScope scope) {
         String term = "%" + search.toLowerCase() + "%";
         String jpql = "SELECT DISTINCT p FROM Payment p WHERE (LOWER(p.userEmail) LIKE :term"
-                + " OR EXISTS (SELECT s FROM PlayerSubscription s WHERE s.payment = p AND LOWER(s.nrFfe) LIKE :term))"
+                + " OR EXISTS (SELECT s FROM PlayerSubscription s WHERE s.payment = p AND LOWER(s.nrFfe) LIKE :term)"
+                + " OR EXISTS (SELECT m FROM Membership m WHERE m.payment = p AND (LOWER(m.nrFfe) LIKE :term"
+                + " OR LOWER(m.lastname) LIKE :term OR LOWER(m.firstname) LIKE :term)))"
                 + paymentCreatedAtSeasonAnd("p", scope)
                 + " ORDER BY p.id DESC";
         TypedQuery<Payment> query = em.createQuery(jpql, Payment.class);
@@ -120,7 +155,9 @@ public class PaymentDao extends AbstractDao<Payment> {
         List<Payment> list = query.getResultList();
 
         String countJpql = "SELECT COUNT(DISTINCT p) FROM Payment p WHERE (LOWER(p.userEmail) LIKE :term"
-                + " OR EXISTS (SELECT s FROM PlayerSubscription s WHERE s.payment = p AND LOWER(s.nrFfe) LIKE :term))"
+                + " OR EXISTS (SELECT s FROM PlayerSubscription s WHERE s.payment = p AND LOWER(s.nrFfe) LIKE :term)"
+                + " OR EXISTS (SELECT m FROM Membership m WHERE m.payment = p AND (LOWER(m.nrFfe) LIKE :term"
+                + " OR LOWER(m.lastname) LIKE :term OR LOWER(m.firstname) LIKE :term)))"
                 + paymentCreatedAtSeasonAnd("p", scope);
         TypedQuery<Long> countQuery = em.createQuery(countJpql, Long.class);
         countQuery.setParameter("term", term);

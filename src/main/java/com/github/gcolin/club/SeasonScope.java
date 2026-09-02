@@ -18,6 +18,10 @@ public final class SeasonScope {
         return new SeasonScope(null, null, null);
     }
 
+    public static SeasonScope forSeasonId(Integer seasonId) {
+        return new SeasonScope(null, null, seasonId);
+    }
+
     public static SeasonScope of(ClubSeason season) {
         return new SeasonScope(
                 season.getStartDate().atStartOfDay(),
@@ -27,6 +31,10 @@ public final class SeasonScope {
 
     public boolean isFiltered() {
         return start != null && end != null;
+    }
+
+    public boolean isSeasonIdFiltered() {
+        return seasonId != null;
     }
 
     public LocalDateTime getStart() {

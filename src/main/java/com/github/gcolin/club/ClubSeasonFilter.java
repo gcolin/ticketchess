@@ -18,7 +18,7 @@ public class ClubSeasonFilter {
     }
 
     public Integer effectiveSeasonId(Integer seasonId) {
-        if (seasonId != null) {
+        if (seasonId != null && seasonId != ALL_SEASONS_ID) {
             return seasonId;
         }
         ClubSeason current = clubSeasonDao.findCurrent();
@@ -34,7 +34,7 @@ public class ClubSeasonFilter {
             if (season != null) {
                 return SeasonScope.of(season);
             }
-            return SeasonScope.all();
+            return SeasonScope.forSeasonId(seasonId);
         }
         ClubSeason current = clubSeasonDao.findCurrent();
         if (current != null) {
@@ -74,7 +74,11 @@ public class ClubSeasonFilter {
 
     public void addToModel(Map<String, Object> model, Integer seasonId) {
         model.put("seasons", buildSelectItems(seasonId));
-        model.put("seasonId", effectiveSeasonId(seasonId));
+        if (seasonId != null) {
+            model.put("seasonId", seasonId);
+        } else {
+            model.put("seasonId", effectiveSeasonId(null));
+        }
         model.put("allSeasonsSelected", seasonId != null && seasonId == ALL_SEASONS_ID);
     }
 

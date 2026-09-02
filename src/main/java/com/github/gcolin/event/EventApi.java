@@ -288,6 +288,8 @@ public class EventApi {
         model.put("toggleDisplayUrl", toggleDisplayUrl);
         model.put("stripePublic", Config.getStripePublicKey(properties));
         model.put("stripeSimulated", Config.isStripeSimulated(properties));
+        model.put("stripeCardEventsEnabled", Config.isStripeCardEnabledForEvents(properties));
+        model.put("bankTransferEventsEnabled", Config.isBankTransferEnabledForEvents(properties));
         model.put("success", success);
         model.put("paidPayments", paymentDao.findAllPaidNotFreeByUser(loggerUser.getEmail()));
 

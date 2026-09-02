@@ -1,5 +1,6 @@
 package com.github.gcolin.platform;
 
+import com.github.gcolin.club.ClubSeason;
 import com.github.gcolin.player.CustomPlayer;
 import com.github.gcolin.event.Event;
 import com.github.gcolin.event.EventGroup;
@@ -227,6 +228,23 @@ public class DbInit {
 
             em.getTransaction().commit();
             logger.info("database initialized with membership options");
+        }
+    }
+
+    public void initClubSeason() {
+        EntityManager em = emf.createEntityManager();
+        Long count = em.createQuery("select count(s) from ClubSeason s", Long.class).getSingleResult();
+        if (count == 0) {
+            em.getTransaction().begin();
+            int year = LocalDate.now().getMonthValue() >= 9 ? LocalDate.now().getYear() : LocalDate.now().getYear() - 1;
+            ClubSeason season = new ClubSeason();
+            season.setName(year + "/" + (year + 1));
+            season.setStartDate(LocalDate.of(year, 9, 1));
+            season.setEndDate(LocalDate.of(year + 1, 8, 31));
+            season.setCurrent(true);
+            em.persist(season);
+            em.getTransaction().commit();
+            logger.info("database initialized with default club season {}", season.getName());
         }
     }
 

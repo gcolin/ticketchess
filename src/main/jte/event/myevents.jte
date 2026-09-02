@@ -16,6 +16,8 @@
 @param java.util.List<com.github.gcolin.event.Event> events
 @param java.util.List<com.github.gcolin.event.Event> pendingEvents
 @param java.util.List<com.github.gcolin.payment.Payment> paidPayments
+@param Boolean bankTransferEventsEnabled
+@param Boolean stripeCardEventsEnabled
 @param String stripePublic
 @param Boolean stripeSimulated
 @param boolean showFinished
@@ -58,12 +60,12 @@
             </p>
             </div>
           @endif
-          @if(user.getDebt() > 0)
+          @if(user.getEventDebt() > 0)
             <div class="bg-body p-3 rounded mb-3">
                 <h2>💶
                 ${msg.get("info.payment")}</h2>
                 <div class="row g-3">
-                  @if(stripePublic != null || (stripeSimulated != null ? stripeSimulated : false))
+                  @if((stripePublic != null || (stripeSimulated != null ? stripeSimulated : false)) && (stripeCardEventsEnabled != null ? stripeCardEventsEnabled : true))
                   <!-- Paiement par carte -->
                   <div class="col-md-6">
                     <div class="alert alert-primary p-3 h-100">
@@ -84,7 +86,7 @@
                   </div>
                   @endif
 
-                  @if(ribAvailable)
+                  @if(ribAvailable && (bankTransferEventsEnabled != null ? bankTransferEventsEnabled : true))
                   <!-- Paiement par RIB -->
                   <div class="col-md-6">
                     <div class="alert alert-primary p-3 h-100">

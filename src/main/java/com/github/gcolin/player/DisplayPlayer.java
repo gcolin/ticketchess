@@ -12,6 +12,7 @@ public class DisplayPlayer implements IPlayer {
     private LocalDateTime attendanceAt;
     private int subId;
     private String rating;
+    private String standardRating;
     private String rapidRating;
     private String blitzRating;
     private String birthDate;
@@ -53,6 +54,9 @@ public class DisplayPlayer implements IPlayer {
         setClub(player.getClub());
         setFide(player.getFide());
         setRefffe(player.getRefffe());
+        setStandardRating(player.getRating());
+        setRapidRating(player.getRapidRating());
+        setBlitzRating(player.getBlitzRating());
         if (club == null) {
             club = federation;
         }
@@ -96,6 +100,14 @@ public class DisplayPlayer implements IPlayer {
 
     public void setRating(String rating) {
         this.rating = rating;
+    }
+
+    public String getStandardRating() {
+        return standardRating;
+    }
+
+    public void setStandardRating(String standardRating) {
+        this.standardRating = standardRating;
     }
 
     public void setRating(IPlayer p, EventType eventType) {

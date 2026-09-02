@@ -2,9 +2,14 @@ package com.github.gcolin.payment;
 
 import com.github.gcolin.auth.LoggedOnly;
 import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.EventPaymentsReportService;
+import com.github.gcolin.membership.Membership;
+import com.github.gcolin.membership.MembershipDao;
+import com.github.gcolin.membership.MembershipOptionSubscription;
+import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
@@ -48,6 +53,7 @@ import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.StringWriter;
 import java.net.URI;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,6 +101,15 @@ public class PaymentApi {
     private ClubSeasonFilter clubSeasonFilter;
 
     @Inject
+    private ClubSeasonDao clubSeasonDao;
+
+    @Inject
+    private MembershipDao membershipDao;
+
+    @Inject
+    private MembershipOptionSubscriptionDao membershipOptionSubscriptionDao;
+
+    @Inject
     private EventPaymentsReportService eventPaymentsReportService;
 
     @GET
@@ -130,6 +145,16 @@ public class PaymentApi {
                 }
                 IPlayer player = find.player(sub.getNrFfe(), null);
                 String fullName = buildFullName(player);
+                if (!fullName.isBlank()) {
+                    names.add(fullName);
+                }
+            }
+            List<Membership> memberships = membershipDao.findByPaymentId(payment.getId().intValue());
+            for (Membership membership : memberships) {
+                if (membership.getNrFfe() != null && !membership.getNrFfe().isBlank()) {
+                    licences.add(membership.getNrFfe().trim());
+                }
+                String fullName = buildMembershipFullName(membership);
                 if (!fullName.isBlank()) {
                     names.add(fullName);
                 }
@@ -245,6 +270,15 @@ public class PaymentApi {
                 player.getFirstname() == null ? "" : player.getFirstname().trim();
         String name = player.getName() == null ? "" : player.getName().trim();
         return (firstname + " " + name).trim();
+    }
+
+    private String buildMembershipFullName(Membership membership) {
+        if (membership == null) {
+            return "";
+        }
+        String firstname = membership.getFirstname() == null ? "" : membership.getFirstname().trim();
+        String lastname = membership.getLastname() == null ? "" : membership.getLastname().trim();
+        return (firstname + " " + lastname).trim();
     }
 
     private Long resolveAmountCents(PlayerSubscription subscription) {
@@ -394,7 +428,7 @@ public class PaymentApi {
     @LoggedOnly
     @Transactional
     public String initiate() {
-        double amount = debtService.calculateDebt(loggerUser.getEmail());
+        double amount = debtService.calculateEventDebt(loggerUser.getEmail());
 
         if (amount == 0) {
             throw new WebApplicationException("you have nothing to pay", Response.Status.BAD_GATEWAY);
@@ -404,11 +438,15 @@ public class PaymentApi {
             throw new WebApplicationException("amount too small for card payment", Response.Status.BAD_GATEWAY);
         }
 
+        if (!Config.isStripeCardEnabledForEvents(properties)) {
+            throw new WebApplicationException("card payment disabled for events", Response.Status.BAD_GATEWAY);
+        }
+
         if (Config.isStripeSimulated(properties)) {
             throw new WebApplicationException("card payment simulation enabled", Response.Status.BAD_GATEWAY);
         }
 
-        Payment existing = paymentService.findPendingByUser(loggerUser.getEmail());
+        Payment existing = paymentService.findPendingEventPayment(loggerUser.getEmail());
         if (existing != null) {
             try {
                 Session session = Session.retrieve(existing.getStripeSessionId(), stripeRequestOptions());
@@ -467,6 +505,7 @@ public class PaymentApi {
                         .build()
                         .toString()) // page de retour
                 .putMetadata("email", loggerUser.getEmail())
+                .putMetadata("scope", "event")
                 .setCustomerEmail(loggerUser.getEmail())
                 .build();
 
@@ -497,6 +536,10 @@ public class PaymentApi {
     @LoggedOnly
     @Transactional
     public Response sim(@QueryParam("status") String status) {
+        if (!Config.isStripeCardEnabledForEvents(properties)) {
+            throw new WebApplicationException(Response.Status.FORBIDDEN);
+        }
+
         if (!Config.isStripeSimulated(properties)) {
             throw new WebApplicationException(Response.Status.FORBIDDEN);
         }
@@ -504,25 +547,197 @@ public class PaymentApi {
         String email = loggerUser.getEmail();
         String simSession = "sim-session-" + email;
         String simIntent = "sim-intent-" + email;
-        double amount = debtService.calculateDebt(email);
+        double amount = debtService.calculateEventDebt(email);
         if (status != null) {
             UriBuilder redirectBuilder =
                     uriInfo.getBaseUriBuilder().path("event").path("my");
             if (status.equals("paid")) {
+                Payment existing = paymentService.findPendingEventPayment(email);
+                if (existing == null) {
+                    existing = debtService.createPayment(email, amount);
+                    existing.setStripeIntent(simIntent);
+                    existing.setStripeSessionId(simSession);
+                    paymentService.persist(existing);
+                } else if (existing.getStripeSessionId() != null) {
+                    simSession = existing.getStripeSessionId();
+                }
                 debtService.payment(amount, email, simSession, simIntent);
                 redirectBuilder.queryParam("success", "payment");
             }
             return Response.seeOther(redirectBuilder.build()).build();
         }
 
-        Payment existing = paymentService.findPendingByUser(email);
+        Payment existing = paymentService.findPendingEventPayment(email);
         if (existing == null) {
             existing = debtService.createPayment(email, amount);
             existing.setStripeIntent(simIntent);
             existing.setStripeSessionId(simSession);
             paymentService.persist(existing);
         }
-        return Response.ok(new JteHtml(Collections.emptyMap(), "payment/paymentStatus.jte"))
+        return Response.ok(new JteHtml(
+                        Map.of("simulationPath", "/payment/sim"),
+                        "payment/paymentStatus.jte"))
+                .build();
+    }
+
+    @POST
+    @Produces(MediaType.APPLICATION_JSON + ";charset=UTF-8")
+    @Path("membership/initiate")
+    @LoggedOnly
+    @Transactional
+    public String membershipInitiate() {
+        SeasonScope scope = clubSeasonDao.findCurrent() != null
+                ? SeasonScope.of(clubSeasonDao.findCurrent())
+                : SeasonScope.all();
+        double amount = debtService.calculateMembershipDebt(loggerUser.getEmail(), scope);
+
+        if (amount == 0) {
+            throw new WebApplicationException("you have nothing to pay", Response.Status.BAD_GATEWAY);
+        }
+
+        if (amount < 5) {
+            throw new WebApplicationException("amount too small for card payment", Response.Status.BAD_GATEWAY);
+        }
+
+        if (!Config.isStripeCardEnabledForMemberships(properties)) {
+            throw new WebApplicationException("card payment disabled for memberships", Response.Status.BAD_GATEWAY);
+        }
+
+        if (Config.isStripeSimulated(properties)) {
+            throw new WebApplicationException("card payment simulation enabled", Response.Status.BAD_GATEWAY);
+        }
+
+        Payment existing = paymentService.findPendingMembershipPayment(loggerUser.getEmail());
+        if (existing != null) {
+            try {
+                Session session = Session.retrieve(existing.getStripeSessionId(), stripeRequestOptions());
+                String status = session.getStatus();
+                String paymentStatus = session.getPaymentStatus();
+
+                if ("open".equals(status)) {
+                    logger.info("membership session exists payment {} for {} euros", loggerUser.getEmail(), amount);
+                    return ("{\"sessionId\":\"" + existing.getStripeSessionId() + "\"}");
+                }
+
+                if ("complete".equals(status) && "paid".equals(paymentStatus)) {
+                    debtService.payment(
+                            amount, loggerUser.getEmail(), existing.getStripeSessionId(), session.getPaymentIntent());
+                    return "{}";
+                }
+
+                if ("expired".equals(status) || "complete".equals(status)) {
+                    existing.setStatus(PaymentStatus.EXPIRED);
+                    paymentService.persist(existing);
+                }
+            } catch (StripeException ex) {
+                logger.info("error while getting previous membership session " + existing.getStripeSessionId(), ex);
+            }
+        }
+
+        logger.info("start membership payment {} for {} euros", loggerUser.getEmail(), amount);
+
+        long amountCents = (long) (amount * 100);
+
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .addLineItem(SessionCreateParams.LineItem.builder()
+                        .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
+                                .setCurrency("eur")
+                                .setUnitAmount(amountCents)
+                                .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                        .setName("Adhesion " + loggerUser.getUsername())
+                                        .build())
+                                .build())
+                        .setQuantity(1L)
+                        .build())
+                .setSuccessUrl(uriInfo.getBaseUriBuilder()
+                                .path("payment")
+                                .path("success")
+                                .build()
+                                .toString() + "?session_id={CHECKOUT_SESSION_ID}")
+                .setCancelUrl(uriInfo.getBaseUriBuilder()
+                        .path("club-register")
+                        .build()
+                        .toString())
+                .putMetadata("email", loggerUser.getEmail())
+                .putMetadata("scope", "membership")
+                .setCustomerEmail(loggerUser.getEmail())
+                .build();
+
+        Payment payment = debtService.createMembershipPayment(loggerUser.getEmail(), amount, scope);
+
+        try {
+            String paymentPrefix = properties.getProperty("stripe.keyprefix", "p");
+            RequestOptions options = RequestOptions.builder()
+                    .setApiKey(properties.getProperty("stripe.secret"))
+                    .setIdempotencyKey(paymentPrefix + payment.getId())
+                    .build();
+
+            Session session = Session.create(params, options);
+
+            payment.setStripeSessionId(session.getId());
+            payment.setStripeIntent(session.getPaymentIntent());
+            paymentService.persist(payment);
+
+            return "{\"sessionId\":\"" + session.getId() + "\"}";
+        } catch (StripeException e) {
+            logger.error(e.getMessage(), e);
+            throw new WebApplicationException(e);
+        }
+    }
+
+    @GET
+    @Path("membership/sim")
+    @LoggedOnly
+    @Transactional
+    public Response membershipSim(@QueryParam("status") String status) {
+        if (!Config.isStripeCardEnabledForMemberships(properties)) {
+            throw new WebApplicationException(Response.Status.FORBIDDEN);
+        }
+
+        if (!Config.isStripeSimulated(properties)) {
+            throw new WebApplicationException(Response.Status.FORBIDDEN);
+        }
+
+        SeasonScope scope = clubSeasonDao.findCurrent() != null
+                ? SeasonScope.of(clubSeasonDao.findCurrent())
+                : SeasonScope.all();
+        String email = loggerUser.getEmail();
+        String simSession = "sim-membership-session-" + email;
+        String simIntent = "sim-membership-intent-" + email;
+        double amount = debtService.calculateMembershipDebt(email, scope);
+        if (status != null) {
+            UriBuilder redirectBuilder = uriInfo.getBaseUriBuilder().path("club-register");
+            if (status.equals("paid")) {
+                Payment existing = paymentService.findPendingMembershipPayment(email);
+                if (existing == null) {
+                    existing = debtService.createMembershipPayment(email, amount, scope);
+                    existing.setStripeIntent(simIntent);
+                    existing.setStripeSessionId(simSession);
+                    paymentService.persist(existing);
+                } else if (existing.getStripeSessionId() == null) {
+                    existing.setStripeIntent(simIntent);
+                    existing.setStripeSessionId(simSession);
+                    paymentService.persist(existing);
+                } else {
+                    simSession = existing.getStripeSessionId();
+                }
+                debtService.payment(amount, email, simSession, simIntent);
+                redirectBuilder.queryParam("success", "payment");
+            }
+            return Response.seeOther(redirectBuilder.build()).build();
+        }
+
+        Payment existing = paymentService.findPendingMembershipPayment(email);
+        if (existing == null) {
+            existing = debtService.createMembershipPayment(email, amount, scope);
+            existing.setStripeIntent(simIntent);
+            existing.setStripeSessionId(simSession);
+            paymentService.persist(existing);
+        }
+        return Response.ok(new JteHtml(
+                        Map.of("simulationPath", "/payment/membership/sim"),
+                        "payment/paymentStatus.jte"))
                 .build();
     }
 
@@ -543,14 +758,21 @@ public class PaymentApi {
             throw new WebApplicationException("Erreur Stripe : " + e.getMessage());
         }
         String email = session.getMetadata().get("email");
+        String scope = session.getMetadata().get("scope");
+        if (scope == null || scope.isBlank()) {
+            scope = "event";
+        }
 
         logger.info(
-                "[email={}] Stripe payment {} euros – status: {}",
+                "[email={}] Stripe payment {} euros – status: {} scope: {}",
                 email,
                 session.getAmountTotal() / 100,
-                session.getPaymentStatus());
+                session.getPaymentStatus(),
+                scope);
 
-        UriBuilder redirectBuilder = uriInfo.getBaseUriBuilder().path("event").path("my");
+        UriBuilder redirectBuilder = "membership".equals(scope)
+                ? uriInfo.getBaseUriBuilder().path("club-register")
+                : uriInfo.getBaseUriBuilder().path("event").path("my");
         if ("paid".equals(session.getPaymentStatus())) {
             double amount = session.getAmountTotal() / 100;
             debtService.payment(amount, email, sessionId, session.getPaymentIntent());
@@ -598,38 +820,25 @@ public class PaymentApi {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         List<Payment> payments = paymentService.all(scope);
         StringWriter writer = new StringWriter();
-        // Header CSV with detailed subscription info
-        writer.append("id;type;status;amount;event_name;player_name;player_license\n");
+        writer.append(
+                "id;type;status;amount;line_type;event_name;membership_name;license_type;option_labels;player_name;player_license\n");
         for (Payment p : payments) {
             List<PlayerSubscription> subs =
                     playerSubscriptionService.findByPaymentId(p.getId().intValue());
-            if (subs.isEmpty()) {
-                // No subscription, leave fields empty
+            List<Membership> memberships = membershipDao.findByPaymentId(p.getId().intValue());
+            if (subs.isEmpty() && memberships.isEmpty()) {
                 writer.append(String.valueOf(p.getId())).append(";");
                 writer.append(String.valueOf(p.getType())).append(";");
                 writer.append(String.valueOf(p.getStatus())).append(";");
                 writer.append(p.getAmountCents() == null ? "null" : String.valueOf(ServiceUtils.toEuros(p.getAmountCents())))
-                        .append(";");
-                writer.append(";;;").append("\n");
+                        .append(";;;;;;").append("\n");
             } else {
                 for (PlayerSubscription sub : subs) {
-                    writer.append(String.valueOf(p.getId())).append(";");
-                    writer.append(String.valueOf(p.getType())).append(";");
-                    writer.append(String.valueOf(p.getStatus())).append(";");
-                    writer.append(
-                                    p.getAmountCents() == null
-                                            ? "null"
-                                            : String.valueOf(ServiceUtils.toEuros(p.getAmountCents())))
-                            .append(";");
-                    writer.append(sub.getEvent() != null ? sub.getEvent().getName() : "")
-                            .append(";");
-                    // Player first/last names are not stored; placeholders
-                    IPlayer player = find.player(sub.getNrFfe(), null);
-                    if (player != null) {
-                        writer.append(player.getFullname());
-                    }
-                    writer.append(";");
-                    writer.append(sub.getNrFfe() != null ? sub.getNrFfe() : "").append("\n");
+                    appendCsvDetailLine(writer, p, "event", sub.getEvent() != null ? sub.getEvent().getName() : "",
+                            "", "", "", sub);
+                }
+                for (Membership membership : memberships) {
+                    appendCsvMembershipDetailLine(writer, p, membership);
                 }
             }
         }
@@ -645,7 +854,9 @@ public class PaymentApi {
     @RequireRole(RoleCode.TRESORIER)
     public Response exportAccountingPdf(@QueryParam("seasonId") Integer seasonId) {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
-        byte[] pdf = eventPaymentsReportService.generateForAccounting(paymentService.findPaid(scope), scope);
+        List<Payment> payments = paymentService.findPaid(scope);
+        List<EventPaymentsReportService.AccountingDetailRow> rows = buildAccountingDetailRows(payments);
+        byte[] pdf = eventPaymentsReportService.generateForAccountingDetails(rows, scope);
         return Response.ok(pdf)
                 .header(
                         "Content-Disposition",
@@ -804,9 +1015,16 @@ public class PaymentApi {
         }
 
         List<PlayerSubscription> subs = playerSubscriptionService.findByPaymentId(id);
+        List<Membership> memberships = membershipDao.findByPaymentId(id);
+        Map<Integer, List<MembershipOptionSubscription>> optionSubscriptions = memberships.isEmpty()
+                ? Map.of()
+                : membershipOptionSubscriptionDao
+                        .findByMembershipIds(memberships.stream().map(Membership::getId).toList())
+                        .stream()
+                        .collect(Collectors.groupingBy(s -> s.getMembership().getId()));
 
         try {
-            byte[] pdf = generateInvoicePdf(payment, subs);
+            byte[] pdf = generateInvoicePdf(payment, subs, memberships, optionSubscriptions);
             return Response.ok(pdf)
                     .header("Content-Disposition", "attachment; filename=facture-" + id + ".pdf")
                     .build();
@@ -816,7 +1034,121 @@ public class PaymentApi {
         }
     }
 
-    private byte[] generateInvoicePdf(Payment payment, List<PlayerSubscription> subs) throws Exception {
+    private void appendCsvDetailLine(
+            StringWriter writer,
+            Payment p,
+            String lineType,
+            String eventName,
+            String membershipName,
+            String licenseType,
+            String optionLabels,
+            PlayerSubscription sub) {
+        writer.append(String.valueOf(p.getId())).append(";");
+        writer.append(String.valueOf(p.getType())).append(";");
+        writer.append(String.valueOf(p.getStatus())).append(";");
+        writer.append(
+                        p.getAmountCents() == null
+                                ? "null"
+                                : String.valueOf(ServiceUtils.toEuros(p.getAmountCents())))
+                .append(";");
+        writer.append(lineType).append(";");
+        writer.append(eventName).append(";");
+        writer.append(membershipName).append(";");
+        writer.append(licenseType).append(";");
+        writer.append(optionLabels).append(";");
+        IPlayer player = find.player(sub.getNrFfe(), null);
+        if (player != null) {
+            writer.append(player.getFullname());
+        }
+        writer.append(";");
+        writer.append(sub.getNrFfe() != null ? sub.getNrFfe() : "").append("\n");
+    }
+
+    private void appendCsvMembershipDetailLine(StringWriter writer, Payment p, Membership membership) {
+        String membershipName = buildMembershipFullName(membership);
+        String licenseType = membership.getLicenseType() != null ? membership.getLicenseType() : "";
+        List<MembershipOptionSubscription> subscriptions =
+                membershipOptionSubscriptionDao.findByMembershipIds(List.of(membership.getId()));
+        String optionLabels = subscriptions.stream()
+                .map(MembershipOptionSubscription::getMembershipOption)
+                .filter(java.util.Objects::nonNull)
+                .map(option -> option.getOptionValue())
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.joining(", "));
+        writer.append(String.valueOf(p.getId())).append(";");
+        writer.append(String.valueOf(p.getType())).append(";");
+        writer.append(String.valueOf(p.getStatus())).append(";");
+        writer.append(
+                        p.getAmountCents() == null
+                                ? "null"
+                                : String.valueOf(ServiceUtils.toEuros(p.getAmountCents())))
+                .append(";");
+        writer.append("membership").append(";;;");
+        writer.append(membershipName).append(";");
+        writer.append(licenseType).append(";");
+        writer.append(optionLabels).append(";");
+        writer.append(membershipName).append(";");
+        writer.append(membership.getNrFfe() != null ? membership.getNrFfe() : "").append("\n");
+    }
+
+    private List<EventPaymentsReportService.AccountingDetailRow> buildAccountingDetailRows(List<Payment> payments) {
+        List<EventPaymentsReportService.AccountingDetailRow> rows = new ArrayList<>();
+        for (Payment payment : payments) {
+            if (payment.getStatus() != PaymentStatus.PAID || payment.getAmountCents() == null) {
+                continue;
+            }
+            LocalDateTime paymentAt =
+                    payment.getUpdatedAt() != null ? payment.getUpdatedAt() : payment.getCreatedAt();
+            String paymentType = EventPaymentsReportService.resolvePaymentType(payment);
+            List<PlayerSubscription> subs =
+                    playerSubscriptionService.findByPaymentId(payment.getId().intValue());
+            List<Membership> memberships = membershipDao.findByPaymentId(payment.getId().intValue());
+            if (subs.isEmpty() && memberships.isEmpty()) {
+                rows.add(new EventPaymentsReportService.AccountingDetailRow(
+                        paymentAt,
+                        payment.getId(),
+                        paymentType,
+                        payment.getUserEmail(),
+                        ServiceUtils.toEuros(payment.getAmountCents()),
+                        "",
+                        ""));
+                continue;
+            }
+            for (PlayerSubscription sub : subs) {
+                double lineAmount = sub.getAmountCents() != null
+                        ? ServiceUtils.toEuros(sub.getAmountCents())
+                        : 0d;
+                String label = sub.getEvent() != null ? sub.getEvent().getName() : "";
+                rows.add(new EventPaymentsReportService.AccountingDetailRow(
+                        paymentAt, payment.getId(), paymentType, payment.getUserEmail(), lineAmount, "event", label));
+            }
+            for (Membership membership : memberships) {
+                double lineAmount = membership.getAmountCents() / 100d;
+                rows.add(new EventPaymentsReportService.AccountingDetailRow(
+                        paymentAt,
+                        payment.getId(),
+                        paymentType,
+                        payment.getUserEmail(),
+                        lineAmount,
+                        "membership",
+                        buildMembershipFullName(membership)));
+            }
+        }
+        rows.sort(java.util.Comparator.comparing(
+                        EventPaymentsReportService.AccountingDetailRow::paymentAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                .thenComparing(
+                        EventPaymentsReportService.AccountingDetailRow::id,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())));
+        return rows;
+    }
+
+    private byte[] generateInvoicePdf(
+            Payment payment,
+            List<PlayerSubscription> subs,
+            List<Membership> memberships,
+            Map<Integer, List<MembershipOptionSubscription>> optionSubscriptions)
+            throws Exception {
         org.openpdf.text.Document document =
                 new org.openpdf.text.Document(org.openpdf.text.PageSize.A4, 50, 50, 60, 60);
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
@@ -890,6 +1222,11 @@ public class PaymentApi {
             if (player != null) {
                 client = buildFullName(player);
             }
+        } else if (!memberships.isEmpty()) {
+            String membershipName = buildMembershipFullName(memberships.get(0));
+            if (!membershipName.isBlank()) {
+                client = membershipName;
+            }
         }
 
         document.add(new org.openpdf.text.Paragraph("Client : " + client, normalFont));
@@ -939,6 +1276,55 @@ public class PaymentApi {
                         : "-";
                 table.addCell(new org.openpdf.text.Phrase(eventName, normalFont));
                 table.addCell(new org.openpdf.text.Phrase(playerInfo, normalFont));
+                table.addCell(new org.openpdf.text.Phrase(price, normalFont));
+            }
+            document.add(table);
+            document.add(new org.openpdf.text.Paragraph(" "));
+        }
+
+        if (!memberships.isEmpty()) {
+            org.openpdf.text.pdf.PdfPTable table = new org.openpdf.text.pdf.PdfPTable(4);
+            table.setWidthPercentage(100);
+            table.setWidths(new float[] {30f, 15f, 35f, 20f});
+
+            org.openpdf.text.pdf.PdfPCell c1 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Adherent", headerFont));
+            org.openpdf.text.pdf.PdfPCell c2 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Licence", headerFont));
+            org.openpdf.text.pdf.PdfPCell c3 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Options", headerFont));
+            org.openpdf.text.pdf.PdfPCell c4 =
+                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Montant", headerFont));
+            c1.setBackgroundColor(new java.awt.Color(220, 220, 220));
+            c2.setBackgroundColor(new java.awt.Color(220, 220, 220));
+            c3.setBackgroundColor(new java.awt.Color(220, 220, 220));
+            c4.setBackgroundColor(new java.awt.Color(220, 220, 220));
+            table.addCell(c1);
+            table.addCell(c2);
+            table.addCell(c3);
+            table.addCell(c4);
+
+            for (Membership membership : memberships) {
+                String memberInfo = buildMembershipFullName(membership);
+                if (membership.getNrFfe() != null && !membership.getNrFfe().isBlank()) {
+                    memberInfo = memberInfo + " (" + membership.getNrFfe() + ")";
+                }
+                String license = membership.getLicenseType() != null ? membership.getLicenseType() : "-";
+                List<MembershipOptionSubscription> subscriptions =
+                        optionSubscriptions.getOrDefault(membership.getId(), List.of());
+                String options = subscriptions.stream()
+                        .map(MembershipOptionSubscription::getMembershipOption)
+                        .filter(java.util.Objects::nonNull)
+                        .map(option -> option.getOptionValue())
+                        .filter(value -> value != null && !value.isBlank())
+                        .collect(Collectors.joining(", "));
+                if (options.isBlank()) {
+                    options = "-";
+                }
+                String price = String.format("%.2f €", membership.getAmountCents() / 100d);
+                table.addCell(new org.openpdf.text.Phrase(memberInfo, normalFont));
+                table.addCell(new org.openpdf.text.Phrase(license, normalFont));
+                table.addCell(new org.openpdf.text.Phrase(options, normalFont));
                 table.addCell(new org.openpdf.text.Phrase(price, normalFont));
             }
             document.add(table);

@@ -126,29 +126,25 @@ public class FideHandler extends DefaultHandler {
                             }
                         }
                         doc.add(new StringField("federation", federation, Field.Store.YES));
-                        if ("0".equals(eloStd)) {
-                            doc.add(new StringField("eloStd", "1399F", Field.Store.YES));
-                        } else {
-                            doc.add(new StringField("eloStd", eloStd + "F", Field.Store.YES));
-                        }
-                        if ("0".equals(eloStd)) {
-                            doc.add(new StringField("eloRapide", "1399F", Field.Store.YES));
-                        } else {
-                            doc.add(new StringField("eloRapide", eloRapide + "F", Field.Store.YES));
-                        }
-                        if ("0".equals(eloStd)) {
-                            doc.add(new StringField("eloBlitz", "1399F", Field.Store.YES));
-                        } else {
-                            doc.add(new StringField("eloBlitz", eloBlitz + "F", Field.Store.YES));
-                        }
+                        doc.add(new StringField("eloStd", formatFideRating(eloStd), Field.Store.YES));
+                        doc.add(new StringField("eloRapide", formatFideRating(eloRapide), Field.Store.YES));
+                        doc.add(new StringField("eloBlitz", formatFideRating(eloBlitz), Field.Store.YES));
                         doc.add(new StringField("affType", "A", Field.Store.YES));
                         writer.addDocument(doc);
                     }
+                    clear();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
 
                 break;
         }
+    }
+
+    static String formatFideRating(String rating) {
+        if (rating == null || rating.isBlank() || "0".equals(rating.trim())) {
+            return "1399F";
+        }
+        return rating.trim() + "F";
     }
 }

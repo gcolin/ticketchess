@@ -18,6 +18,7 @@ import com.github.gcolin.club.SeasonScope;
 
 import com.github.gcolin.event.Event;
 import com.github.gcolin.event.EventPaymentsReportService;
+import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
@@ -66,6 +67,7 @@ class PaymentApiTest {
 
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
+        inject(api, "membershipDao", mock(MembershipDao.class));
         inject(api, "find", mock(Find.class));
         inject(api, "clubSeasonFilter", clubSeasonFilter);
 
@@ -276,6 +278,7 @@ class PaymentApiTest {
 
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
+        inject(api, "membershipDao", mock(MembershipDao.class));
         inject(api, "find", find);
         inject(api, "clubSeasonFilter", clubSeasonFilter);
 
@@ -283,9 +286,10 @@ class PaymentApiTest {
         String csv = (String) response.getEntity();
 
         assertEquals(200, response.getStatus());
-        assertTrue(csv.contains("id;type;status;amount;event_name;player_name;player_license"));
-        assertTrue(csv.contains("1;CARD;PENDING;10.0;;;"));
-        assertTrue(csv.contains("2;BANK_TRANSFER;PAID;20.0;Open;Ada Lovelace;LIC1"));
+        assertTrue(csv.contains("line_type"));
+        assertTrue(csv.contains("1;CARD;PENDING;10.0;"));
+        assertTrue(csv.contains("2;BANK_TRANSFER;PAID;20.0;event;Open"));
+        assertTrue(csv.contains("Ada Lovelace;LIC1"));
     }
 
     @Test
@@ -325,9 +329,11 @@ class PaymentApiTest {
 
         when(seasonFilter.resolve(4)).thenReturn(scope);
         when(paymentDao.findPaid(scope)).thenReturn(List.of());
-        when(reportService.generateForAccounting(List.of(), scope)).thenReturn(pdf);
+        when(reportService.generateForAccountingDetails(any(), eq(scope))).thenReturn(pdf);
 
         inject(api, "paymentService", paymentDao);
+        inject(api, "playerSubscriptionService", mock(PlayerSubscriptionDao.class));
+        inject(api, "membershipDao", mock(MembershipDao.class));
         inject(api, "clubSeasonFilter", seasonFilter);
         inject(api, "eventPaymentsReportService", reportService);
 

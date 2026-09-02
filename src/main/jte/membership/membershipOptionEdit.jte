@@ -11,11 +11,14 @@
 @param com.github.gcolin.membership.MembershipOptionType[] optionTypes
 @param java.util.List<com.github.gcolin.membership.License> licenses
 @param com.github.gcolin.membership.MembershipOption option
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
 @param Integer seasonId
 !{String optionPageTitle = option.getId() != null ? msg.get("page.membershipOptionEdit") : msg.get("page.membershipOptionNew");}
 !{i18ntitle = optionPageTitle;}
 !{title = optionPageTitle;}
 !{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
+!{java.util.List<com.github.gcolin.platform.SelectItem> safeSeasons = seasons != null ? seasons : java.util.List.of();}
+!{Integer effectiveSeasonId = seasonId != null ? seasonId : (option.getSeason() != null && option.getSeason().getId() != null ? option.getSeason().getId() : null);}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -37,6 +40,21 @@
             <input type="hidden" name="seasonId" value="${seasonId}">
           @endif
           <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label for="opt_season" class="form-label">${msg.get("label.season")}</label>
+              <select id="opt_season" name="seasonId" class="form-select" required>
+                @for(var seasonItem : safeSeasons)
+                  @if(!"0".equals(seasonItem.getValue()))
+                    @if(effectiveSeasonId != null && effectiveSeasonId.toString().equals(seasonItem.getValue()))
+                    <option value="${seasonItem.getValue()}" selected>${seasonItem.getLabel()}</option>
+                    @else
+                    <option value="${seasonItem.getValue()}">${seasonItem.getLabel()}</option>
+                    @endif
+                  @endif
+                @endfor
+              </select>
+            </div>
+
             <div class="col-12 col-md-6">
               <label for="opt_type" class="form-label">Type</label>
               <select id="opt_type" name="optionType" class="form-select" required>

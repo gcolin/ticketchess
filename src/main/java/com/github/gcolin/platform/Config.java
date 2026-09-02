@@ -392,6 +392,22 @@ public class Config {
                 properties.getProperty("stripe.simulated", "false")));
     }
 
+    public static boolean isStripeCardEnabledForEvents(Properties properties) {
+        return Boolean.parseBoolean(properties.getProperty("stripe.card.events", "true"));
+    }
+
+    public static boolean isStripeCardEnabledForMemberships(Properties properties) {
+        return Boolean.parseBoolean(properties.getProperty("stripe.card.memberships", "true"));
+    }
+
+    public static boolean isBankTransferEnabledForEvents(Properties properties) {
+        return Boolean.parseBoolean(properties.getProperty("stripe.transfer.events", "true"));
+    }
+
+    public static boolean isBankTransferEnabledForMemberships(Properties properties) {
+        return Boolean.parseBoolean(properties.getProperty("stripe.transfer.memberships", "true"));
+    }
+
     public boolean isTestMode() {
         return testMode;
     }

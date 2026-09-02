@@ -11,8 +11,13 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
+import com.github.gcolin.platform.Caches;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.gcolin.player.Find;
+import com.github.gcolin.player.IPlayer;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionSubscription;
 import com.github.gcolin.membership.MembershipStatus;
@@ -112,8 +117,9 @@ class MembershipApiTest {
         LicenseDao licenseDao = mock(LicenseDao.class);
         when(licenseDao.all()).thenReturn(List.of());
         inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
 
-        JteHtml html = api.createPage();
+        JteHtml html = api.createPage(null);
         Map<String, Object> model = html.getModel();
 
         assertEquals("membership/membershipNew.jte", html.getTemplate());
@@ -133,9 +139,11 @@ class MembershipApiTest {
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        Response response = api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, null);
+        Response response = api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, null, null);
 
         assertEquals(303, response.getStatus());
         verify(membershipDao).persist(any(Membership.class));
@@ -155,9 +163,11 @@ class MembershipApiTest {
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", null, null, null);
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", null, null, null, null);
 
         assertEquals(1, captured.size());
         assertEquals(0, captured.get(0).getAmountCents());
@@ -178,9 +188,11 @@ class MembershipApiTest {
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, "a");
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, "a", null);
 
         assertEquals(1, captured.size());
         assertEquals("A", captured.get(0).getLicenseType());
@@ -200,9 +212,11 @@ class MembershipApiTest {
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, "");
+        api.create("user@test.com", "A12345", "Doe", "John", "2000-01-01", "APPROVED", 1500, "", null);
 
         assertEquals(1, captured.size());
         assertEquals("A", captured.get(0).getLicenseType());
@@ -224,13 +238,15 @@ class MembershipApiTest {
 
         when(membershipDao.find(10)).thenReturn(m);
         when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
-        when(membershipOptionDao.all()).thenReturn(List.of());
+        when(membershipOptionDao.all(any(SeasonScope.class))).thenReturn(List.of());
         when(licenseDao.all()).thenReturn(List.of());
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
         inject(api, "membershipOptionDao", membershipOptionDao);
         inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
 
         JteHtml html = api.editPage(10);
         Map<String, Object> model = html.getModel();
@@ -267,11 +283,51 @@ class MembershipApiTest {
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "licensePriceService", mockLicensePriceService());
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
+        inject(api, "caches", mockCaches());
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
 
-        Response response = api.update(5, "user@test.com", "B99", "Smith", "Jane", "1990-05-05", "PAID", 2000, "B");
+        Response response = api.update(5, "user@test.com", "B99", "Smith", "Jane", "1990-05-05", "PAID", 2000, "B", null);
 
         assertEquals(303, response.getStatus());
+        verify(membershipDao).merge(m);
+    }
+
+    @Test
+    void updateShouldRecalculateAmountFromFfeCategoryWhenBirthDateMissing() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        Membership m = new Membership();
+        m.setId(47);
+        m.setNrFfe("X67015");
+        m.setAmountCents(4000);
+        when(membershipDao.find(47)).thenReturn(m);
+
+        LicensePriceService licensePriceService = mock(LicensePriceService.class);
+        when(licensePriceService.getLicensePrice(eq("SenM"), eq('A'))).thenReturn(8200);
+        when(licensePriceService.getLicensePrice(eq("SenM"), eq('B'))).thenReturn(4000);
+
+        IPlayer player = mock(IPlayer.class);
+        when(player.getCategory()).thenReturn("SenM");
+        Find find = mock(Find.class);
+        when(find.player("X67015", null)).thenReturn(player);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "licensePriceService", licensePriceService);
+        inject(api, "find", find);
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
+        inject(api, "caches", mockCaches());
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership/47/edit")));
+
+        api.update(47, "daniel.guillemand@gmail.com", "X67015", "GUILLEMAND", "Daniel", "", "APPROVED", 4000, "A", null);
+
+        assertEquals(8200, m.getAmountCents());
         verify(membershipDao).merge(m);
     }
 
@@ -287,7 +343,7 @@ class MembershipApiTest {
         inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
 
         assertThrows(NotFoundException.class,
-                () -> api.update(77, "u", "n", "l", "f", "d", "APPROVED", 100, null));
+                () -> api.update(77, "u", "n", "l", "f", "d", "APPROVED", 100, null, null));
     }
 
     // --- addOption ---
@@ -814,6 +870,26 @@ class MembershipApiTest {
             return null;
         }).when(filter).addToModel(any(), any());
         return filter;
+    }
+
+    private static ClubSeasonDao mockClubSeasonDao() {
+        ClubSeasonDao dao = mock(ClubSeasonDao.class);
+        when(dao.findCurrent()).thenReturn(null);
+        return dao;
+    }
+
+    private static LicensePriceService mockLicensePriceService() {
+        LicensePriceService service = mock(LicensePriceService.class);
+        when(service.getLicensePrice(any(), any(char.class))).thenReturn(0);
+        return service;
+    }
+
+    private static Caches mockCaches() {
+        Caches caches = mock(Caches.class);
+        @SuppressWarnings("unchecked")
+        Cache<String, Double> debtCache = mock(Cache.class);
+        when(caches.getDebtCache()).thenReturn(debtCache);
+        return caches;
     }
 
     private static UriInfo mockUriInfo(URI target) {

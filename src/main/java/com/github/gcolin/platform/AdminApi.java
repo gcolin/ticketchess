@@ -66,7 +66,15 @@ public class AdminApi {
                     "invoice.footer",
                     "invoice.vat.notice"),
             "stripe",
-            Set.of("stripe.public", "stripe.secret", "stripe.keyprefix", "stripe.simuled"),
+            Set.of(
+                    "stripe.public",
+                    "stripe.secret",
+                    "stripe.keyprefix",
+                    "stripe.simuled",
+                    "stripe.card.events",
+                    "stripe.card.memberships",
+                    "stripe.transfer.events",
+                    "stripe.transfer.memberships"),
             "oauth",
             Set.of(
                     "oauth.clientId",
@@ -91,7 +99,13 @@ public class AdminApi {
                     "db.h2.loadPostgresDump",
                     "db.h2.postgresDumpFile"));
 
-    static final Set<String> BOOLEAN_KEYS = Set.of("stripe.simuled", "db.h2.loadPostgresDump");
+    static final Set<String> BOOLEAN_KEYS = Set.of(
+            "stripe.simuled",
+            "stripe.card.events",
+            "stripe.card.memberships",
+            "stripe.transfer.events",
+            "stripe.transfer.memberships",
+            "db.h2.loadPostgresDump");
 
     @Inject
     private LoggedUser user;
@@ -218,6 +232,10 @@ public class AdminApi {
             }
         }
         try {
+            if ("stripe".equals(tab) && !ribService.exists()) {
+                updates.put("stripe.transfer.events", "false");
+                updates.put("stripe.transfer.memberships", "false");
+            }
             config.updateProperties(updates);
             if ("system".equals(tab) && sendMail != null) {
                 sendMail.reloadCredentials();
@@ -260,6 +278,10 @@ public class AdminApi {
     public Response deleteRib() {
         try {
             ribService.delete();
+            Map<String, String> updates = new LinkedHashMap<>();
+            updates.put("stripe.transfer.events", "false");
+            updates.put("stripe.transfer.memberships", "false");
+            config.updateProperties(updates);
             return jsonRedirectToOrg("success", "ribDeleted", "files");
         } catch (IOException e) {
             logger.error("cannot delete RIB file", e);

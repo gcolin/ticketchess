@@ -15,7 +15,12 @@ public class MembershipOptionDao extends AbstractDao<MembershipOption> {
 
     public List<MembershipOption> all(SeasonScope scope) {
         String jpql = "SELECT o FROM MembershipOption o";
-        if (scope.isFiltered()) {
+        if (scope.isSeasonIdFiltered() && scope.isFiltered()) {
+            jpql += " WHERE (o.season.id = :seasonId"
+                    + " OR (o.season IS NULL AND o.createdAt >= :seasonStart AND o.createdAt <= :seasonEnd))";
+        } else if (scope.isSeasonIdFiltered()) {
+            jpql += " WHERE o.season.id = :seasonId";
+        } else if (scope.isFiltered()) {
             jpql += " WHERE o.createdAt >= :seasonStart AND o.createdAt <= :seasonEnd";
         }
         jpql += " ORDER BY o.id DESC";
@@ -25,7 +30,13 @@ public class MembershipOptionDao extends AbstractDao<MembershipOption> {
     }
 
     private void bindSeasonScope(TypedQuery<?> query, SeasonScope scope) {
-        if (scope.isFiltered()) {
+        if (scope.isSeasonIdFiltered()) {
+            query.setParameter("seasonId", scope.getSeasonId());
+            if (scope.isFiltered()) {
+                query.setParameter("seasonStart", scope.getStart());
+                query.setParameter("seasonEnd", scope.getEnd());
+            }
+        } else if (scope.isFiltered()) {
             query.setParameter("seasonStart", scope.getStart());
             query.setParameter("seasonEnd", scope.getEnd());
         }

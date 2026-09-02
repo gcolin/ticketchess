@@ -159,17 +159,9 @@ public class EventDao extends AbstractDao<Event> {
                 player.setStatus(sub.getStatus());
                 player.setAttendanceAt(sub.getAttendanceAt());
                 player.setSubId(sub.getId());
-                player.setRapidRating(p.getRapidRating());
-                player.setBlitzRating(p.getBlitzRating());
                 player.setBirthDate(p.getBirthDate());
                 player.setClubRef(p.getClubRef());
-                if (event.getEventType() == EventType.RAPID) {
-                    player.setRating(p.getRapidRating());
-                } else if (event.getEventType() == EventType.BLITZ) {
-                    player.setRating(p.getBlitzRating());
-                } else {
-                    player.setRating(p.getRating());
-                }
+                player.setRating(p, event.getEventType());
                 players.add(player);
             }
         }

@@ -13,17 +13,14 @@
 @param java.util.List<com.github.gcolin.membership.MembershipOptionSubscription> membershipOptions
 @param java.util.List<com.github.gcolin.membership.MembershipOption> availableOptions
 @param java.util.List<com.github.gcolin.membership.License> licenses
-@param Object opt
-@param com.github.gcolin.membership.MembershipOption option
-@param java.util.List<com.github.gcolin.membership.MembershipOption> options
-@param Object p
-@param String status
-@param com.github.gcolin.registration.PlayerSubscription sub
-@param Object type
+@param java.util.List<com.github.gcolin.platform.SelectItem> seasons
+@param Integer seasonId
 !{i18ntitle = msg.get("page.membershipEdit");}
 !{title = i18ntitle;}
 !{java.util.List<com.github.gcolin.membership.License> safeLicenses = licenses != null ? licenses : java.util.List.of();}
+!{java.util.List<com.github.gcolin.platform.SelectItem> safeSeasons = seasons != null ? seasons : java.util.List.of();}
 !{String effectiveLicenseType = membership.getLicenseType() != null && !membership.getLicenseType().isBlank() ? membership.getLicenseType() : com.github.gcolin.membership.Membership.DEFAULT_LICENSE_TYPE;}
+!{Integer effectiveSeasonId = seasonId != null ? seasonId : (membership.getSeason() != null && membership.getSeason().getId() != null ? membership.getSeason().getId() : null);}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -49,7 +46,7 @@
 
             <div class="col-12 col-md-6">
               <label for="membership_nrffe" class="form-label">${msg.get("admin.membership.nrFfe")}</label>
-              <input id="membership_nrffe" type="text" name="nrFfe" class="form-control" value="${membership.getNrFfe() != null ? membership.getNrFfe() : ""}" required>
+              <input id="membership_nrffe" type="text" name="nrFfe" class="form-control" value="${membership.getNrFfe() != null ? membership.getNrFfe() : ""}">
             </div>
 
             <div class="col-12 col-md-6">
@@ -80,6 +77,21 @@
                   <option value="${memStatus.name()}" selected>${msg.get("clubRegister.membershipStatus." + memStatus)}</option>
                   @else
                   <option value="${memStatus.name()}">${msg.get("clubRegister.membershipStatus." + memStatus)}</option>
+                  @endif
+                @endfor
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label for="membership_season" class="form-label">${msg.get("label.season")}</label>
+              <select id="membership_season" name="seasonId" class="form-select" required>
+                @for(var seasonItem : safeSeasons)
+                  @if(!"0".equals(seasonItem.getValue()))
+                    @if(effectiveSeasonId != null && effectiveSeasonId.toString().equals(seasonItem.getValue()))
+                    <option value="${seasonItem.getValue()}" selected>${seasonItem.getLabel()}</option>
+                    @else
+                    <option value="${seasonItem.getValue()}">${seasonItem.getLabel()}</option>
+                    @endif
                   @endif
                 @endfor
               </select>
@@ -136,7 +148,7 @@
           <div class="d-flex justify-content-end gap-2 mt-4">
             <button type="button" class="btn  btn-secondary" data-bs-toggle="modal" data-bs-target="#sendMailModal">Envoyer mail</button>
             <a class="btn  btn-secondary" href="${contextPath}/membership">${msg.get("action.cancel")}</a>
-            <button type="submit" class="btn btn-primary">${msg.get("action.save")}</button>
+            <button type="submit" class="btn btn-primary" id="membership-save">${msg.get("action.save")}</button>
           </div>
         </form>
     `)

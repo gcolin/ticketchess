@@ -146,6 +146,12 @@ class JteCompileTest {
         model.put("filterUrl", "/event");
         model.put("ribAvailable", false);
         model.put("stripeSimulated", true);
+        model.put("stripeCardEventsEnabled", true);
+        model.put("bankTransferEventsEnabled", true);
+        model.put("stripeCardMembershipsEnabled", true);
+        model.put("bankTransferMembershipsEnabled", true);
+        model.put("membershipDebt", 0d);
+        model.put("paidMembershipPayments", List.of());
         model.put("showFinished", false);
         model.put("hasFinishedEvents", false);
         model.put("toggleDisplayUrl", "/event/my");

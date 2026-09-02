@@ -11,6 +11,7 @@ import com.github.gcolin.membership.MembershipOptionSubscription;
 import com.github.gcolin.membership.MembershipStatus;
 import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.membership.MembershipDao;
+import com.github.gcolin.platform.Caches;
 import com.github.gcolin.platform.Config;
 import com.github.gcolin.membership.MembershipOptionDao;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
@@ -50,6 +51,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import com.github.gcolin.platform.ModelUtils;
+import com.github.gcolin.player.Find;
+import com.github.gcolin.player.IPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.gcolin.platform.JteHtml;
@@ -87,6 +90,12 @@ public class MembershipApi {
 
     @Inject
     private LicensePriceService licensePriceService;
+
+    @Inject
+    private Find find;
+
+    @Inject
+    private Caches caches;
 
     private static final LocalDate LICENSE_REFERENCE_DATE = LocalDate.of(2026, 9, 30);
 
@@ -319,7 +328,7 @@ public class MembershipApi {
     }
 
     private String inferLicenseTypeFromAmount(Membership membership, int licenseCents) {
-        String category = categoryFromBirthDate(membership.getBirthDate());
+        String category = resolveLicenseCategory(membership);
         if (category == null) {
             return null;
         }
@@ -337,12 +346,56 @@ public class MembershipApi {
     }
 
     private int licenseAmountFromGrid(Membership membership, String licenseType) {
-        String category = categoryFromBirthDate(membership.getBirthDate());
+        String category = resolveLicenseCategory(membership);
         if (category == null || licenseType == null || licenseType.isBlank()) {
             return 0;
         }
         Integer price = licensePriceService.getLicensePrice(category, licenseType.charAt(0));
         return price == null ? 0 : price;
+    }
+
+    private String resolveLicenseCategory(Membership membership) {
+        if (membership == null) {
+            return null;
+        }
+        String category = categoryFromBirthDate(membership.getBirthDate());
+        if (category != null) {
+            return category;
+        }
+        IPlayer player = findPlayer(membership);
+        if (player == null) {
+            return null;
+        }
+        String playerCategory = ModelUtils.trimToNull(player.getCategory());
+        if (playerCategory != null) {
+            return playerCategory;
+        }
+        return categoryFromBirthDate(player.getBirthDate());
+    }
+
+    private IPlayer findPlayer(Membership membership) {
+        if (find == null || membership == null) {
+            return null;
+        }
+        String nrFfe = ModelUtils.trimToNull(membership.getNrFfe());
+        if (nrFfe == null) {
+            return null;
+        }
+        return find.player(nrFfe, null);
+    }
+
+    private void enrichMembershipFromPlayer(Membership membership) {
+        if (membership == null || ModelUtils.trimToNull(membership.getBirthDate()) != null) {
+            return;
+        }
+        IPlayer player = findPlayer(membership);
+        if (player == null) {
+            return;
+        }
+        String birthDate = ModelUtils.trimToNull(player.getBirthDate());
+        if (birthDate != null) {
+            membership.setBirthDate(birthDate);
+        }
     }
 
     private static String formatLicenseLabel(String licenseName) {
@@ -401,11 +454,12 @@ public class MembershipApi {
 
     @GET
     @Path("new")
-    public JteHtml createPage() {
+    public JteHtml createPage(@QueryParam("seasonId") Integer seasonId) {
         Map<String, Object> model = new HashMap<String, Object>();
         model.put("membership", new Membership());
         model.put("statuses", MembershipStatus.values());
         model.put("licenses", licenseDao.all());
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "membership/membershipNew.jte");
     }
 
@@ -419,14 +473,14 @@ public class MembershipApi {
             @FormParam("birthDate") String birthDate,
             @FormParam("status") String status,
             @FormParam("amountCents") Integer amountCents,
-            @FormParam("licenseType") String licenseType) {
+            @FormParam("licenseType") String licenseType,
+            @FormParam("seasonId") Integer seasonId) {
         Membership membership = new Membership();
         membership.setUser(user);
         membership.setNrFfe(nrFfe);
         membership.setLastname(lastname);
         membership.setFirstname(firstname);
         membership.setBirthDate(birthDate);
-        membership.setAmountCents(amountCents == null ? 0 : amountCents);
         membership.setLicenseType(Membership.normalizeLicenseType(licenseType));
 
         MembershipStatus parsedStatus = MembershipStatus.PENDING_APPROVAL;
@@ -434,8 +488,11 @@ public class MembershipApi {
             parsedStatus = MembershipStatus.valueOf(status);
         }
         membership.setStatus(parsedStatus);
+        membership.setSeason(resolveSeason(seasonId));
 
+        enrichMembershipFromPlayer(membership);
         membershipDao.persist(membership);
+        recalculateMembershipAmount(membership);
 
         URI redirect = uriInfo.getBaseUriBuilder().path("membership").build();
         return Response.seeOther(redirect).build();
@@ -451,7 +508,13 @@ public class MembershipApi {
 
         List<MembershipOptionSubscription> subscriptions = findSubscriptionsForMembershipId(id);
 
-        List<MembershipOption> availableOptions = membershipOptionDao.all();
+        ClubSeason optionSeason = membership.getSeason();
+        if (optionSeason == null) {
+            optionSeason = clubSeasonDao.findCurrent();
+        }
+        List<MembershipOption> availableOptions = optionSeason != null
+                ? membershipOptionDao.all(SeasonScope.of(optionSeason))
+                : membershipOptionDao.all(SeasonScope.all());
 
         Map<String, Object> model = new HashMap<String, Object>();
         model.put("membership", membership);
@@ -459,6 +522,8 @@ public class MembershipApi {
         model.put("membershipOptions", subscriptions);
         model.put("availableOptions", availableOptions);
         model.put("licenses", licenseDao.all());
+        clubSeasonFilter.addToModel(
+                model, membership.getSeason() != null ? membership.getSeason().getId() : null);
         return new JteHtml(model, "membership/membershipEdit.jte");
     }
 
@@ -474,7 +539,8 @@ public class MembershipApi {
             @FormParam("birthDate") String birthDate,
             @FormParam("status") String status,
             @FormParam("amountCents") Integer amountCents,
-            @FormParam("licenseType") String licenseType) {
+            @FormParam("licenseType") String licenseType,
+            @FormParam("seasonId") Integer seasonId) {
         Membership membership = membershipDao.find(id);
         if (membership == null) {
             throw new jakarta.ws.rs.NotFoundException("Membership not found");
@@ -485,8 +551,8 @@ public class MembershipApi {
         membership.setLastname(lastname);
         membership.setFirstname(firstname);
         membership.setBirthDate(birthDate);
-        membership.setAmountCents(amountCents == null ? 0 : amountCents);
         membership.setLicenseType(Membership.normalizeLicenseType(licenseType));
+        membership.setSeason(resolveSeason(seasonId));
 
         MembershipStatus parsedStatus = MembershipStatus.PENDING_APPROVAL;
         if (status != null && !status.isBlank()) {
@@ -494,7 +560,9 @@ public class MembershipApi {
         }
         membership.setStatus(parsedStatus);
 
-        membershipDao.merge(membership);
+        enrichMembershipFromPlayer(membership);
+        recalculateMembershipAmount(membership);
+        caches.getDebtCache().invalidateAll();
 
         URI redirect = uriInfo.getBaseUriBuilder().path("membership").path(id.toString()).path("edit").build();
         return Response.seeOther(redirect).build();
@@ -641,6 +709,12 @@ public class MembershipApi {
             licenseType = Membership.DEFAULT_LICENSE_TYPE;
         }
         int licenseCents = licenseAmountFromGrid(membership, licenseType.trim().toUpperCase(Locale.ROOT));
+        if (licenseCents == 0) {
+            int previousLicenseCents = Math.max(0, membership.getAmountCents() - optionSum);
+            if (previousLicenseCents > 0 && resolveLicenseCategory(membership) == null) {
+                licenseCents = previousLicenseCents;
+            }
+        }
         membership.setAmountCents(Math.max(0, licenseCents + optionSum));
         membershipDao.merge(membership);
     }
@@ -699,6 +773,14 @@ public class MembershipApi {
     private String currentSeasonName() {
         ClubSeason current = clubSeasonDao.findCurrent();
         return current != null && current.getName() != null ? current.getName() : "";
+    }
+
+    private ClubSeason resolveSeason(Integer seasonId) {
+        Integer effectiveId = clubSeasonFilter.effectiveSeasonId(seasonId);
+        if (effectiveId == null) {
+            return null;
+        }
+        return clubSeasonDao.find(effectiveId);
     }
 
     private static String safe(String value) {

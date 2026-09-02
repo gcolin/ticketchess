@@ -7,6 +7,7 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.SelectOption;
 import java.io.IOException;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import com.github.gcolin.platform.PlaywrightBaseTest;
@@ -44,13 +45,17 @@ public class CreateUpdateEventTest extends PlaywrightBaseTest {
         assertTrue(name.isVisible());
         name.fill("my super event");
 
+        LocalDate now = LocalDate.now();
+        int seasonStartYear = now.getMonthValue() >= 9 ? now.getYear() : now.getYear() - 1;
+        String eventDate = LocalDate.of(seasonStartYear, 10, 15).toString();
+
         Locator datestart = page.locator("#event_startdate");
         assertTrue(datestart.isVisible());
-        datestart.fill("2012-12-21");
+        datestart.fill(eventDate);
 
         Locator dateend = page.locator("#event_enddate");
         assertTrue(dateend.isVisible());
-        dateend.fill("2012-12-21");
+        dateend.fill(eventDate);
 
         page.selectOption("#event_type", new SelectOption().setLabel("Blitz"));
 

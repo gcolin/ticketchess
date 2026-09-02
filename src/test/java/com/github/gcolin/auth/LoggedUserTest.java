@@ -64,6 +64,38 @@ public class LoggedUserTest {
         Mockito.verify(debtCache).put("bob@example.com", 42.5);
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testGetEventDebtUsesSeparateCacheKey() {
+        Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+
+        Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+        Mockito.when(debtCache.getIfPresent("alice@example.com:event")).thenReturn(null);
+        Mockito.when(debtService.calculateEventDebt("alice@example.com")).thenReturn(12.0);
+
+        loggedUser.setEmail("alice@example.com");
+
+        Assertions.assertEquals(12.0, loggedUser.getEventDebt());
+        Mockito.verify(debtCache).put("alice@example.com:event", 12.0);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testGetMembershipDebtUsesSeparateCacheKey() {
+        Cache<String, Double> debtCache = Mockito.mock(Cache.class);
+
+        Mockito.when(caches.getDebtCache()).thenReturn(debtCache);
+        Mockito.when(debtCache.getIfPresent("alice@example.com:membership")).thenReturn(null);
+        Mockito.when(debtService.calculateMembershipDebt(
+                        Mockito.eq("alice@example.com"), Mockito.any(com.github.gcolin.club.SeasonScope.class)))
+                .thenReturn(40.0);
+
+        loggedUser.setEmail("alice@example.com");
+
+        Assertions.assertEquals(40.0, loggedUser.getMembershipDebt());
+        Mockito.verify(debtCache).put("alice@example.com:membership", 40.0);
+    }
+
     @Test
     public void testGetDebtReturnsZeroWhenEmailMissing() {
         Assertions.assertEquals(0.0, loggedUser.getDebt());

@@ -3,6 +3,7 @@ package com.github.gcolin.registration;
 import com.github.gcolin.auth.LoggedOnly;
 import com.github.gcolin.club.ClubSeason;
 import com.github.gcolin.club.ClubSeasonDao;
+import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.membership.Membership;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionAccessRule;
@@ -21,6 +22,10 @@ import com.github.gcolin.membership.LicenseDao;
 import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.membership.MembershipOptionDao;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
+import com.github.gcolin.payment.DebtService;
+import com.github.gcolin.payment.PaymentDao;
+import com.github.gcolin.platform.Caches;
+import com.github.gcolin.platform.Config;
 import com.github.gcolin.platform.BroadcastMail;
 import com.github.gcolin.platform.SendMail;
 import jakarta.inject.Inject;
@@ -93,6 +98,15 @@ public class ClubRegisterApi {
     @Inject
     private ClubSeasonDao clubSeasonDao;
 
+    @Inject
+    private DebtService debtService;
+
+    @Inject
+    private PaymentDao paymentDao;
+
+    @Inject
+    private Caches caches;
+
     @Context
     UriInfo uriInfo;
 
@@ -102,12 +116,19 @@ public class ClubRegisterApi {
         model.put("query", query);
         model.put("success", success);
         ClubSeason currentSeason = clubSeasonDao.findCurrent();
+        SeasonScope scope = currentSeason != null ? SeasonScope.of(currentSeason) : SeasonScope.all();
         model.put("clubSeasonName", currentSeason != null ? currentSeason.getName() : "");
 
         boolean isLogged = loggedUser != null && loggedUser.getEmail() != null;
         if (isLogged) {
-            List<Membership> memberships = membershipDao.findByUser(loggedUser.getEmail());
+            List<Membership> memberships = membershipDao.findByUser(loggedUser.getEmail(), scope);
             model.put("memberships", memberships);
+            model.put("membershipDebt", debtService.calculateMembershipDebt(loggedUser.getEmail(), scope));
+            model.put("stripePublic", Config.getStripePublicKey(properties));
+            model.put("stripeSimulated", Config.isStripeSimulated(properties));
+            model.put("stripeCardMembershipsEnabled", Config.isStripeCardEnabledForMemberships(properties));
+            model.put("bankTransferMembershipsEnabled", Config.isBankTransferEnabledForMemberships(properties));
+            model.put("paidMembershipPayments", paymentDao.findAllPaidWithMembershipsByUser(loggedUser.getEmail()));
             List<Integer> membershipIds = memberships.stream().map(Membership::getId).collect(Collectors.toList());
             Map<String, List<MembershipOptionSubscription>> subscriptionsByMembership =
                 membershipOptionSubscriptionDao.findByMembershipIds(membershipIds).stream()
@@ -162,7 +183,10 @@ public class ClubRegisterApi {
 
         boolean young = manualPlayer ? ModelUtils.isYoung(calculateCategory(birthdate)) : player.isYoung();
 
-        List<MembershipOption> options = membershipOptionDao.all();
+        ClubSeason currentSeason = clubSeasonDao.findCurrent();
+        List<MembershipOption> options = currentSeason != null
+                ? membershipOptionDao.all(SeasonScope.of(currentSeason))
+                : membershipOptionDao.all(SeasonScope.all());
         options.sort(Comparator.comparing(MembershipOption::getOptionType).thenComparing(MembershipOption::getOptionValue));
 
         // Build licenses list with prices (filtered by access rule)
@@ -256,6 +280,7 @@ public class ClubRegisterApi {
         membership.setClubRef(0);
         membership.setStatus(MembershipStatus.PENDING_APPROVAL);
         membership.setLicenseType(Membership.normalizeLicenseType(licenseType));
+        membership.setSeason(clubSeasonDao.findCurrent());
 
         int totalAmountCents = 0;
         if (manualPlayer) {
@@ -297,6 +322,7 @@ public class ClubRegisterApi {
         }
 
         notifyMembershipSubmission(membership, licenseType, selectedOptions);
+        caches.getDebtCache().invalidateAll();
 
         URI redirect = uriInfo.getBaseUriBuilder()
                 .path("club-register")
@@ -320,6 +346,7 @@ public class ClubRegisterApi {
         if (membership.getStatus() == MembershipStatus.PENDING_CONFIRMATION) {
             membership.setStatus(MembershipStatus.APPROVED);
             membershipDao.merge(membership);
+            caches.getDebtCache().invalidateAll();
         }
 
         URI redirect = uriInfo.getBaseUriBuilder()

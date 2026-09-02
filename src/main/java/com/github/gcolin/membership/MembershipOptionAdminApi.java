@@ -1,6 +1,8 @@
 package com.github.gcolin.membership;
 
 import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.club.ClubSeason;
+import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.membership.MembershipOption;
@@ -41,6 +43,9 @@ public class MembershipOptionAdminApi {
     @Inject
     private ClubSeasonFilter clubSeasonFilter;
 
+    @Inject
+    private ClubSeasonDao clubSeasonDao;
+
     @Context
     UriInfo uriInfo;
 
@@ -62,6 +67,7 @@ public class MembershipOptionAdminApi {
         model.put("accessRules", MembershipOptionAccessRule.values());
         model.put("licenses", licenseDao.all());
         model.put("seasonId", clubSeasonFilter.effectiveSeasonId(seasonId));
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "membership/membershipOptionEdit.jte");
     }
 
@@ -81,6 +87,7 @@ public class MembershipOptionAdminApi {
         model.put("accessRules", MembershipOptionAccessRule.values());
         model.put("licenses", licenseDao.all());
         model.put("seasonId", clubSeasonFilter.effectiveSeasonId(seasonId));
+        clubSeasonFilter.addToModel(model, seasonId);
         return new JteHtml(model, "membership/membershipOptionEdit.jte");
     }
 
@@ -101,6 +108,7 @@ public class MembershipOptionAdminApi {
         if (licenseId != null && licenseId > 0) {
             option.setLicense(licenseDao.find(licenseId));
         }
+        option.setSeason(resolveSeason(seasonId));
         membershipOptionDao.persist(option);
         return Response.seeOther(listUri(seasonId)).build();
     }
@@ -129,6 +137,7 @@ public class MembershipOptionAdminApi {
         } else {
             option.setLicense(null);
         }
+        option.setSeason(resolveSeason(seasonId));
         membershipOptionDao.merge(option);
         return Response.seeOther(listUri(seasonId)).build();
     }
@@ -153,5 +162,13 @@ public class MembershipOptionAdminApi {
             return MembershipOptionAccessRule.ALL;
         }
         return MembershipOptionAccessRule.valueOf(accessRule);
+    }
+
+    private ClubSeason resolveSeason(Integer seasonId) {
+        Integer effectiveId = clubSeasonFilter.effectiveSeasonId(seasonId);
+        if (effectiveId == null) {
+            return null;
+        }
+        return clubSeasonDao.find(effectiveId);
     }
 }

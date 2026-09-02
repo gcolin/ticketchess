@@ -16,6 +16,7 @@ import jakarta.xml.bind.annotation.XmlAccessorType;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlTransient;
 import java.util.List;
+import com.github.gcolin.membership.Membership;
 import com.github.gcolin.platform.TimedEntity;
 import com.github.gcolin.registration.PlayerSubscription;
 
@@ -52,6 +53,12 @@ public class Payment extends TimedEntity {
     @XmlTransient
     @JsonbTransient
     private List<PlayerSubscription> subscriptions;
+
+    @OneToMany
+    @JoinColumn(name = "payment_id")
+    @XmlTransient
+    @JsonbTransient
+    private List<Membership> memberships;
 
     public Long getId() {
         return id;
@@ -116,6 +123,14 @@ public class Payment extends TimedEntity {
 
     public void setSubscriptions(List<PlayerSubscription> subscriptions) {
         this.subscriptions = subscriptions;
+    }
+
+    public List<Membership> getMemberships() {
+        return memberships;
+    }
+
+    public void setMemberships(List<Membership> memberships) {
+        this.memberships = memberships;
     }
 
     @Override

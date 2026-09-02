@@ -77,4 +77,36 @@ class ConfigTest {
         Assertions.assertFalse(Config.isStripeSimulated(props));
         Assertions.assertEquals("pk_test_abc", Config.getStripePublicKey(props));
     }
+
+    @Test
+    void stripeCardEnabledDefaultsToTrue() {
+        Properties props = new Properties();
+        Assertions.assertTrue(Config.isStripeCardEnabledForEvents(props));
+        Assertions.assertTrue(Config.isStripeCardEnabledForMemberships(props));
+    }
+
+    @Test
+    void stripeCardEnabledRespectsProperty() {
+        Properties props = new Properties();
+        props.setProperty("stripe.card.events", "false");
+        props.setProperty("stripe.card.memberships", "false");
+        Assertions.assertFalse(Config.isStripeCardEnabledForEvents(props));
+        Assertions.assertFalse(Config.isStripeCardEnabledForMemberships(props));
+    }
+
+    @Test
+    void bankTransferEnabledDefaultsToTrue() {
+        Properties props = new Properties();
+        Assertions.assertTrue(Config.isBankTransferEnabledForEvents(props));
+        Assertions.assertTrue(Config.isBankTransferEnabledForMemberships(props));
+    }
+
+    @Test
+    void bankTransferEnabledRespectsProperty() {
+        Properties props = new Properties();
+        props.setProperty("stripe.transfer.events", "false");
+        props.setProperty("stripe.transfer.memberships", "false");
+        Assertions.assertFalse(Config.isBankTransferEnabledForEvents(props));
+        Assertions.assertFalse(Config.isBankTransferEnabledForMemberships(props));
+    }
 }

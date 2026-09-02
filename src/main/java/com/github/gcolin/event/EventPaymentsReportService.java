@@ -69,24 +69,53 @@ public class EventPaymentsReportService {
     }
 
     public byte[] generateForAccounting(List<Payment> payments, SeasonScope scope) {
+        List<AccountingDetailRow> rows = new ArrayList<>();
+        for (Payment payment : payments) {
+            if (payment.getStatus() != PaymentStatus.PAID || payment.getAmountCents() == null) {
+                continue;
+            }
+            LocalDateTime paymentAt =
+                    payment.getUpdatedAt() != null ? payment.getUpdatedAt() : payment.getCreatedAt();
+            rows.add(new AccountingDetailRow(
+                    paymentAt,
+                    payment.getId(),
+                    resolvePaymentType(payment),
+                    payment.getUserEmail(),
+                    ServiceUtils.toEuros(payment.getAmountCents()),
+                    "",
+                    ""));
+        }
+        return generateForAccountingDetails(rows, scope);
+    }
+
+    public byte[] generateForAccountingDetails(List<AccountingDetailRow> rows, SeasonScope scope) {
         String reportNumber = "REC-"
                 + (scope.isFiltered() ? "S" + scope.getSeasonId() + "-" : "")
                 + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
-        List<PaymentRow> rows = payments.stream()
-                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
-                .filter(payment -> payment.getAmountCents() != null)
-                .map(payment -> new PaymentRow(
-                        payment.getUpdatedAt() != null ? payment.getUpdatedAt() : payment.getCreatedAt(),
-                        payment.getId(),
-                        resolvePaymentType(payment),
-                        payment.getUserEmail(),
-                        ServiceUtils.toEuros(payment.getAmountCents())))
+        List<PaymentRow> paymentRows = rows.stream()
+                .map(row -> new PaymentRow(
+                        row.paymentAt(),
+                        row.id(),
+                        row.paymentType(),
+                        row.email(),
+                        row.amountEuros(),
+                        row.nature(),
+                        row.label()))
                 .sorted(Comparator.comparing(
                                 PaymentRow::paymentAt, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(PaymentRow::id, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
-        return generateAccounting(reportNumber, rows, scope);
+        return generateAccounting(reportNumber, paymentRows, scope);
     }
+
+    public record AccountingDetailRow(
+            LocalDateTime paymentAt,
+            Long id,
+            String paymentType,
+            String email,
+            double amountEuros,
+            String nature,
+            String label) {}
 
     private byte[] generateAccounting(String reportNumber, List<PaymentRow> rows, SeasonScope scope) {
         Map<String, Double> amountByType = new LinkedHashMap<>();
@@ -394,13 +423,15 @@ public class EventPaymentsReportService {
     private PdfPTable buildAccountingDetailTable(
             ResourceBundle bundle, List<PaymentRow> rows, Font headerFont, Font normalFont)
             throws DocumentException {
-        PdfPTable table = new PdfPTable(5);
+        PdfPTable table = new PdfPTable(7);
         table.setWidthPercentage(100);
-        table.setWidths(new float[] {15f, 12f, 20f, 38f, 15f});
+        table.setWidths(new float[] {12f, 8f, 12f, 24f, 12f, 18f, 14f});
         addHeaderCell(table, bundle.getString("statistics.payments.date"), headerFont);
         addHeaderCell(table, "#", headerFont);
         addHeaderCell(table, bundle.getString("statistics.payments.paymentType"), headerFont);
         addHeaderCell(table, bundle.getString("payment.email"), headerFont);
+        addHeaderCell(table, bundle.getString("statistics.payments.nature"), headerFont);
+        addHeaderCell(table, bundle.getString("statistics.payments.label"), headerFont);
         addHeaderCell(table, bundle.getString("payment.amount"), headerFont);
 
         for (PaymentRow row : rows) {
@@ -408,11 +439,24 @@ public class EventPaymentsReportService {
             table.addCell(new Phrase(row.id() == null ? "" : String.valueOf(row.id()), normalFont));
             table.addCell(new Phrase(paymentTypeLabel(bundle, row.paymentType()), normalFont));
             table.addCell(new Phrase(nullToEmpty(row.email()), normalFont));
+            table.addCell(new Phrase(natureLabel(bundle, row.nature()), normalFont));
+            table.addCell(new Phrase(nullToEmpty(row.label()), normalFont));
             PdfPCell amountCell = new PdfPCell(new Phrase(formatEuros(row.amountEuros()), normalFont));
             amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
             table.addCell(amountCell);
         }
         return table;
+    }
+
+    private static String natureLabel(ResourceBundle bundle, String nature) {
+        if (nature == null || nature.isBlank()) {
+            return "";
+        }
+        String key = "statistics.payments.nature." + nature;
+        if (bundle.containsKey(key)) {
+            return bundle.getString(key);
+        }
+        return nature;
     }
 
     private static void addHeaderCell(PdfPTable table, String text, Font headerFont) {
@@ -438,7 +482,7 @@ public class EventPaymentsReportService {
     }
 
     /** Infer CARD for legacy Stripe payments whose type was never set. */
-    static String resolvePaymentType(Payment payment) {
+    public static String resolvePaymentType(Payment payment) {
         if (payment == null) {
             return "UNKNOWN";
         }
@@ -518,7 +562,13 @@ public class EventPaymentsReportService {
             String eventName) {}
 
     private record PaymentRow(
-            LocalDateTime paymentAt, Long id, String paymentType, String email, double amountEuros) {}
+            LocalDateTime paymentAt,
+            Long id,
+            String paymentType,
+            String email,
+            double amountEuros,
+            String nature,
+            String label) {}
 
     private static final class FooterEvent extends PdfPageEventHelper {
         private final String vatNotice;

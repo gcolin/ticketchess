@@ -40,6 +40,7 @@
           <tr>
             <th scope="col">#</th>
             <th scope="col">${msg.get("label.type")}</th>
+            <th scope="col">${msg.get("label.season")}</th>
             <th scope="col">${msg.get("label.value")}</th>
             <th scope="col">${msg.get("label.license")}</th>
             <th scope="col">${msg.get("label.amount")} (€)</th>
@@ -52,6 +53,7 @@
             <tr>
               <td>${opt.getId()}</td>
               <td>${opt.getOptionType() != null ? opt.getOptionType().name() : ""}</td>
+              <td>${opt.getSeason() != null && opt.getSeason().getName() != null ? opt.getSeason().getName() : ""}</td>
               <td>${opt.getOptionValue() != null ? opt.getOptionValue() : ""}</td>
               <td>@if(opt.getLicense() != null)${msg.get("label.license")} ${opt.getLicense().getName()}@else${msg.get("label.allLicenses")}@endif</td>
               <td>${(opt.getAmountCents() != null ? opt.getAmountCents() : 0) / 100.0} €</td>
@@ -73,7 +75,7 @@
               </td>
             </tr>
           @else
-            <tr><td colspan="7" class="text-center text-body-secondary">${msg.get("info.noMembershipOption")}</td></tr>
+            <tr><td colspan="8" class="text-center text-body-secondary">${msg.get("info.noMembershipOption")}</td></tr>
           @endfor
         </tbody>
       </table>

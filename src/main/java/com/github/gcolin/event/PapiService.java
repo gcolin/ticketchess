@@ -77,7 +77,8 @@ public class PapiService {
             row.put("Sexe", extractSexe(player.getCategory()));
             row.put("NeLe", formatBirthDate(player.getBirthDate()));
             row.put("Cat", extractCat(player.getCategory()));
-            row.put("Elo", extractRating(player.getRating()));
+            String tournamentRating = tournamentRating(player, event.getEventType());
+            row.put("Elo", extractRating(tournamentRating));
             row.put("Rapide", extractRating(player.getRapidRating()));
             row.put("Blitz", extractRating(player.getBlitzRating()));
             if (player.getFederation() == null || player.getFederation().isEmpty()) {
@@ -85,7 +86,7 @@ public class PapiService {
             } else {
                 row.put("Federation", truncate(player.getFederation(), 3));
             }
-            row.put("Fide", extractFideFlag(player.getRating()));
+            row.put("Fide", extractFideFlag(tournamentRating));
             row.put("RapideFide", extractFideFlag(player.getRapidRating()));
             row.put("BlitzFide", extractFideFlag(player.getBlitzRating()));
             putFideCode(row, player);
@@ -280,6 +281,17 @@ public class PapiService {
             case RAPID -> "Rapide";
             case BLITZ -> "Blitz";
         };
+    }
+
+    private String tournamentRating(DisplayPlayer player, EventType eventType) {
+        if (eventType == EventType.RAPID) {
+            return player.getRapidRating();
+        }
+        if (eventType == EventType.BLITZ) {
+            return player.getBlitzRating();
+        }
+        String standard = player.getStandardRating();
+        return standard != null ? standard : player.getRating();
     }
 
     private static String truncate(String value, int maxLength) {
