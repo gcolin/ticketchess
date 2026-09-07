@@ -18,7 +18,9 @@
 !{title = optionPageTitle;}
 !{String seasonParam = seasonId != null ? "?seasonId=" + seasonId : "";}
 !{java.util.List<com.github.gcolin.platform.SelectItem> safeSeasons = seasons != null ? seasons : java.util.List.of();}
-!{Integer effectiveSeasonId = seasonId != null ? seasonId : (option.getSeason() != null && option.getSeason().getId() != null ? option.getSeason().getId() : null);}
+!{Integer effectiveSeasonId = (option.getSeason() != null && option.getSeason().getId() != null)
+    ? option.getSeason().getId()
+    : seasonId;}
 @template.platform.adminLayout(
   title=title,
   contextPath=contextPath,
@@ -36,9 +38,6 @@
 
     @template.platform.adminPanel(content = @`
         <form method="post" action="${option.getId() != null ? contextPath + "/membership-option-admin/" + option.getId() : contextPath + "/membership-option-admin"}">
-          @if(seasonId != null)
-            <input type="hidden" name="seasonId" value="${seasonId}">
-          @endif
           <div class="row g-3">
             <div class="col-12 col-md-6">
               <label for="opt_season" class="form-label">${msg.get("label.season")}</label>

@@ -7,6 +7,9 @@ import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.membership.Membership;
 import com.github.gcolin.membership.MembershipOption;
 import com.github.gcolin.membership.MembershipOptionAccessRule;
+import com.github.gcolin.membership.MembershipOptionFile;
+import com.github.gcolin.membership.MembershipOptionFileDao;
+import com.github.gcolin.membership.MembershipOptionFileService;
 import com.github.gcolin.membership.MembershipOptionSubscription;
 import com.github.gcolin.membership.MembershipStatus;
 import com.github.gcolin.platform.Transactional;
@@ -38,19 +41,25 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -82,6 +91,12 @@ public class ClubRegisterApi {
 
     @Inject
     private MembershipOptionSubscriptionDao membershipOptionSubscriptionDao;
+
+    @Inject
+    private MembershipOptionFileDao membershipOptionFileDao;
+
+    @Inject
+    private MembershipOptionFileService membershipOptionFileService;
 
     @Inject
     private LicenseDao licenseDao;
@@ -134,6 +149,22 @@ public class ClubRegisterApi {
                 membershipOptionSubscriptionDao.findByMembershipIds(membershipIds).stream()
                     .collect(Collectors.groupingBy(s -> s.getMembership().getId().toString()));
             model.put("membershipSubscriptions", subscriptionsByMembership);
+
+            List<MembershipOptionSubscription> allSubscriptions = membershipOptionSubscriptionDao.findByMembershipIds(membershipIds);
+            Map<Integer, MembershipOption> optionsById = new LinkedHashMap<>();
+            for (MembershipOptionSubscription sub : allSubscriptions) {
+                MembershipOption option = sub.getMembershipOption();
+                if (option != null && option.getId() != null) {
+                    optionsById.putIfAbsent(option.getId(), option);
+                }
+            }
+            List<Integer> optionIds = new ArrayList<>(optionsById.keySet());
+            List<MembershipOptionFile> optionFiles = membershipOptionFileDao.findByOptionIds(optionIds);
+            Map<String, List<MembershipOptionFile>> filesByOptionId = optionFiles.stream()
+                    .collect(Collectors.groupingBy(
+                            f -> f.getMembershipOption().getId().toString(), LinkedHashMap::new, Collectors.toList()));
+            model.put("sharedOptionFilesByOptionId", filesByOptionId);
+            model.put("sharedOptions", new ArrayList<>(optionsById.values()));
         }
         if (isLogged && query != null) {
             if (query.isBlank()) {
@@ -329,6 +360,51 @@ public class ClubRegisterApi {
                 .queryParam("success", "membership")
                 .build();
         return Response.seeOther(redirect).build();
+    }
+
+    @GET
+    @Path("files/{fileId}/download")
+    @LoggedOnly
+    public Response downloadSharedFile(@PathParam("fileId") Integer fileId) {
+        MembershipOptionFile file = membershipOptionFileDao.findWithOption(fileId);
+        if (file == null || file.getMembershipOption() == null || file.getMembershipOption().getId() == null) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        if (!userHasAccessToOption(file.getMembershipOption().getId())) {
+            throw new WebApplicationException(Response.Status.FORBIDDEN);
+        }
+        try {
+            var path = membershipOptionFileService.resolveStoredFile(file);
+            if (!Files.isRegularFile(path)) {
+                throw new WebApplicationException(Response.Status.NOT_FOUND);
+            }
+            String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+            String encodedName = URLEncoder.encode(file.getOriginalName(), StandardCharsets.UTF_8).replace("+", "%20");
+            StreamingOutput stream = output -> Files.copy(path, output);
+            return Response.ok(stream)
+                    .type(contentType)
+                    .header("Content-Disposition", "attachment; filename*=UTF-8''" + encodedName)
+                    .build();
+        } catch (WebApplicationException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("cannot download shared membership option file {}", fileId, e);
+            throw new WebApplicationException("Cannot download file", 500);
+        }
+    }
+
+    private boolean userHasAccessToOption(Integer optionId) {
+        if (loggedUser == null || loggedUser.getEmail() == null || optionId == null) {
+            return false;
+        }
+        List<Membership> memberships = membershipDao.findByUser(loggedUser.getEmail());
+        List<Integer> membershipIds = memberships.stream()
+                .map(Membership::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        return membershipOptionSubscriptionDao.findByMembershipIds(membershipIds).stream()
+                .anyMatch(sub -> sub.getMembershipOption() != null
+                        && optionId.equals(sub.getMembershipOption().getId()));
     }
 
     @POST

@@ -16,9 +16,9 @@ $ResetScript = "${RemoteDir}/reset.sh"
 
 Set-Location $RepoRoot
 
-if (-not $SkipBuild -and -not (Test-Path $JarPath)) {
-    Write-Host "Building fat JAR..."
-    mvn package -P pack -DskipTests
+if (-not $SkipBuild) {
+    Write-Host "Cleaning and building fat JAR..."
+    mvn clean package -P pack -DskipTests
     if ($LASTEXITCODE -ne 0) {
         throw "Maven build failed with exit code $LASTEXITCODE"
     }

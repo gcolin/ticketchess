@@ -24,6 +24,8 @@ import com.github.gcolin.membership.LicensePriceDao;
 import com.github.gcolin.membership.LicensePriceService;
 import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.membership.MembershipOptionDao;
+import com.github.gcolin.membership.MembershipOptionFileDao;
+import com.github.gcolin.membership.MembershipOptionFileService;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
 import com.github.gcolin.membership.MembershipReportService;
 import com.github.gcolin.notification.NotificationDao;
@@ -67,6 +69,8 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(app(AppContext.get().statisticsReportService())).to(StatisticsReportService.class);
                 bindFactory(app(AppContext.get().eventPaymentsReportService())).to(EventPaymentsReportService.class);
                 bindFactory(app(AppContext.get().membershipReportService())).to(MembershipReportService.class);
+                bindFactory(app(AppContext.get().membershipOptionFileService()))
+                        .to(MembershipOptionFileService.class);
                 bindFactory(app(AppContext.get().config().getProperties())).to(Properties.class);
 
                 bindFactory(req(RequestContext::clubSeasonDao)).to(ClubSeasonDao.class);
@@ -75,6 +79,7 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(req(RequestContext::licensePriceDao)).to(LicensePriceDao.class);
                 bindFactory(req(RequestContext::membershipDao)).to(MembershipDao.class);
                 bindFactory(req(RequestContext::membershipOptionDao)).to(MembershipOptionDao.class);
+                bindFactory(req(RequestContext::membershipOptionFileDao)).to(MembershipOptionFileDao.class);
                 bindFactory(req(RequestContext::membershipOptionSubscriptionDao))
                         .to(MembershipOptionSubscriptionDao.class);
                 bindFactory(req(RequestContext::userAuthorizationDao)).to(UserAuthorizationDao.class);

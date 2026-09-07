@@ -81,6 +81,7 @@
                 com.github.gcolin.platform.BackgroundApi,
                 com.github.gcolin.membership.MembershipApi,
                 com.github.gcolin.membership.MembershipOptionAdminApi,
+                com.github.gcolin.membership.MembershipOptionFileAdminApi,
                 com.github.gcolin.registration.PlayerSubscriptionAdminApi,
                 com.github.gcolin.registration.PlayerSubscriptionOptionApi,
                 com.github.gcolin.player.PlayerApi,

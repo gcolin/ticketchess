@@ -8,6 +8,7 @@ import com.github.gcolin.club.SeasonScope;
 import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.membership.Membership;
 import com.github.gcolin.membership.MembershipDao;
+import com.github.gcolin.membership.MembershipDisplay;
 import com.github.gcolin.membership.MembershipOptionSubscription;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
 import com.github.gcolin.payment.Payment;
@@ -194,6 +195,7 @@ public class PaymentApi {
         Payment payment;
         List<PlayerSubscription> currentSubs = List.of();
         List<PlayerSubscriptionOption> currentOptions = List.of();
+        List<Membership> currentMemberships = List.of();
         if (id != null) {
             payment = paymentService.find(id);
             if (payment == null) {
@@ -201,6 +203,7 @@ public class PaymentApi {
             }
             currentSubs = playerSubscriptionService.findByPaymentId(id);
             currentOptions = playerSubscriptionOptionService.findByPaymentId(id);
+            currentMemberships = membershipDao.findByPaymentId(id);
         } else {
             payment = new Payment();
             payment.setStatus(PaymentStatus.PENDING);
@@ -252,6 +255,20 @@ public class PaymentApi {
             optionDisplays.add(display);
         }
 
+        List<MembershipDisplay> membershipDisplays = new ArrayList<>();
+        for (Membership membership : currentMemberships) {
+            if (membership.getId() == null) {
+                continue;
+            }
+            MembershipDisplay display = new MembershipDisplay();
+            display.setMembershipId(membership.getId());
+            display.setEditLink("/membership/" + membership.getId() + "/edit");
+            display.setMemberName(buildMembershipFullName(membership));
+            display.setStatus(membership.getStatus() == null ? null : membership.getStatus().name());
+            display.setAmountCents(membership.getAmountCents());
+            membershipDisplays.add(display);
+        }
+
         Map<String, Object> model = new HashMap<>();
         model.put("payment", payment);
         model.put("paymentStatuses", PaymentStatus.values());
@@ -259,6 +276,7 @@ public class PaymentApi {
         model.put("selectedSubscriptionIds", currentSubscriptionIds);
         model.put("subscriptionDisplays", subscriptionDisplays);
         model.put("optionDisplays", optionDisplays);
+        model.put("membershipDisplays", membershipDisplays);
         return new JteHtml(model, "payment/paymentEdit.jte");
     }
 
@@ -307,7 +325,8 @@ public class PaymentApi {
             @FormParam("stripeSessionId") String stripeSessionId,
             @FormParam("stripeIntent") String stripeIntent,
             @FormParam("subscriptionIds") List<String> subscriptionIdsRaw,
-            @FormParam("optionIds") List<String> optionIdsRaw) {
+            @FormParam("optionIds") List<String> optionIdsRaw,
+            @FormParam("membershipIds") List<String> membershipIdsRaw) {
         if ("true".equals(toRemove)) {
             if (id != null) {
                 List<PlayerSubscription> attached = playerSubscriptionService.findByPaymentId(id);
@@ -319,6 +338,11 @@ public class PaymentApi {
                 for (PlayerSubscriptionOption option : attachedOptions) {
                     option.setPayment(null);
                     playerSubscriptionOptionService.merge(option);
+                }
+                List<Membership> attachedMemberships = membershipDao.findByPaymentId(id);
+                for (Membership membership : attachedMemberships) {
+                    membership.setPayment(null);
+                    membershipDao.merge(membership);
                 }
                 paymentService.remove(id);
             }
@@ -409,6 +433,34 @@ public class PaymentApi {
                 if (selectedOption != null) {
                     selectedOption.setPayment(payment);
                     playerSubscriptionOptionService.merge(selectedOption);
+                }
+            }
+        }
+
+        List<Membership> previouslyAttachedMemberships =
+                membershipDao.findByPaymentId(payment.getId().intValue());
+        for (Membership membership : previouslyAttachedMemberships) {
+            membership.setPayment(null);
+            membershipDao.merge(membership);
+        }
+
+        if (membershipIdsRaw != null) {
+            for (String membershipIdRaw : membershipIdsRaw) {
+                if (membershipIdRaw == null || membershipIdRaw.isBlank()) {
+                    continue;
+                }
+                Integer membershipId;
+                try {
+                    membershipId = Integer.valueOf(membershipIdRaw.trim());
+                } catch (NumberFormatException ex) {
+                    throw new WebApplicationException(
+                            "membershipIds contains an invalid value: " + membershipIdRaw,
+                            Response.Status.BAD_REQUEST);
+                }
+                Membership selectedMembership = membershipDao.find(membershipId);
+                if (selectedMembership != null) {
+                    selectedMembership.setPayment(payment);
+                    membershipDao.merge(selectedMembership);
                 }
             }
         }

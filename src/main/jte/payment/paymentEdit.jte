@@ -12,6 +12,7 @@
 @param com.github.gcolin.payment.PaymentType[] paymentTypes
 @param java.util.List<com.github.gcolin.registration.SubscriptionDisplay> subscriptionDisplays
 @param java.util.List<com.github.gcolin.registration.SubscriptionOptionDisplay> optionDisplays
+@param java.util.List<com.github.gcolin.membership.MembershipDisplay> membershipDisplays
 !{i18ntitle = msg.get("action.edit");}
 !{title = i18ntitle;}
 !{String activeTitle = payment.getId() != null ? msg.get("payment.editTitle", payment.getId()) : msg.get("action.newPayment");}
@@ -153,6 +154,35 @@
             <div class="form-text">${msg.get("help.optionIds")}</div>
           </div>
 
+          <div class="mb-3">
+            <label class="form-label">${msg.get("payment.associatedMembership")}</label>
+            <div id="membershipIdsContainer" class="d-flex flex-column gap-2">
+              @if(membershipDisplays != null && membershipDisplays.size() > 0)
+                @for(var memDisplay : membershipDisplays)
+                  <div class="input-group">
+                    <input type="number" name="membershipIds" value="${memDisplay.getMembershipId()}" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.membershipId")}">
+                    @if(memDisplay.getEditLink() != null && !memDisplay.getEditLink().isEmpty())
+                      <a class="btn btn-outline-primary" href="${contextPath}${memDisplay.getEditLink()}">Voir</a>
+                    @endif
+                    <button type="button" class="btn  btn-secondary" onclick="removeMembershipInput(this)">${msg.get("action.remove")}</button>
+                  </div>
+                  <div class="form-text mt-1 mb-2">
+                    @if(memDisplay.getMemberName() != null && !memDisplay.getMemberName().isEmpty())${memDisplay.getMemberName()}@endif
+                    @if(memDisplay.getAmountCents() != null) — ${memDisplay.getAmountCents() / 100.0} €@endif
+                    @if(memDisplay.getStatus() != null && !memDisplay.getStatus().isEmpty()) (${msg.get("clubRegister.membershipStatus." + memDisplay.getStatus())})@endif
+                  </div>
+                @endfor
+              @else
+                <div class="input-group">
+                  <input type="number" name="membershipIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.membershipId")}">
+                  <button type="button" class="btn  btn-secondary" onclick="removeMembershipInput(this)">${msg.get("action.remove")}</button>
+                </div>
+              @endif
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addMembershipInput()">${msg.get("action.addId")}</button>
+            <div class="form-text">${msg.get("help.membershipIds")}</div>
+          </div>
+
           <div class="d-flex justify-content-between">
             @if(payment.getId() != null)
               <button type="button" class="btn btn-sm btn-outline-danger js-remove-payment" onclick="removeAndSubmit()">
@@ -210,6 +240,31 @@
         const group = button.closest('.input-group');
         if (container.querySelectorAll('input[name="optionIds"]').length === 1) {
           const input = group.querySelector('input[name="optionIds"]');
+          if (input) {
+            input.value = '';
+          }
+          return;
+        }
+        group.remove();
+      }
+
+      function addMembershipInput() {
+        const container = document.getElementById('membershipIdsContainer');
+        const line = document.createElement('div');
+        line.className = 'input-group';
+        line.innerHTML =
+          '<input type="number" name="membershipIds" min="1" step="1" class="form-control" placeholder="${msg.get("placeholder.membershipId")}">'
+          + '<button type="button" class="btn  btn-secondary" onclick="removeMembershipInput(this)">${msg.get("action.remove")}</button>';
+        const input = line.querySelector('input');
+        input.value = '';
+        container.appendChild(line);
+      }
+
+      function removeMembershipInput(button) {
+        const container = document.getElementById('membershipIdsContainer');
+        const group = button.closest('.input-group');
+        if (container.querySelectorAll('input[name="membershipIds"]').length === 1) {
+          const input = group.querySelector('input[name="membershipIds"]');
           if (input) {
             input.value = '';
           }

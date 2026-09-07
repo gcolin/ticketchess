@@ -13,6 +13,7 @@
 @param Object p
 @param String status
 @param Object type
+@param boolean excludeAffTypeN
 
 !{i18ntitle = msg.get("page.database");}
 !{title = i18ntitle;}
@@ -28,10 +29,28 @@
   content = @`
     @template.platform.adminPageHeader(title=msg.get("heading.databaseAdmin"), helpText=msg.get("help.databaseDesc"), icon="bi-database")
 
+    @if("settingsSaved".equals(status))
+    <div class="alert alert-success">${msg.get("database.settingsSaved")}</div>
+    @elseif("settingsError".equals(status))
+    <div class="alert alert-danger">${msg.get("database.settingsError")}</div>
+    @endif
+
     @template.platform.adminPanel(
       heading=msg.get("label.ffeDatabase"),
       content = @`
         <pre id="ffe-info" class="flex-grow-1 bg-light p-2 rounded mb-0" style="overflow:auto"></pre>
+        <form method="post" action="${contextPath}/database/ffe/settings" class="mt-3">
+          <div class="form-check mb-2">
+            @if(excludeAffTypeN)
+            <input class="form-check-input" type="checkbox" name="ffe.excludeAffTypeN" value="true" id="ffe.excludeAffTypeN" checked>
+            @else
+            <input class="form-check-input" type="checkbox" name="ffe.excludeAffTypeN" value="true" id="ffe.excludeAffTypeN">
+            @endif
+            <label class="form-check-label" for="ffe.excludeAffTypeN">${msg.get("database.excludeAffTypeN")}</label>
+          </div>
+          <p class="form-text text-body-secondary mb-2">${msg.get("database.excludeAffTypeNHelp")}</p>
+          <button class="btn btn-outline-primary btn-sm" type="submit">${msg.get("action.save")}</button>
+        </form>
         <div class="mt-3 d-flex justify-content-between">
           <button class="btn btn-primary" id="download-ffe">${msg.get("action.downloadExtract")}</button>
           <button class="btn  btn-secondary" id="refresh-ffe">${msg.get("action.refresh")}</button>

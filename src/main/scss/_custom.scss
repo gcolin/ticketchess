@@ -82,5 +82,9 @@ table th {
   border: 1px solid #e0d0bc;
   border-radius: .75rem;
   padding: 1rem;
+}
+
+// Horizontal scroll only — keep overflow-y visible so dropdowns can spill out.
+.admin-table-scroll {
   overflow-x: auto;
 }

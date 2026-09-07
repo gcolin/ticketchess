@@ -18,9 +18,9 @@ pi@<hôte-integration>:/mnt/nvme/ticketchess/test
 ## Workflow
 
 1. Run from the repository root (`e:\repo\ticketchess` or project root).
-2. Ensure the fat JAR exists; build if missing:
+2. Always clean and rebuild the fat JAR:
    ```bash
-   mvn package -P pack -DskipTests
+   mvn clean package -P pack -DskipTests
    ```
 3. Publish with SCP:
    ```bash
@@ -37,7 +37,7 @@ On Windows, prefer the script (handles path checks and clearer errors):
 .\.cursor\skills\publish-to-integration\scripts\publish.ps1
 ```
 
-Skip rebuild when the JAR is already fresh:
+Skip rebuild only when explicitly needed (uses the existing JAR):
 
 ```powershell
 .\.cursor\skills\publish-to-integration\scripts\publish.ps1 -SkipBuild
@@ -57,7 +57,7 @@ After a successful SCP and reset:
 
 | Issue | Action |
 |-------|--------|
-| JAR missing | Run `mvn package -P pack -DskipTests` |
+| JAR missing / build failed | Run `mvn clean package -P pack -DskipTests` and fix Maven errors |
 | `scp` not found (Windows) | Install OpenSSH Client (Settings → Apps → Optional features) |
 | Host key / auth failure | Ensure SSH key or password access to the integration host works (`ssh pi@<hôte-integration>`) |
 | Network unreachable | Confirm machine can reach the integration host on your LAN |

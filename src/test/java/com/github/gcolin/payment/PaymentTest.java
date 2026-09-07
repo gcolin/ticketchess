@@ -59,4 +59,49 @@ public class PaymentTest extends PlaywrightBaseTest {
 
         page.close();
     }
+
+    @Test
+    public void attachMembershipToPayment() {
+        Page page = browserContext.newPage();
+        String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+        String lastname = "PAYMEM" + uniqueSuffix;
+        String firstname = "Alice";
+        String email = "paymem" + uniqueSuffix + "@example.com";
+
+        login(page);
+
+        page.navigate(BASE_URL + "/club-register");
+        Locator hiddenForm = page.locator("#inscriptionForm");
+        if (!hiddenForm.isVisible()) {
+            page.locator("#inscriptionButton button").click();
+        }
+        page.locator("#lastname").fill(lastname);
+        page.locator("#firstname").fill(firstname);
+        page.locator("#birthdate").fill("2000-10-10");
+        page.locator("#manualForm button[type='submit']").click();
+        page.locator("input[name='licenseType'][value='B']").check();
+        page.locator("button[type='submit']").click();
+
+        page.navigate(BASE_URL + "/membership");
+        Locator membershipRow = page.locator("tr").filter(new Locator.FilterOptions().setHasText(lastname));
+        String membershipId = membershipRow.locator("td").first().innerText().trim();
+
+        page.navigate(BASE_URL + "/payment/new");
+        assertThat(page.locator("#paymentForm")).isVisible();
+        page.locator("#userEmail").fill(email);
+        page.selectOption("#status", "PENDING");
+        page.selectOption("#type", "CARD");
+        page.locator("#amount").fill("40.00");
+        page.locator("input[name='membershipIds']").fill(membershipId);
+        page.locator("#paymentForm button[type='submit']").click();
+
+        page.waitForURL("**/payment/*/edit");
+        assertThat(page.locator("input[name='membershipIds']")).hasValue(membershipId);
+        assertThat(page.locator("#membershipIdsContainer")).containsText(firstname);
+        assertThat(page.locator("#membershipIdsContainer")).containsText(lastname);
+        assertThat(page.locator("#membershipIdsContainer a[href*='/membership/" + membershipId + "/edit']"))
+                .isVisible();
+
+        page.close();
+    }
 }

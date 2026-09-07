@@ -57,7 +57,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.gcolin.platform.JteHtml;
 
-@RequireRole(RoleCode.TRESORIER)
+@RequireRole(value = RoleCode.TRESORIER, or = RoleCode.ENTRAINEUR)
 @Path("membership")
 public class MembershipApi {
 

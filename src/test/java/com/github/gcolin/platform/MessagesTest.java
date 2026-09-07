@@ -32,7 +32,7 @@ class MessagesTest {
     void roleMessageKeysShouldExistInBothLocales() {
         Messages english = new Messages(Locale.UK);
         Messages french = new Messages(Locale.FRENCH);
-        for (String role : List.of("ADMIN", "TRESORIER", "ARBITRE", "EVENT_ADMIN")) {
+        for (String role : List.of("ADMIN", "TRESORIER", "ENTRAINEUR", "ARBITRE", "EVENT_ADMIN")) {
             String key = "role." + role;
             assertFalse(english.get(key).isBlank());
             assertFalse(french.get(key).isBlank());

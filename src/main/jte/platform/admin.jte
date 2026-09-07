@@ -217,12 +217,11 @@
       )
     @endif
 
-    @if(user.hasRole("TRESORIER") || user.hasRole("ADMIN"))
+    @if(user.canManageMemberships())
       @template.platform.adminPanel(
         heading=msg.get("admin.section.membership"),
         content = @`
         <div class="row g-3">
-          @if(user.canManageMemberships())
             <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/membership">
                 <div class="card-body">
@@ -250,6 +249,20 @@
               </a>
             </div>
             <div class="col-12 col-md-6 col-xl-4">
+              <a class="card h-100 text-decoration-none" href="${contextPath}/membership-option-files">
+                <div class="card-body">
+                  <div class="d-flex align-items-start gap-3">
+                    <i class="bi bi-folder fs-3 text-primary"></i>
+                    <div>
+                      <h3 class="h5 mb-1">${msg.get("menu.membershipOptionFiles")}</h3>
+                      <p class="text-body-secondary mb-0">${msg.get("admin.tile.membershipOptionFilesDesc")}</p>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            </div>
+            @if(user.hasRole("TRESORIER"))
+            <div class="col-12 col-md-6 col-xl-4">
               <a class="card h-100 text-decoration-none" href="${contextPath}/license-admin">
                 <div class="card-body">
                   <div class="d-flex align-items-start gap-3">
@@ -262,7 +275,7 @@
                 </div>
               </a>
             </div>
-          @endif
+            @endif
         </div>
         `
       )

@@ -5,8 +5,8 @@ import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.player.LuceneDb;
 import com.github.gcolin.player.ManualPlayerEntry;
 import com.github.gcolin.player.Player;
+import com.github.gcolin.platform.Config;
 import com.github.gcolin.platform.ServiceUtils;
-import io.jsonwebtoken.lang.Collections;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.FormParam;
@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,9 @@ public class DatabaseApi {
     @Inject
     private LuceneDb luceneDb;
 
+    @Inject
+    private Config config;
+
     @Context
     private UriInfo uriInfo;
 
@@ -46,8 +50,31 @@ public class DatabaseApi {
 
     @GET
     @RequireRole(RoleCode.ADMIN)
-    public JteHtml page() {
-        return new JteHtml(Collections.emptyMap(), "player/database.jte");
+    public JteHtml page(@QueryParam("status") String status) {
+        Map<String, Object> model = new HashMap<>();
+        model.put("excludeAffTypeN", Boolean.parseBoolean(config.getProperty("ffe.excludeAffTypeN", "false")));
+        model.put("status", status);
+        return new JteHtml(model, "player/database.jte");
+    }
+
+    @POST
+    @Path("ffe/settings")
+    @RequireRole(RoleCode.ADMIN)
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    public Response saveFfeSettings(@FormParam("ffe.excludeAffTypeN") String excludeAffTypeN) {
+        try {
+            Map<String, String> updates = new LinkedHashMap<>();
+            updates.put(
+                    "ffe.excludeAffTypeN",
+                    excludeAffTypeN != null && !excludeAffTypeN.isBlank() && !"false".equalsIgnoreCase(excludeAffTypeN)
+                            ? "true"
+                            : "false");
+            config.updateProperties(updates);
+            return redirectToDatabase("settingsSaved");
+        } catch (IOException e) {
+            logger.error("cannot save FFE settings", e);
+            return redirectToDatabase("settingsError");
+        }
     }
 
     @GET
@@ -209,6 +236,14 @@ public class DatabaseApi {
         } catch (IOException e) {
             throw new WebApplicationException(e);
         }
+    }
+
+    private Response redirectToDatabase(String status) {
+        URI uri = uriInfo.getBaseUriBuilder()
+                .path("database")
+                .queryParam("status", status)
+                .build();
+        return Response.seeOther(uri).build();
     }
 
     private Response redirectToManualPlayers(String status) {

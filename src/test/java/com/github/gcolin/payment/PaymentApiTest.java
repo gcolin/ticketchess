@@ -2,6 +2,7 @@ package com.github.gcolin.payment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,7 +19,10 @@ import com.github.gcolin.club.SeasonScope;
 
 import com.github.gcolin.event.Event;
 import com.github.gcolin.event.EventPaymentsReportService;
+import com.github.gcolin.membership.Membership;
 import com.github.gcolin.membership.MembershipDao;
+import com.github.gcolin.membership.MembershipDisplay;
+import com.github.gcolin.membership.MembershipStatus;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
@@ -118,18 +122,21 @@ class PaymentApiTest {
         PaymentDao paymentDao = mock(PaymentDao.class);
         PlayerSubscriptionDao subDao = mock(PlayerSubscriptionDao.class);
         PlayerSubscriptionOptionDao optionDao = mock(PlayerSubscriptionOptionDao.class);
+        MembershipDao membershipDao = mock(MembershipDao.class);
 
         PlayerSubscription sub = new PlayerSubscription();
         sub.setId(7);
         when(subDao.findByPaymentId(42)).thenReturn(List.of(sub));
         when(optionDao.findByPaymentId(42)).thenReturn(List.of());
+        when(membershipDao.findByPaymentId(42)).thenReturn(List.of());
 
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
         inject(api, "playerSubscriptionOptionService", optionDao);
+        inject(api, "membershipDao", membershipDao);
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/payment")));
 
-        Response response = api.save(42, "true", null, null, null, null, null, null, null, null);
+        Response response = api.save(42, "true", null, null, null, null, null, null, null, null, null);
 
         assertEquals(303, response.getStatus());
         assertEquals(URI.create("http://localhost:8080/payment"), response.getLocation());
@@ -143,6 +150,7 @@ class PaymentApiTest {
         PaymentDao paymentDao = mock(PaymentDao.class);
         PlayerSubscriptionDao subDao = mock(PlayerSubscriptionDao.class);
         PlayerSubscriptionOptionDao optionDao = mock(PlayerSubscriptionOptionDao.class);
+        MembershipDao membershipDao = mock(MembershipDao.class);
 
         Payment payment = new Payment();
         payment.setId(5L);
@@ -150,15 +158,17 @@ class PaymentApiTest {
         when(paymentDao.merge(payment)).thenReturn(payment);
         when(subDao.findByPaymentId(5)).thenReturn(List.of());
         when(optionDao.findByPaymentId(5)).thenReturn(List.of());
+        when(membershipDao.findByPaymentId(5)).thenReturn(List.of());
 
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
         inject(api, "playerSubscriptionOptionService", optionDao);
+        inject(api, "membershipDao", membershipDao);
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/payment/5/edit")));
 
         WebApplicationException ex = assertThrows(
                 WebApplicationException.class,
-                () -> api.save(5, "false", "u@test.com", "PENDING", "CARD", 10.0, "", "", List.of("x"), null));
+                () -> api.save(5, "false", "u@test.com", "PENDING", "CARD", 10.0, "", "", List.of("x"), null, null));
 
         assertEquals(400, ex.getResponse().getStatus());
     }
@@ -169,6 +179,7 @@ class PaymentApiTest {
         PaymentDao paymentDao = mock(PaymentDao.class);
         PlayerSubscriptionDao subDao = mock(PlayerSubscriptionDao.class);
         PlayerSubscriptionOptionDao optionDao = mock(PlayerSubscriptionOptionDao.class);
+        MembershipDao membershipDao = mock(MembershipDao.class);
 
         Payment payment = new Payment();
         payment.setId(10L);
@@ -186,15 +197,17 @@ class PaymentApiTest {
         when(subDao.findByPaymentId(10)).thenReturn(List.of(previouslyAttached));
         when(subDao.find(21)).thenReturn(selected);
         when(optionDao.findByPaymentId(10)).thenReturn(List.of());
+        when(membershipDao.findByPaymentId(10)).thenReturn(List.of());
 
         inject(api, "paymentService", paymentDao);
         inject(api, "playerSubscriptionService", subDao);
         inject(api, "playerSubscriptionOptionService", optionDao);
+        inject(api, "membershipDao", membershipDao);
         inject(api, "find", mock(Find.class));
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/payment/10/edit")));
 
-        Response response =
-                api.save(10, "false", "user@test.com", "PAID", "CARD", 35.0, "sess_10", "pi_10", List.of("21"), null);
+        Response response = api.save(
+                10, "false", "user@test.com", "PAID", "CARD", 35.0, "sess_10", "pi_10", List.of("21"), null, null);
 
         assertEquals(303, response.getStatus());
         assertEquals(URI.create("http://localhost:8080/payment/10/edit"), response.getLocation());
@@ -205,6 +218,93 @@ class PaymentApiTest {
         assertEquals(payment, selected.getPayment());
         verify(subDao).persist(previouslyAttached);
         verify(subDao).persist(selected);
+    }
+
+    @Test
+    void saveShouldAttachSelectedMembershipsAndRedirect() throws Exception {
+        PaymentApi api = new PaymentApi();
+        PaymentDao paymentDao = mock(PaymentDao.class);
+        PlayerSubscriptionDao subDao = mock(PlayerSubscriptionDao.class);
+        PlayerSubscriptionOptionDao optionDao = mock(PlayerSubscriptionOptionDao.class);
+        MembershipDao membershipDao = mock(MembershipDao.class);
+
+        Payment payment = new Payment();
+        payment.setId(11L);
+
+        Membership previouslyAttached = new Membership();
+        previouslyAttached.setId(1);
+        previouslyAttached.setPayment(payment);
+
+        Membership selected = new Membership();
+        selected.setId(55);
+        selected.setAmountCents(4000);
+
+        when(paymentDao.find(11)).thenReturn(payment);
+        when(paymentDao.merge(payment)).thenReturn(payment);
+        when(subDao.findByPaymentId(11)).thenReturn(List.of());
+        when(optionDao.findByPaymentId(11)).thenReturn(List.of());
+        when(membershipDao.findByPaymentId(11)).thenReturn(List.of(previouslyAttached));
+        when(membershipDao.find(55)).thenReturn(selected);
+
+        inject(api, "paymentService", paymentDao);
+        inject(api, "playerSubscriptionService", subDao);
+        inject(api, "playerSubscriptionOptionService", optionDao);
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/payment/11/edit")));
+
+        Response response = api.save(
+                11, "false", "user@test.com", "PAID", "CARD", 40.0, "sess_11", "pi_11", null, null, List.of("55"));
+
+        assertEquals(303, response.getStatus());
+        assertEquals(URI.create("http://localhost:8080/payment/11/edit"), response.getLocation());
+        assertNull(previouslyAttached.getPayment());
+        assertEquals(payment, selected.getPayment());
+        verify(membershipDao).merge(previouslyAttached);
+        verify(membershipDao).merge(selected);
+    }
+
+    @Test
+    void editPaymentShouldIncludeMembershipDisplays() throws Exception {
+        PaymentApi api = new PaymentApi();
+        PaymentDao paymentDao = mock(PaymentDao.class);
+        PlayerSubscriptionDao subDao = mock(PlayerSubscriptionDao.class);
+        PlayerSubscriptionOptionDao optionDao = mock(PlayerSubscriptionOptionDao.class);
+        MembershipDao membershipDao = mock(MembershipDao.class);
+
+        Payment payment = new Payment();
+        payment.setId(329L);
+        payment.setStatus(PaymentStatus.PENDING);
+        payment.setType(PaymentType.CARD);
+        payment.setAmount(40.0);
+
+        Membership membership = new Membership();
+        membership.setId(88);
+        membership.setFirstname("Jean");
+        membership.setLastname("Dupont");
+        membership.setAmountCents(4000);
+        membership.setStatus(MembershipStatus.APPROVED);
+
+        when(paymentDao.find(329)).thenReturn(payment);
+        when(subDao.findByPaymentId(329)).thenReturn(List.of());
+        when(optionDao.findByPaymentId(329)).thenReturn(List.of());
+        when(membershipDao.findByPaymentId(329)).thenReturn(List.of(membership));
+
+        inject(api, "paymentService", paymentDao);
+        inject(api, "playerSubscriptionService", subDao);
+        inject(api, "playerSubscriptionOptionService", optionDao);
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "find", mock(Find.class));
+
+        JteHtml html = api.editPayment(329);
+        @SuppressWarnings("unchecked")
+        List<MembershipDisplay> displays = (List<MembershipDisplay>) html.getModel().get("membershipDisplays");
+
+        assertEquals(1, displays.size());
+        assertEquals(88, displays.get(0).getMembershipId());
+        assertEquals("/membership/88/edit", displays.get(0).getEditLink());
+        assertEquals("Jean Dupont", displays.get(0).getMemberName());
+        assertEquals("APPROVED", displays.get(0).getStatus());
+        assertEquals(4000, displays.get(0).getAmountCents());
     }
 
     @Test

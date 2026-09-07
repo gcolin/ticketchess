@@ -25,12 +25,19 @@ public final class Redirects {
             return defaultUri;
         }
         String trimmed = redirectUri.trim();
+        int fragmentIndex = trimmed.indexOf('#');
+        String withoutFragment = fragmentIndex >= 0 ? trimmed.substring(0, fragmentIndex) : trimmed;
+        String fragment = fragmentIndex >= 0 ? trimmed.substring(fragmentIndex + 1) : null;
+
         UriBuilder builder = uriInfo.getBaseUriBuilder();
-        int queryIndex = trimmed.indexOf('?');
-        String pathPart = queryIndex >= 0 ? trimmed.substring(0, queryIndex) : trimmed;
+        int queryIndex = withoutFragment.indexOf('?');
+        String pathPart = queryIndex >= 0 ? withoutFragment.substring(0, queryIndex) : withoutFragment;
         builder.path(pathPart.startsWith("/") ? pathPart.substring(1) : pathPart);
         if (queryIndex >= 0) {
-            builder.replaceQuery(trimmed.substring(queryIndex + 1));
+            builder.replaceQuery(withoutFragment.substring(queryIndex + 1));
+        }
+        if (fragment != null && !fragment.isBlank()) {
+            builder.fragment(fragment);
         }
         return builder.build();
     }

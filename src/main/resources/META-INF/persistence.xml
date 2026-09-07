@@ -12,6 +12,7 @@
         <class>com.github.gcolin.membership.Membership</class>
         <class>com.github.gcolin.membership.MembershipOption</class>
         <class>com.github.gcolin.membership.MembershipOptionSubscription</class>
+        <class>com.github.gcolin.membership.MembershipOptionFile</class>
         <class>com.github.gcolin.event.EventGroup</class>
         <class>com.github.gcolin.notification.Notification</class>
         <class>com.github.gcolin.event.EventOption</class>

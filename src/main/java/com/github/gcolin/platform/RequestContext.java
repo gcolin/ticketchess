@@ -21,6 +21,7 @@ import com.github.gcolin.membership.LicenseDao;
 import com.github.gcolin.membership.LicensePriceDao;
 import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.membership.MembershipOptionDao;
+import com.github.gcolin.membership.MembershipOptionFileDao;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
 import com.github.gcolin.notification.NotificationDao;
 import com.github.gcolin.notification.Notifications;
@@ -53,6 +54,7 @@ public final class RequestContext {
     private LicensePriceDao licensePriceDao;
     private MembershipDao membershipDao;
     private MembershipOptionDao membershipOptionDao;
+    private MembershipOptionFileDao membershipOptionFileDao;
     private MembershipOptionSubscriptionDao membershipOptionSubscriptionDao;
     private UserAuthorizationDao userAuthorizationDao;
     private CustomPlayerDao customPlayerDao;
@@ -314,6 +316,15 @@ public final class RequestContext {
             membershipOptionDao.setEm(em);
         }
         return membershipOptionDao;
+    }
+
+    public MembershipOptionFileDao membershipOptionFileDao() {
+        touchEm();
+        if (membershipOptionFileDao == null) {
+            membershipOptionFileDao = new MembershipOptionFileDao();
+            membershipOptionFileDao.setEm(em);
+        }
+        return membershipOptionFileDao;
     }
 
     public MembershipOptionSubscriptionDao membershipOptionSubscriptionDao() {

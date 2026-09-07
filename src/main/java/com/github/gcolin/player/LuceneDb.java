@@ -122,7 +122,9 @@ public class LuceneDb {
 
             if (hasFFE) {
                 logger.info("load FFE db");
-                new FFELoader().load(writer, mdbFile);
+                boolean excludeAffTypeN = this.config != null
+                        && Boolean.parseBoolean(this.config.getProperty("ffe.excludeAffTypeN", "false"));
+                new FFELoader(excludeAffTypeN).load(writer, mdbFile);
             }
 
             if (hasFide) {

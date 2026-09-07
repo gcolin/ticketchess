@@ -1,16 +1,12 @@
 package com.github.gcolin.membership;
 
 import com.github.gcolin.auth.RequireRole;
+import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.club.ClubSeason;
 import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.club.SeasonScope;
-import com.github.gcolin.membership.MembershipOption;
-import com.github.gcolin.membership.MembershipOptionAccessRule;
-import com.github.gcolin.membership.MembershipOptionType;
-import com.github.gcolin.auth.RoleCode;
-import com.github.gcolin.membership.LicenseDao;
-import com.github.gcolin.membership.MembershipOptionDao;
+import com.github.gcolin.platform.JteHtml;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.FormParam;
@@ -28,9 +24,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.github.gcolin.platform.JteHtml;
 
-@RequireRole(RoleCode.TRESORIER)
+@RequireRole(value = RoleCode.TRESORIER, or = RoleCode.ENTRAINEUR)
 @Path("membership-option-admin")
 public class MembershipOptionAdminApi {
 

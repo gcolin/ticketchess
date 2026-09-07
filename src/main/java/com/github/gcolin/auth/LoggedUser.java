@@ -186,7 +186,7 @@ public class LoggedUser implements Serializable {
     }
 
     public boolean canManageMemberships() {
-        return hasRole(RoleCode.TRESORIER);
+        return hasRole(RoleCode.TRESORIER) || hasRole(RoleCode.ENTRAINEUR);
     }
 
     public boolean canSeeAdminMenu() {

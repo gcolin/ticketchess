@@ -23,4 +23,18 @@ public class MembershipOptionSubscriptionDao extends AbstractDao<MembershipOptio
         query.setParameter("ids", ids);
         return query.getResultList();
     }
+
+    public List<MembershipOptionSubscription> findByOptionId(Integer optionId) {
+        if (optionId == null) {
+            return Collections.emptyList();
+        }
+        TypedQuery<MembershipOptionSubscription> query = em.createQuery(
+                "SELECT s FROM MembershipOptionSubscription s"
+                        + " JOIN FETCH s.membership"
+                        + " JOIN FETCH s.membershipOption"
+                        + " WHERE s.membershipOption.id = :optionId",
+                MembershipOptionSubscription.class);
+        query.setParameter("optionId", optionId);
+        return query.getResultList();
+    }
 }

@@ -5,26 +5,30 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.github.gcolin.player.LuceneDb;
+import com.github.gcolin.platform.Config;
+import com.github.gcolin.platform.JteHtml;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import com.github.gcolin.platform.JteHtml;
 
 class DatabaseApiTest {
 
     @Test
-    void pageShouldReturnEmptyModel() throws Exception {
+    void pageShouldReturnFfeSettingsInModel() throws Exception {
         DatabaseApi api = new DatabaseApi();
+        Config config = mock(Config.class);
+        when(config.getProperty("ffe.excludeAffTypeN", "false")).thenReturn("true");
 
         inject(api, "luceneDb", mock(LuceneDb.class));
+        inject(api, "config", config);
 
-        JteHtml html = api.page();
+        JteHtml html = api.page(null);
 
         assertEquals("player/database.jte", html.getTemplate());
         Map<String, Object> model = html.getModel();
-        assertEquals(0, model.size());
+        assertEquals(true, model.get("excludeAffTypeN"));
+        assertEquals(null, model.get("status"));
     }
 
     @Test

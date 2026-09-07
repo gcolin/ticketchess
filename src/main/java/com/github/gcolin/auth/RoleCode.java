@@ -5,6 +5,7 @@ import java.util.Set;
 public enum RoleCode {
     ADMIN,
     TRESORIER,
+    ENTRAINEUR,
     ARBITRE,
     EVENT_ADMIN;
 

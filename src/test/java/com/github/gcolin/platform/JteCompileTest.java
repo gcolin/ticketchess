@@ -177,7 +177,21 @@ class JteCompileTest {
         model.put("membership", new com.github.gcolin.membership.Membership());
         model.put("license", new com.github.gcolin.membership.License());
         model.put("price", new com.github.gcolin.membership.LicensePrice());
-        model.put("option", new com.github.gcolin.membership.MembershipOption());
+        com.github.gcolin.membership.MembershipOption membershipOption = new com.github.gcolin.membership.MembershipOption();
+        membershipOption.setId(1);
+        membershipOption.setOptionValue("Test option");
+        model.put("option", membershipOption);
+        com.github.gcolin.membership.MembershipOptionFile membershipOptionFile =
+                new com.github.gcolin.membership.MembershipOptionFile();
+        membershipOptionFile.setId(1);
+        membershipOptionFile.setOriginalName("test.pdf");
+        membershipOptionFile.setStoredName("stored-test.pdf");
+        membershipOptionFile.setMembershipOption(membershipOption);
+        model.put("file", membershipOptionFile);
+        model.put("files", List.of());
+        model.put("selectedOption", membershipOption);
+        model.put("defaultBody", "");
+        model.put("defaultSubject", "");
         model.put("statuses", com.github.gcolin.membership.MembershipStatus.values());
         model.put("optionTypes", com.github.gcolin.membership.MembershipOptionType.values());
         model.put("accessRules", com.github.gcolin.membership.MembershipOptionAccessRule.values());
@@ -246,6 +260,7 @@ class JteCompileTest {
         model.put("orphanCount", 0);
         model.put("orphanCustomPlayers", List.of());
         model.put("manualPlayer", false);
+        model.put("excludeAffTypeN", false);
         model.put("firstname", "");
         model.put("lastname", "");
         model.put("birthdate", "");

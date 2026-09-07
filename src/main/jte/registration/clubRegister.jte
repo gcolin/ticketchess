@@ -35,6 +35,8 @@
 @param Boolean bankTransferMembershipsEnabled
 @param Boolean stripeSimulated
 @param java.util.List<com.github.gcolin.payment.Payment> paidMembershipPayments
+@param java.util.List<com.github.gcolin.membership.MembershipOption> sharedOptions
+@param java.util.Map<String, java.util.List<com.github.gcolin.membership.MembershipOptionFile>> sharedOptionFilesByOptionId
 !{i18ntitle = msg.get("page.clubRegister");}
 !{title = i18ntitle;}
 @template.platform.head(title=title, contextPath=contextPath, pageConfig=pageConfig)
@@ -316,6 +318,30 @@
               <a class="btn btn-outline-success btn-sm ms-2" href="${contextPath}/payment/${pp.getId()}/invoice">
                 📄 ${msg.get("payment.downloadInvoice")} #${pp.getId()}
               </a>
+            @endfor
+          </div>
+        @endif
+
+        @if(sharedOptions != null && !sharedOptions.isEmpty() && sharedOptionFilesByOptionId != null
+            && sharedOptions.stream().anyMatch(opt -> sharedOptionFilesByOptionId.getOrDefault(String.valueOf(opt.getId()), java.util.List.of()).size() > 0))
+          <div class="mt-4" id="shared-files">
+            <h3 class="h6 mb-3">${msg.get("clubRegister.sharedFiles.title")}</h3>
+            @for(var sharedOpt : sharedOptions)
+              !{java.util.List<com.github.gcolin.membership.MembershipOptionFile> optionFiles = sharedOptionFilesByOptionId.getOrDefault(String.valueOf(sharedOpt.getId()), java.util.List.of());}
+              @if(!optionFiles.isEmpty())
+                <div class="mb-3">
+                  <div class="fw-semibold mb-1">${sharedOpt.getOptionValue() != null ? sharedOpt.getOptionValue() : String.valueOf(sharedOpt.getId())}</div>
+                  <ul class="list-unstyled mb-0">
+                    @for(var sharedFileItem : optionFiles)
+                      <li class="mb-1" id="shared-file-${sharedFileItem.getId()}">
+                        <a href="${contextPath}/club-register/files/${sharedFileItem.getId()}/download">
+                          <i class="bi bi-download me-1"></i>${sharedFileItem.getOriginalName()}
+                        </a>
+                      </li>
+                    @endfor
+                  </ul>
+                </div>
+              @endif
             @endfor
           </div>
         @endif

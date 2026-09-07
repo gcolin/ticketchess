@@ -25,6 +25,15 @@ import org.slf4j.LoggerFactory;
 public class FFELoader {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private final boolean excludeAffTypeN;
+
+    public FFELoader() {
+        this(false);
+    }
+
+    public FFELoader(boolean excludeAffTypeN) {
+        this.excludeAffTypeN = excludeAffTypeN;
+    }
 
     private Document toDocument(Row row, IndexSearcher searcher) throws IOException {
         Document doc = new Document();
@@ -37,7 +46,10 @@ public class FFELoader {
         String eloBlitz = row.getShort("Blitz") + row.getString("BlitzFide");
         LocalDateTime birthDate = row.getLocalDateTime("NeLe");
 
-        if (nom == null || prenom == null || nrffe == null || "N".equals(row.getString("AffType"))) {
+        if (nom == null
+                || prenom == null
+                || nrffe == null
+                || (excludeAffTypeN && "N".equals(row.getString("AffType")))) {
             return null;
         }
 

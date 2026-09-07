@@ -76,3 +76,6 @@ db.h2.loadPostgresDump=false
 #db.h2.postgresDumpFile=./db.sql
 
 pendingQueueOffset=0
+
+# Index FFE : exclure les joueurs AffType=N (non affiliés) lors du chargement Lucene
+ffe.excludeAffTypeN=false
