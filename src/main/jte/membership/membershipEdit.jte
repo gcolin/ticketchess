@@ -111,6 +111,22 @@
             </div>
           </div>
 
+          @if(user.canManagePayments())
+            @if(membership.getPayment() != null && membership.getPayment().getId() != null)
+            <div class="mt-4">
+              <a class="btn btn-secondary" href="${contextPath}/payment/${membership.getPayment().getId()}/edit">
+                ${msg.get("action.goToPayment")}
+              </a>
+            </div>
+            @elseif(membership.getStatus() == com.github.gcolin.membership.MembershipStatus.PAID)
+            <div class="mt-4">
+              <a class="btn btn-success" href="${contextPath}/payment/new?membershipId=${membership.getId()}">
+                ${msg.get("action.newPayment")}
+              </a>
+            </div>
+            @endif
+          @endif
+
           <div class="mt-4">
             <h5 class="mb-3">${msg.get("clubRegister.myMemberships.options")}</h5>
             @if(membershipOptions != null && membershipOptions.size() > 0)

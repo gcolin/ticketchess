@@ -6,7 +6,10 @@ import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import jakarta.mail.util.ByteArrayDataSource;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -68,17 +71,33 @@ public class SendMail {
     }
 
     public void send(AbstractMail amail, String to, String subject) throws Exception {
+        send(amail, to, subject, List.of());
+    }
+
+    public void send(AbstractMail amail, String to, String subject, MailAttachment attachment) throws Exception {
+        send(amail, to, subject, attachment == null ? List.of() : List.of(attachment));
+    }
+
+    public void send(AbstractMail amail, String to, String subject, List<MailAttachment> attachments)
+            throws Exception {
         if (config != null) {
             config.applyOrg(amail);
         }
         String content = tmpl.render(amail.getTemplate(), amail);
+        List<MailAttachment> safeAttachments = attachments == null ? List.of() : attachments;
         if (password == null || password.isEmpty()) {
             File mailDir = new File("emails");
             mailDir.mkdirs();
-            File mailFile = new File(mailDir, mailDir.list().length + ".html");
+            int index = mailDir.list() == null ? 0 : mailDir.list().length;
+            File mailFile = new File(mailDir, index + ".html");
             logger.info("write into {}", mailFile.getAbsolutePath());
             content = content.replace("<head>", "<head><title>" + to + " - " + subject + "</title>");
             Files.writeString(mailFile.toPath(), content, StandardCharsets.UTF_8, StandardOpenOption.CREATE);
+            for (MailAttachment attachment : safeAttachments) {
+                File attachmentFile = new File(mailDir, index + "-" + attachment.filename());
+                Files.write(attachmentFile.toPath(), attachment.content(), StandardOpenOption.CREATE);
+                logger.info("write attachment into {}", attachmentFile.getAbsolutePath());
+            }
         } else {
             Session session = Session.getInstance(getProps(), new Authenticator() {
                 @Override
@@ -91,7 +110,22 @@ public class SendMail {
             message.setFrom(new InternetAddress(username));
             message.setRecipients(RecipientType.TO, InternetAddress.parse(to));
             message.setSubject(subject);
-            message.setContent(content, "text/html; charset=UTF-8");
+            if (safeAttachments.isEmpty()) {
+                message.setContent(content, "text/html; charset=UTF-8");
+            } else {
+                MimeMultipart multipart = new MimeMultipart();
+                MimeBodyPart htmlPart = new MimeBodyPart();
+                htmlPart.setContent(content, "text/html; charset=UTF-8");
+                multipart.addBodyPart(htmlPart);
+                for (MailAttachment attachment : safeAttachments) {
+                    MimeBodyPart filePart = new MimeBodyPart();
+                    filePart.setDataHandler(new jakarta.activation.DataHandler(
+                            new ByteArrayDataSource(attachment.content(), attachment.contentType())));
+                    filePart.setFileName(attachment.filename());
+                    multipart.addBodyPart(filePart);
+                }
+                message.setContent(multipart);
+            }
 
             executor.submit(new Runnable() {
                 @Override

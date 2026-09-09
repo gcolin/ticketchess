@@ -64,7 +64,11 @@ public class AdminApi {
                     "invoice.seller.prefecture",
                     "invoice.number.prefix",
                     "invoice.footer",
-                    "invoice.vat.notice"),
+                    "invoice.vat.notice",
+                    "invoice.donation.object",
+                    "invoice.donation.signatory",
+                    "invoice.donation.signatoryTitle",
+                    "invoice.donation.prefix"),
             "stripe",
             Set.of(
                     "stripe.public",
@@ -118,6 +122,9 @@ public class AdminApi {
 
     @Inject
     private LogoService logoService;
+
+    @Inject
+    private SignatureService signatureService;
 
     @Inject
     private BackgroundService backgroundService;
@@ -188,6 +195,7 @@ public class AdminApi {
         model.put("tab", tab);
         model.put("ribAvailable", ribAvailable);
         model.put("logoAvailable", logoService.exists());
+        model.put("signatureAvailable", signatureService.exists());
         model.put("backgroundAvailable", backgroundService.exists());
         Map<String, String> cfg = new LinkedHashMap<>(config.getOrgFormValues());
         for (Set<String> keys : TAB_KEYS.values()) {
@@ -326,6 +334,44 @@ public class AdminApi {
         } catch (IOException e) {
             logger.error("cannot delete logo file", e);
             return jsonRedirectToOrg("error", "logoDeleteFailed", "files");
+        }
+    }
+
+    @POST
+    @Path("org/signature")
+    @RequireRole(RoleCode.ADMIN)
+    @Consumes({"image/png", "image/jpeg", "image/webp", "application/octet-stream"})
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response uploadSignature(InputStream file) {
+        try {
+            signatureService.save(file);
+            return jsonRedirectToOrg("success", "signatureUploaded", "files");
+        } catch (WebApplicationException e) {
+            String error = "signatureUploadFailed";
+            String message = e.getMessage() == null ? "" : e.getMessage();
+            if (message.contains("PNG") || message.contains("JPEG") || message.contains("WebP")) {
+                error = "invalidSignature";
+            } else if (message.contains("too large")) {
+                error = "signatureTooLarge";
+            }
+            return jsonRedirectToOrg("error", error, "files");
+        } catch (IOException e) {
+            logger.error("cannot save signature file", e);
+            return jsonRedirectToOrg("error", "signatureUploadFailed", "files");
+        }
+    }
+
+    @DELETE
+    @Path("org/signature")
+    @RequireRole(RoleCode.ADMIN)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteSignature() {
+        try {
+            signatureService.delete();
+            return jsonRedirectToOrg("success", "signatureDeleted", "files");
+        } catch (IOException e) {
+            logger.error("cannot delete signature file", e);
+            return jsonRedirectToOrg("error", "signatureDeleteFailed", "files");
         }
     }
 

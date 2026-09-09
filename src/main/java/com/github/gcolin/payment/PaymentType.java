@@ -4,5 +4,6 @@ public enum PaymentType {
     CARD,
     BANK_TRANSFER,
     FREE,
-    CASH
+    CASH,
+    CHEQUE
 }

@@ -144,6 +144,7 @@ public class ClubRegisterApi {
             model.put("stripeCardMembershipsEnabled", Config.isStripeCardEnabledForMemberships(properties));
             model.put("bankTransferMembershipsEnabled", Config.isBankTransferEnabledForMemberships(properties));
             model.put("paidMembershipPayments", paymentDao.findAllPaidWithMembershipsByUser(loggedUser.getEmail()));
+            model.put("paidDonationPayments", paymentDao.findAllPaidDonationsByUser(loggedUser.getEmail()));
             List<Integer> membershipIds = memberships.stream().map(Membership::getId).collect(Collectors.toList());
             Map<String, List<MembershipOptionSubscription>> subscriptionsByMembership =
                 membershipOptionSubscriptionDao.findByMembershipIds(membershipIds).stream()

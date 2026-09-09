@@ -3,6 +3,7 @@ package com.github.gcolin.platform;
 import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.event.EventCollectionOptionType;
 import com.github.gcolin.event.EventOptionType;
+import com.github.gcolin.payment.PaymentType;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
@@ -178,14 +179,18 @@ public class PersistenceService {
             applyMembershipLicenseTypeColumn(connection);
             applyMembershipSeasonColumns(connection);
             applyMembershipPaymentColumn(connection);
+            applyPaymentDonationColumns(connection);
             migratePermissionsToRoles(connection);
             if (isH2()) {
-                applyH2EnumColumnPatch(connection, "eventoption", EventOptionType.class);
-                applyH2EnumColumnPatch(connection, "eventcollectionoption", EventCollectionOptionType.class);
+                applyH2EnumColumnPatch(connection, "eventoption", "option_type", EventOptionType.class, true);
+                applyH2EnumColumnPatch(
+                        connection, "eventcollectionoption", "option_type", EventCollectionOptionType.class, true);
+                applyH2EnumColumnPatch(connection, "payment", "type", PaymentType.class, false);
             } else {
-                applyPostgresEnumCheckConstraintPatch(connection, "eventoption", EventOptionType.class);
+                applyPostgresEnumCheckConstraintPatch(connection, "eventoption", "option_type", EventOptionType.class);
                 applyPostgresEnumCheckConstraintPatch(
-                        connection, "eventcollectionoption", EventCollectionOptionType.class);
+                        connection, "eventcollectionoption", "option_type", EventCollectionOptionType.class);
+                applyPostgresEnumCheckConstraintPatch(connection, "payment", "type", PaymentType.class);
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to apply schema patches", e);
@@ -196,38 +201,45 @@ public class PersistenceService {
         return "h2".equalsIgnoreCase(config.getProperties().getProperty("db.type", "h2"));
     }
 
-    private void applyH2EnumColumnPatch(Connection connection, String table, Class<? extends Enum<?>> enumClass)
+    private void applyH2EnumColumnPatch(
+            Connection connection,
+            String table,
+            String column,
+            Class<? extends Enum<?>> enumClass,
+            boolean notNull)
             throws SQLException {
         String tableKey = table.toUpperCase();
-        if (!tableExists(connection, tableKey) || !columnExists(connection, tableKey, "OPTION_TYPE")) {
+        String columnKey = column.toUpperCase();
+        if (!tableExists(connection, tableKey) || !columnExists(connection, tableKey, columnKey)) {
             return;
         }
-        if (!isH2EnumColumn(connection, tableKey, "OPTION_TYPE")) {
+        if (!isH2EnumColumn(connection, tableKey, columnKey)) {
             return;
         }
 
         String enumValues = Arrays.stream(enumClass.getEnumConstants())
                 .map(value -> "'" + value.name() + "'")
                 .collect(Collectors.joining(", "));
-        String sql = "ALTER TABLE " + table + " ALTER COLUMN option_type ENUM(" + enumValues + ") NOT NULL";
+        String sql = "ALTER TABLE " + table + " ALTER COLUMN " + column + " ENUM(" + enumValues + ")"
+                + (notNull ? " NOT NULL" : "");
         try (Statement st = connection.createStatement()) {
             st.execute(sql);
         }
         tableColumnsCache.remove(tableKey);
-        logger.info("Updated {}.option_type enum to match {}", table, enumClass.getSimpleName());
+        logger.info("Updated {}.{} enum to match {}", table, column, enumClass.getSimpleName());
     }
 
     private void applyPostgresEnumCheckConstraintPatch(
-            Connection connection, String table, Class<? extends Enum<?>> enumClass) throws SQLException {
-        if (!postgresTableHasColumn(connection, table, "option_type")) {
+            Connection connection, String table, String column, Class<? extends Enum<?>> enumClass) throws SQLException {
+        if (!postgresTableHasColumn(connection, table, column)) {
             return;
         }
 
-        String constraintName = table + "_option_type_check";
+        String constraintName = table + "_" + column + "_check";
         Set<String> expectedValues = enumValues(enumClass);
         Set<String> currentValues = readPostgresCheckConstraintEnumValues(connection, constraintName);
         if (currentValues.equals(expectedValues)) {
-            logger.debug("{}.option_type check constraint already up to date", table);
+            logger.debug("{}.{} check constraint already up to date", table, column);
             return;
         }
 
@@ -237,11 +249,11 @@ public class PersistenceService {
 
         try (Statement st = connection.createStatement()) {
             st.execute("ALTER TABLE " + table + " DROP CONSTRAINT IF EXISTS " + constraintName);
-            st.execute("ALTER TABLE " + table + " ADD CONSTRAINT " + constraintName + " CHECK (option_type IN ("
+            st.execute("ALTER TABLE " + table + " ADD CONSTRAINT " + constraintName + " CHECK (" + column + " IN ("
                     + enumValues
                     + "))");
         }
-        logger.info("Updated {}.option_type check constraint to match {}", table, enumClass.getSimpleName());
+        logger.info("Updated {}.{} check constraint to match {}", table, column, enumClass.getSimpleName());
     }
 
     private Set<String> readPostgresCheckConstraintEnumValues(Connection connection, String constraintName)
@@ -401,6 +413,49 @@ public class PersistenceService {
         logger.info("Ensured membership.payment_id column exists");
     }
 
+    private void applyPaymentDonationColumns(Connection connection) throws SQLException {
+        if (!tableExists(connection, "PAYMENT")) {
+            return;
+        }
+        boolean added = false;
+        if (!columnExists(connection, "PAYMENT", "DONATION")) {
+            try (Statement st = connection.createStatement()) {
+                if (isH2()) {
+                    st.execute("ALTER TABLE payment ADD COLUMN donation BOOLEAN DEFAULT FALSE NOT NULL");
+                } else {
+                    st.execute(
+                            "ALTER TABLE payment ADD COLUMN IF NOT EXISTS donation boolean NOT NULL DEFAULT false");
+                }
+            }
+            added = true;
+        }
+        if (!columnExists(connection, "PAYMENT", "PAYERADDRESS")) {
+            try (Statement st = connection.createStatement()) {
+                if (isH2()) {
+                    st.execute("ALTER TABLE payment ADD COLUMN payerAddress VARCHAR(1000)");
+                } else {
+                    st.execute(
+                            "ALTER TABLE payment ADD COLUMN IF NOT EXISTS payeraddress VARCHAR(1000)");
+                }
+            }
+            added = true;
+        }
+        if (!columnExists(connection, "PAYMENT", "PAYERNAME")) {
+            try (Statement st = connection.createStatement()) {
+                if (isH2()) {
+                    st.execute("ALTER TABLE payment ADD COLUMN payerName VARCHAR(255)");
+                } else {
+                    st.execute("ALTER TABLE payment ADD COLUMN IF NOT EXISTS payername VARCHAR(255)");
+                }
+            }
+            added = true;
+        }
+        if (added) {
+            tableColumnsCache.remove("PAYMENT");
+            logger.info("Ensured payment.donation, payment.payerAddress and payment.payerName columns exist");
+        }
+    }
+
     private static final int MEMBERSHIP_PRE_SEASON_MONTHS = 5;
 
     private void backfillMembershipSeasonIds(Connection connection) throws SQLException {
@@ -460,11 +515,12 @@ public class PersistenceService {
             Integer fallbackSeasonId)
             throws SQLException {
         int updated = 0;
-        String selectSql = "SELECT id, created_at, updated_at, season_id FROM " + table;
+        // Only fill missing season_id — never overwrite an existing assignment on startup.
+        String selectSql = "SELECT id, created_at, updated_at FROM " + table + " WHERE season_id IS NULL";
         try (PreparedStatement select = connection.prepareStatement(selectSql);
                 ResultSet rows = select.executeQuery();
                 PreparedStatement update =
-                        connection.prepareStatement("UPDATE " + table + " SET season_id = ? WHERE id = ?")) {
+                        connection.prepareStatement("UPDATE " + table + " SET season_id = ? WHERE id = ? AND season_id IS NULL")) {
             while (rows.next()) {
                 LocalDateTime timestamp = coalesceTimestamp(rows.getTimestamp("created_at"), rows.getTimestamp("updated_at"));
                 Integer seasonId = resolveSeasonId(seasons, timestamp, preSeasonMonths);
@@ -472,10 +528,6 @@ public class PersistenceService {
                     seasonId = fallbackSeasonId;
                 }
                 if (seasonId == null) {
-                    continue;
-                }
-                int currentSeasonId = rows.getInt("season_id");
-                if (!rows.wasNull() && currentSeasonId == seasonId) {
                     continue;
                 }
                 update.setInt(1, seasonId);
@@ -672,8 +724,9 @@ public class PersistenceService {
     private boolean tableExists(Connection connection, String table) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES "
-                        + "WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = ?")) {
-            ps.setString(1, table);
+                        + "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?")) {
+            ps.setString(1, informationSchemaName());
+            ps.setString(2, informationSchemaTableName(table));
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getInt(1) > 0;
@@ -683,6 +736,14 @@ public class PersistenceService {
 
     private boolean columnExists(Connection connection, String table, String column) throws SQLException {
         return getTableColumns(connection, table).contains(column.toUpperCase());
+    }
+
+    private String informationSchemaName() {
+        return isH2() ? "PUBLIC" : "public";
+    }
+
+    private String informationSchemaTableName(String table) {
+        return isH2() ? table.toUpperCase() : table.toLowerCase();
     }
 
     private void initH2FromPostgresDumpIfNeeded() {
@@ -824,8 +885,9 @@ public class PersistenceService {
         Set<String> columns = new HashSet<>();
         try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
-                        + "WHERE TABLE_SCHEMA = 'PUBLIC' AND TABLE_NAME = ?")) {
-            ps.setString(1, cacheKey);
+                        + "WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?")) {
+            ps.setString(1, informationSchemaName());
+            ps.setString(2, informationSchemaTableName(table));
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     columns.add(rs.getString(1).toUpperCase());

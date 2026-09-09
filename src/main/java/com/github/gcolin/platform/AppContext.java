@@ -8,6 +8,7 @@ import com.github.gcolin.event.StatisticsReportService;
 import com.github.gcolin.membership.LicensePriceService;
 import com.github.gcolin.membership.MembershipOptionFileService;
 import com.github.gcolin.membership.MembershipReportService;
+import com.github.gcolin.payment.PaymentReceiptPdfService;
 import com.github.gcolin.payment.RibService;
 import com.github.gcolin.player.LuceneDb;
 import jakarta.servlet.ServletContext;
@@ -29,10 +30,12 @@ public final class AppContext {
     private EventDeskHub eventDeskHub;
     private EventDeskService eventDeskService;
     private LogoService logoService;
+    private SignatureService signatureService;
     private RibService ribService;
     private LicensePriceService licensePriceService;
     private StatisticsReportService statisticsReportService;
     private EventPaymentsReportService eventPaymentsReportService;
+    private PaymentReceiptPdfService paymentReceiptPdfService;
     private MembershipReportService membershipReportService;
     private MembershipOptionFileService membershipOptionFileService;
     private BackgroundService backgroundService;
@@ -83,6 +86,9 @@ public final class AppContext {
         app.logoService = new LogoService();
         app.logoService.setConfig(app.config);
 
+        app.signatureService = new SignatureService();
+        app.signatureService.setConfig(app.config);
+
         app.ribService = new RibService();
         app.ribService.setConfig(app.config);
 
@@ -90,6 +96,10 @@ public final class AppContext {
         app.statisticsReportService = new StatisticsReportService();
         app.eventPaymentsReportService = new EventPaymentsReportService();
         app.eventPaymentsReportService.setProperties(app.config.getProperties());
+        app.paymentReceiptPdfService = new PaymentReceiptPdfService();
+        app.paymentReceiptPdfService.setProperties(app.config.getProperties());
+        app.paymentReceiptPdfService.setLogoService(app.logoService);
+        app.paymentReceiptPdfService.setSignatureService(app.signatureService);
         app.membershipReportService = new MembershipReportService();
         app.membershipReportService.setProperties(app.config.getProperties());
 
@@ -173,6 +183,10 @@ public final class AppContext {
         return logoService;
     }
 
+    public SignatureService signatureService() {
+        return signatureService;
+    }
+
     public RibService ribService() {
         return ribService;
     }
@@ -187,6 +201,10 @@ public final class AppContext {
 
     public EventPaymentsReportService eventPaymentsReportService() {
         return eventPaymentsReportService;
+    }
+
+    public PaymentReceiptPdfService paymentReceiptPdfService() {
+        return paymentReceiptPdfService;
     }
 
     public MembershipReportService membershipReportService() {

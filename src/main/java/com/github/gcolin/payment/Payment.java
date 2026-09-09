@@ -38,11 +38,20 @@ public class Payment extends TimedEntity {
     @Column(nullable = false)
     private String userEmail;
 
+    @Column(length = 255)
+    private String payerName;
+
+    @Column(length = 1000)
+    private String payerAddress;
+
+    @Column(nullable = false)
+    private boolean donation;
+
     @Enumerated(EnumType.STRING)
     private PaymentStatus status; // PENDING, PAID, EXPIRED
 
     @Enumerated(EnumType.STRING)
-    private PaymentType type; // CARD, BANK_TRANSFER, FREE
+    private PaymentType type; // CARD, BANK_TRANSFER, FREE, CASH, CHEQUE
 
     private Double amount;
 
@@ -82,6 +91,30 @@ public class Payment extends TimedEntity {
 
     public void setUserEmail(String userEmail) {
         this.userEmail = userEmail;
+    }
+
+    public String getPayerName() {
+        return payerName;
+    }
+
+    public void setPayerName(String payerName) {
+        this.payerName = payerName;
+    }
+
+    public String getPayerAddress() {
+        return payerAddress;
+    }
+
+    public void setPayerAddress(String payerAddress) {
+        this.payerAddress = payerAddress;
+    }
+
+    public boolean isDonation() {
+        return donation;
+    }
+
+    public void setDonation(boolean donation) {
+        this.donation = donation;
     }
 
     public PaymentStatus getStatus() {
@@ -141,6 +174,12 @@ public class Payment extends TimedEntity {
                 + stripeSessionId
                 + ", userEmail="
                 + userEmail
+                + ", payerName="
+                + payerName
+                + ", payerAddress="
+                + payerAddress
+                + ", donation="
+                + donation
                 + ", status="
                 + status
                 + ", type="

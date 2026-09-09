@@ -18,8 +18,9 @@ import org.junit.jupiter.api.Test;
  * Email templates ({@code tmpl/}) and partials ({@code head}, {@code menubar}, {@code footer}) are covered
  * by {@link MailTemplateTest} and {@link JteOrphanTemplateTest} respectively.
  * <p>
- * Templates needing runtime-created entities (membership edit, payment edit, event-collection variant/mail/stats)
- * reuse the same {@code .jte} file as their {@code /new} counterparts and are covered once data exists in CI.
+ * Templates needing runtime-created entities (membership edit, payment edit, payment payer, event-collection
+ * variant/mail/stats) reuse the same {@code .jte} file as their {@code /new} counterparts where possible, or
+ * create seed data in the test (payment payer) once data exists in CI.
  */
 @Tag("integration")
 public class JteTemplateCoverageTest extends PlaywrightBaseTest {
@@ -34,8 +35,10 @@ public class JteTemplateCoverageTest extends PlaywrightBaseTest {
         page.navigate(BASE_URL + "/auth-sim");
         page.waitForLoadState();
 
+        String paymentPayerPath = createOwnedPaidPaymentPayerPath(page);
+
         List<TemplatePage> failures = new ArrayList<>();
-        for (TemplatePage tp : pageTemplates()) {
+        for (TemplatePage tp : pageTemplates(paymentPayerPath)) {
             if (!tryRender(page, tp)) {
                 failures.add(tp);
             }
@@ -58,7 +61,25 @@ public class JteTemplateCoverageTest extends PlaywrightBaseTest {
                         + failures.stream().map(tp -> tp.template() + " (" + tp.path() + ")").toList());
     }
 
-    private List<TemplatePage> pageTemplates() {
+    /**
+     * {@code /payment/{id}/payer} requires a PAID payment owned by the auth-sim user; seed data payment 1 is not.
+     */
+    private String createOwnedPaidPaymentPayerPath(Page page) {
+        page.navigate(BASE_URL + "/payment/new");
+        page.locator("#userEmail").fill("test@test.com");
+        page.selectOption("#status", "PAID");
+        page.selectOption("#type", "CASH");
+        page.locator("#amount").fill("10.00");
+        page.locator("#paymentForm button[type='submit']").click();
+        page.waitForURL("**/payment/*/edit");
+        String url = page.url();
+        int paymentIdx = url.indexOf("/payment/");
+        int editIdx = url.indexOf("/edit", paymentIdx);
+        String id = url.substring(paymentIdx + "/payment/".length(), editIdx);
+        return "/payment/" + id + "/payer";
+    }
+
+    private List<TemplatePage> pageTemplates(String paymentPayerPath) {
         List<TemplatePage> pages = new ArrayList<>();
         Map<String, String> map = new LinkedHashMap<>();
 
@@ -98,6 +119,7 @@ public class JteTemplateCoverageTest extends PlaywrightBaseTest {
 
         map.put("payment/payments.jte", "/payment");
         map.put("payment/paymentEdit.jte", "/payment/new");
+        map.put("payment/paymentPayer.jte", paymentPayerPath);
         map.put("payment/paymentStatus.jte", "/payment/sim");
         map.put("payment/paymentAudit.jte", "/payment/audit");
 

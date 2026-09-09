@@ -152,6 +152,7 @@ class JteCompileTest {
         model.put("bankTransferMembershipsEnabled", true);
         model.put("membershipDebt", 0d);
         model.put("paidMembershipPayments", List.of());
+        model.put("paidDonationPayments", List.of());
         model.put("showFinished", false);
         model.put("hasFinishedEvents", false);
         model.put("toggleDisplayUrl", "/event/my");
@@ -198,7 +199,14 @@ class JteCompileTest {
         model.put("membershipOptions", List.of());
         model.put("availableOptions", List.of());
         model.put("prices", List.of());
-        model.put("payment", new com.github.gcolin.payment.Payment());
+        com.github.gcolin.payment.Payment compilePayment = new com.github.gcolin.payment.Payment();
+        compilePayment.setId(1L);
+        model.put("payment", compilePayment);
+        model.put("donationMode", false);
+        model.put("success", "");
+        model.put("membershipDisplays", List.of());
+        model.put("suggestedPayerName", "Jean Dupont");
+        model.put("returnTo", "/event/my");
         model.put("payments", List.of());
         model.put("paymentStatuses", com.github.gcolin.payment.PaymentStatus.values());
         model.put("paymentTypes", com.github.gcolin.payment.PaymentType.values());
@@ -241,6 +249,7 @@ class JteCompileTest {
         model.put("registrationClosed", false);
         model.put("registrationClosedMessageKey", "event.registrationClosed");
         model.put("logoAvailable", false);
+        model.put("signatureAvailable", false);
         model.put("backgroundAvailable", false);
         model.put("ribSize", null);
         model.put("player", new com.github.gcolin.player.DisplayPlayer());

@@ -32,6 +32,7 @@ import com.github.gcolin.notification.NotificationDao;
 import com.github.gcolin.notification.Notifications;
 import com.github.gcolin.payment.DebtService;
 import com.github.gcolin.payment.PaymentDao;
+import com.github.gcolin.payment.PaymentReceiptPdfService;
 import com.github.gcolin.payment.RibService;
 import com.github.gcolin.player.CustomPlayerDao;
 import com.github.gcolin.player.Find;
@@ -60,6 +61,7 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(app(AppContext.get().jteConfig())).to(JteConfig.class);
                 bindFactory(app(AppContext.get().luceneDb())).to(LuceneDb.class);
                 bindFactory(app(AppContext.get().logoService())).to(LogoService.class);
+                bindFactory(app(AppContext.get().signatureService())).to(SignatureService.class);
                 bindFactory(app(AppContext.get().ribService())).to(RibService.class);
                 bindFactory(app(AppContext.get().backgroundService())).to(BackgroundService.class);
                 bindFactory(app(AppContext.get().activeLoggedUsers())).to(ActiveLoggedUsers.class);
@@ -68,6 +70,7 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(app(AppContext.get().licensePriceService())).to(LicensePriceService.class);
                 bindFactory(app(AppContext.get().statisticsReportService())).to(StatisticsReportService.class);
                 bindFactory(app(AppContext.get().eventPaymentsReportService())).to(EventPaymentsReportService.class);
+                bindFactory(app(AppContext.get().paymentReceiptPdfService())).to(PaymentReceiptPdfService.class);
                 bindFactory(app(AppContext.get().membershipReportService())).to(MembershipReportService.class);
                 bindFactory(app(AppContext.get().membershipOptionFileService()))
                         .to(MembershipOptionFileService.class);

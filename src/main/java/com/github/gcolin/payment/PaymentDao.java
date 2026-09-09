@@ -90,6 +90,17 @@ public class PaymentDao extends AbstractDao<Payment> {
         return query.getResultList();
     }
 
+    public List<Payment> findAllPaidDonationsByUser(String email) {
+        TypedQuery<Payment> query = em.createQuery(
+                "SELECT p FROM Payment p WHERE p.userEmail = :email AND p.status = :status"
+                        + " AND p.donation = true"
+                        + " ORDER BY p.id DESC",
+                Payment.class);
+        query.setParameter("email", email);
+        query.setParameter("status", PaymentStatus.PAID);
+        return query.getResultList();
+    }
+
     public Payment findBySessionId(String sessionId) {
         TypedQuery<Payment> query =
                 em.createQuery("SELECT e FROM Payment e where e.stripeSessionId = :sessionId", Payment.class);

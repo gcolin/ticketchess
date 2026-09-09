@@ -345,13 +345,27 @@
           @endif
             
           @if(paidPayments.size() > 0)
-            <div class="bg-body p-3 rounded mb-3 d-flex align-items-center justify-content-between">
-              <span>${msg.get("payment.invoiceReady")}</span>
-              <div class="d-flex flex-wrap gap-2 justify-content-end">
+            @if(success != null && "payerUpdated".equals(success))
+              <div class="alert alert-success mb-3" role="alert">${msg.get("payment.payer.updated")}</div>
+            @endif
+            <div class="bg-body p-3 rounded mb-3">
+              <div class="mb-2">${msg.get("payment.invoiceReady")}</div>
+              <div class="d-flex flex-column gap-2">
                 @for(var pp : paidPayments)
-                  <a class="btn btn-outline-success btn-sm" href="${contextPath}/payment/${pp.getId()}/invoice">
-                    📄 ${msg.get("payment.downloadInvoice")} #${pp.getId()}
-                  </a>
+                  <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between border rounded p-2">
+                    <div class="small text-body-secondary">
+                      #${pp.getId()}
+                      @if(pp.getPayerName() != null && !pp.getPayerName().isBlank())
+                        — ${pp.getPayerName()}
+                      @endif
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                      <a class="btn btn-outline-secondary btn-sm" href="${contextPath}/payment/${pp.getId()}/payer?returnTo=/event/my">${msg.get("payment.payer.edit")}</a>
+                      <a class="btn btn-outline-success btn-sm" href="${contextPath}/payment/${pp.getId()}/invoice">
+                        ${msg.get("payment.downloadInvoice")}
+                      </a>
+                    </div>
+                  </div>
                 @endfor
               </div>
             </div>

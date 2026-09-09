@@ -25,6 +25,7 @@
 @param java.util.Map<String, Boolean> secretsConfigured
 @param boolean clubRegisterEnabled
 @param boolean logoAvailable
+@param boolean signatureAvailable
 @param boolean backgroundAvailable
 @param String ribSize
 !{i18ntitle = msg.get("page.adminOrg");}
@@ -43,10 +44,14 @@
         <div class="alert alert-success mb-3" role="alert">${msg.get("admin.ribUploaded")}</div>
       @elseif("logoUploaded".equals(success))
         <div class="alert alert-success mb-3" role="alert">${msg.get("admin.logoUploaded")}</div>
+      @elseif("signatureUploaded".equals(success))
+        <div class="alert alert-success mb-3" role="alert">${msg.get("admin.signatureUploaded")}</div>
       @elseif("backgroundUploaded".equals(success))
         <div class="alert alert-success mb-3" role="alert">${msg.get("admin.backgroundUploaded")}</div>
       @elseif("logoDeleted".equals(success))
         <div class="alert alert-success mb-3" role="alert">${msg.get("admin.logoDeleted")}</div>
+      @elseif("signatureDeleted".equals(success))
+        <div class="alert alert-success mb-3" role="alert">${msg.get("admin.signatureDeleted")}</div>
       @elseif("backgroundDeleted".equals(success))
         <div class="alert alert-success mb-3" role="alert">${msg.get("admin.backgroundDeleted")}</div>
       @elseif("ribDeleted".equals(success))
@@ -66,6 +71,12 @@
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.logoInvalid")}</div>
       @elseif("logoTooLarge".equals(error))
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.logoTooLarge")}</div>
+      @elseif("signatureUploadFailed".equals(error))
+        <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.signatureUploadFailed")}</div>
+      @elseif("invalidSignature".equals(error))
+        <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.signatureInvalid")}</div>
+      @elseif("signatureTooLarge".equals(error))
+        <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.signatureTooLarge")}</div>
       @elseif("backgroundUploadFailed".equals(error))
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.backgroundUploadFailed")}</div>
       @elseif("invalidBackground".equals(error))
@@ -74,6 +85,8 @@
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.backgroundTooLarge")}</div>
       @elseif("logoDeleteFailed".equals(error))
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.logoDeleteFailed")}</div>
+      @elseif("signatureDeleteFailed".equals(error))
+        <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.signatureDeleteFailed")}</div>
       @elseif("backgroundDeleteFailed".equals(error))
         <div class="alert alert-danger mb-3" role="alert">${msg.get("admin.backgroundDeleteFailed")}</div>
       @elseif("ribDeleteFailed".equals(error))
@@ -173,6 +186,15 @@
                 <input class="form-control" name="invoice.footer" value="${cfg.get("invoice.footer") != null ? cfg.get("invoice.footer") : ""}"></div>
               <div class="col-12 mb-3"><label class="form-label">${msg.get("admin.field.invoiceVat")}</label>
                 <input class="form-control" name="invoice.vat.notice" value="${cfg.get("invoice.vat.notice") != null ? cfg.get("invoice.vat.notice") : ""}"></div>
+              <div class="col-12"><hr class="my-2"><h6 class="text-body-secondary">${msg.get("admin.section.donationAttestation")}</h6></div>
+              <div class="col-12 mb-3"><label class="form-label">${msg.get("admin.field.donationObject")}</label>
+                <input class="form-control" name="invoice.donation.object" value="${cfg.get("invoice.donation.object") != null ? cfg.get("invoice.donation.object") : ""}"></div>
+              <div class="col-md-6 mb-3"><label class="form-label">${msg.get("admin.field.donationSignatory")}</label>
+                <input class="form-control" name="invoice.donation.signatory" value="${cfg.get("invoice.donation.signatory") != null ? cfg.get("invoice.donation.signatory") : ""}"></div>
+              <div class="col-md-6 mb-3"><label class="form-label">${msg.get("admin.field.donationSignatoryTitle")}</label>
+                <input class="form-control" name="invoice.donation.signatoryTitle" value="${cfg.get("invoice.donation.signatoryTitle") != null ? cfg.get("invoice.donation.signatoryTitle") : ""}"></div>
+              <div class="col-md-4 mb-3"><label class="form-label">${msg.get("admin.field.donationPrefix")}</label>
+                <input class="form-control" name="invoice.donation.prefix" value="${cfg.get("invoice.donation.prefix") != null ? cfg.get("invoice.donation.prefix") : ""}"></div>
             </div>
             <button class="btn btn-primary" type="submit">${msg.get("action.save")}</button>
           </form>
@@ -180,7 +202,7 @@
 
         <div class="tab-pane fade ${("files".equals(tab) ? "show active" : "")}" id="files" role="tabpanel">
           <div class="row g-4">
-            <div class="col-md-4">
+            <div class="col-md-6 col-xl-3">
               <h2 class="h5 mb-3">${msg.get("admin.logo.current")}</h2>
               @if(logoAvailable)
                 <img src="${contextPath}/logo" alt="" class="img-fluid mb-3 border rounded" style="max-height: 80px;">
@@ -198,7 +220,26 @@
                 <button class="btn btn-primary" type="submit" id="logo-upload-btn">${msg.get("admin.logo.upload")}</button>
               </form>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6 col-xl-3">
+              <h2 class="h5 mb-3">${msg.get("admin.signature.current")}</h2>
+              @if(signatureAvailable)
+                <img src="${contextPath}/signature" alt="" class="img-fluid mb-3 border rounded bg-white" style="max-height: 80px;">
+                <div class="mb-3">
+                  <button class="btn btn-outline-danger" type="button" id="signature-delete-btn">${msg.get("action.remove")}</button>
+                </div>
+              @else
+                <p class="text-body-secondary">${msg.get("admin.signature.missing")}</p>
+              @endif
+              <p class="form-text">${msg.get("help.adminSignature")}</p>
+              <form id="signature-upload-form">
+                <div class="mb-3">
+                  <label class="form-label" for="signature-file">${msg.get("admin.signature.fileLabel")}</label>
+                  <input class="form-control" type="file" id="signature-file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" required>
+                </div>
+                <button class="btn btn-primary" type="submit" id="signature-upload-btn">${msg.get("admin.signature.upload")}</button>
+              </form>
+            </div>
+            <div class="col-md-6 col-xl-3">
               <h2 class="h5 mb-3">${msg.get("admin.background.current")}</h2>
               @if(backgroundAvailable)
                 <div class="mb-3 border rounded overflow-hidden" style="height: 80px; background: url('${contextPath}/background') center / cover no-repeat;"></div>
@@ -217,7 +258,7 @@
                 <button class="btn btn-primary" type="submit" id="background-upload-btn">${msg.get("admin.background.upload")}</button>
               </form>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6 col-xl-3">
               <h2 class="h5 mb-3">${msg.get("admin.rib.current")}</h2>
               @if(ribAvailable)
                 <p class="mb-3">${msg.get("admin.rib.available")}@if(ribSize != null) (${ribSize})@endif</p>
@@ -456,8 +497,10 @@
       }
       bindUpload('rib-upload-form', 'rib-file', 'rib-upload-btn', '${contextPath}/admin/org/rib', 'application/octet-stream');
       bindUpload('logo-upload-form', 'logo-file', 'logo-upload-btn', '${contextPath}/admin/org/logo', 'application/octet-stream');
+      bindUpload('signature-upload-form', 'signature-file', 'signature-upload-btn', '${contextPath}/admin/org/signature', 'application/octet-stream');
       bindUpload('background-upload-form', 'background-file', 'background-upload-btn', '${contextPath}/admin/org/background', 'application/octet-stream');
       bindDelete('logo-delete-btn', '${contextPath}/admin/org/logo', '${msg.get("action.confirm")}');
+      bindDelete('signature-delete-btn', '${contextPath}/admin/org/signature', '${msg.get("action.confirm")}');
       bindDelete('background-delete-btn', '${contextPath}/admin/org/background', '${msg.get("action.confirm")}');
       bindDelete('rib-delete-btn', '${contextPath}/admin/org/rib', '${msg.get("action.confirm")}');
 

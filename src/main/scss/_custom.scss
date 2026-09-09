@@ -1,3 +1,19 @@
+// Outline secondary: $secondary (beige clair) est trop pâle pour bordure/texte
+$btn-outline-secondary-color: #8B7355;
+
+.btn-outline-secondary {
+  --bs-btn-color: #{$btn-outline-secondary-color};
+  --bs-btn-border-color: #{$btn-outline-secondary-color};
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #{$btn-outline-secondary-color};
+  --bs-btn-hover-border-color: #{$btn-outline-secondary-color};
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: #{$btn-outline-secondary-color};
+  --bs-btn-active-border-color: #{$btn-outline-secondary-color};
+  --bs-btn-disabled-color: #{$btn-outline-secondary-color};
+  --bs-btn-disabled-border-color: #{$btn-outline-secondary-color};
+}
+
 // ♟️ Titres
 h1, h2, h3, h4 {
   letter-spacing: .5px;

@@ -45,7 +45,10 @@
 
     @template.platform.adminPanel(content = @`
       <div class="d-flex justify-content-between align-items-center gap-2 mb-3 w-100">
-        <a class="btn btn-success" href="${contextPath}/payment/new">${msg.get("action.newPayment")}</a>
+        <div class="d-flex gap-2">
+          <a class="btn btn-success" href="${contextPath}/payment/new">${msg.get("action.newPayment")}</a>
+          <a class="btn btn-outline-success" href="${contextPath}/payment/new?donation=true">${msg.get("action.newDonation")}</a>
+        </div>
         @template.payment.paymentPageActionsMenu(contextPath=contextPath, msg=msg, seasonId=seasonId)
       </div>
       <form method="get" action="${contextPath}/payment" class="row g-2 align-items-end mb-3">
@@ -122,7 +125,7 @@
               <td class="d-none d-lg-table-cell">${safePaymentSearchLicences.get(String.valueOf(pay.getId())) != null ? safePaymentSearchLicences.get(String.valueOf(pay.getId())) : ""}</td>
               <td class="d-none d-lg-table-cell">${safePaymentSearchNames.get(String.valueOf(pay.getId())) != null ? safePaymentSearchNames.get(String.valueOf(pay.getId())) : ""}</td>
               <td>${pay.getStatus() != null ? msg.get("payment.status." + pay.getStatus()) : ""}</td>
-              <td>${pay.getType() != null ? msg.get("payment.type." + pay.getType()) : ""}</td>
+              <td>${pay.getType() != null ? msg.get("payment.type." + pay.getType()) : ""}${pay.isDonation() ? " · " + msg.get("payment.nature.donation") : ""}</td>
               <td>${pay.getAmount() != null ? String.format(java.util.Locale.FRANCE, "%.2f", pay.getAmount()) : "0,00"}</td>
               <td>@if(pay.getCreatedAt() != null)${pay.getCreatedAt().toString()}@endif</td>
               <td>@if(pay.getUpdatedAt() != null)${pay.getUpdatedAt().toString()}@endif</td>

@@ -38,6 +38,7 @@ class AdminApiRibTest {
         when(ribService.exists()).thenReturn(false);
         inject(api, "ribService", ribService);
         inject(api, "logoService", missingLogo());
+        inject(api, "signatureService", missingSignature());
         inject(api, "backgroundService", missingBackground());
         inject(api, "config", configWithProps());
 
@@ -59,6 +60,7 @@ class AdminApiRibTest {
         when(ribService.getRibFile()).thenReturn(ribFile);
         inject(api, "ribService", ribService);
         inject(api, "logoService", missingLogo());
+        inject(api, "signatureService", missingSignature());
         inject(api, "backgroundService", missingBackground());
         inject(api, "config", configWithProps());
 
@@ -153,10 +155,30 @@ class AdminApiRibTest {
         assertEquals("/admin/org?success=logoDeleted&tab=files#files", readRedirect(response));
     }
 
+    @Test
+    void deleteSignatureShouldRedirect() throws Exception {
+        AdminApi api = new AdminApi();
+        SignatureService signatureService = mock(SignatureService.class);
+        inject(api, "signatureService", signatureService);
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/admin/org?success=signatureDeleted&tab=files#files")));
+
+        Response response = api.deleteSignature();
+
+        verify(signatureService).delete();
+        assertEquals(200, response.getStatus());
+        assertEquals("/admin/org?success=signatureDeleted&tab=files#files", readRedirect(response));
+    }
+
     private static LogoService missingLogo() {
         LogoService logoService = mock(LogoService.class);
         when(logoService.exists()).thenReturn(false);
         return logoService;
+    }
+
+    private static SignatureService missingSignature() {
+        SignatureService signatureService = mock(SignatureService.class);
+        when(signatureService.exists()).thenReturn(false);
+        return signatureService;
     }
 
     private static BackgroundService missingBackground() {

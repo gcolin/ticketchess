@@ -35,6 +35,7 @@
 @param Boolean bankTransferMembershipsEnabled
 @param Boolean stripeSimulated
 @param java.util.List<com.github.gcolin.payment.Payment> paidMembershipPayments
+@param java.util.List<com.github.gcolin.payment.Payment> paidDonationPayments
 @param java.util.List<com.github.gcolin.membership.MembershipOption> sharedOptions
 @param java.util.Map<String, java.util.List<com.github.gcolin.membership.MembershipOptionFile>> sharedOptionFilesByOptionId
 !{i18ntitle = msg.get("page.clubRegister");}
@@ -312,13 +313,29 @@
         </div>
 
         @if(paidMembershipPayments != null && !paidMembershipPayments.isEmpty())
-          <div class="mt-3">
-            <span>${msg.get("payment.invoiceReady")}</span>
-            @for(var pp : paidMembershipPayments)
-              <a class="btn btn-outline-success btn-sm ms-2" href="${contextPath}/payment/${pp.getId()}/invoice">
-                📄 ${msg.get("payment.downloadInvoice")} #${pp.getId()}
-              </a>
-            @endfor
+          @if(success != null && "payerUpdated".equals(success))
+            <div class="alert alert-success mt-3" role="alert">${msg.get("payment.payer.updated")}</div>
+          @endif
+          <div class="mt-3 bg-body p-3 rounded">
+            <div class="mb-2">${msg.get("payment.invoiceReady")}</div>
+            <div class="d-flex flex-column gap-2">
+              @for(var pp : paidMembershipPayments)
+                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between border rounded p-2">
+                  <div class="small text-body-secondary">
+                    #${pp.getId()}
+                    @if(pp.getPayerName() != null && !pp.getPayerName().isBlank())
+                      — ${pp.getPayerName()}
+                    @endif
+                  </div>
+                  <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-outline-secondary btn-sm" href="${contextPath}/payment/${pp.getId()}/payer?returnTo=/club-register">${msg.get("payment.payer.edit")}</a>
+                    <a class="btn btn-outline-success btn-sm" href="${contextPath}/payment/${pp.getId()}/invoice">
+                      ${msg.get("payment.downloadInvoice")}
+                    </a>
+                  </div>
+                </div>
+              @endfor
+            </div>
           </div>
         @endif
 
@@ -345,6 +362,32 @@
             @endfor
           </div>
         @endif
+      </div>
+    @endif
+
+    @if(user.isLogged() && query == null && paidDonationPayments != null && !paidDonationPayments.isEmpty())
+      <div class="bg-body p-3 rounded mb-3" id="donationAttestationsSection">
+        <div class="mb-2">${msg.get("payment.donationAttestationReady")}</div>
+        <div class="d-flex flex-column gap-2">
+          @for(var dp : paidDonationPayments)
+            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between border rounded p-2">
+              <div class="small text-body-secondary">
+                #${dp.getId()}
+                @if(dp.getPayerName() != null && !dp.getPayerName().isBlank())
+                  — ${dp.getPayerName()}
+                @endif
+                @if(dp.getAmount() != null)
+                  — ${String.format(java.util.Locale.FRANCE, "%.2f", dp.getAmount())} €
+                @endif
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-outline-success btn-sm" href="${contextPath}/payment/${dp.getId()}/invoice">
+                  ${msg.get("action.downloadDonationAttestation")}
+                </a>
+              </div>
+            </div>
+          @endfor
+        </div>
       </div>
     @endif
   </main>

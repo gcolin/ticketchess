@@ -11,6 +11,7 @@ import com.github.gcolin.membership.MembershipDao;
 import com.github.gcolin.membership.MembershipDisplay;
 import com.github.gcolin.membership.MembershipOptionSubscription;
 import com.github.gcolin.membership.MembershipOptionSubscriptionDao;
+import com.github.gcolin.membership.MembershipStatus;
 import com.github.gcolin.payment.Payment;
 import com.github.gcolin.payment.PaymentStatus;
 import com.github.gcolin.payment.PaymentType;
@@ -25,8 +26,11 @@ import com.github.gcolin.registration.SubscriptionOptionDisplay;
 import com.github.gcolin.payment.DebtService;
 import com.github.gcolin.player.Find;
 import com.github.gcolin.auth.LoggedUser;
+import com.github.gcolin.platform.Redirects;
+import com.github.gcolin.platform.SendMail;
 import com.github.gcolin.platform.ServiceUtils;
 import com.github.gcolin.platform.Config;
+import com.github.gcolin.platform.MailAttachment;
 import com.github.gcolin.payment.PaymentDao;
 import com.github.gcolin.registration.PlayerSubscriptionDao;
 import com.github.gcolin.registration.PlayerSubscriptionOptionDao;
@@ -113,6 +117,12 @@ public class PaymentApi {
     @Inject
     private EventPaymentsReportService eventPaymentsReportService;
 
+    @Inject
+    private PaymentReceiptPdfService paymentReceiptPdfService;
+
+    @Inject
+    private SendMail sendMail;
+
     @GET
     @RequireRole(RoleCode.TRESORIER)
     public JteHtml page(
@@ -160,6 +170,11 @@ public class PaymentApi {
                     names.add(fullName);
                 }
             }
+            if (payment.isDonation() && payment.getPayerName() != null && !payment.getPayerName().isBlank()) {
+                names.add(payment.getPayerName().trim());
+            } else if (payment.getPayerName() != null && !payment.getPayerName().isBlank() && names.isEmpty()) {
+                names.add(payment.getPayerName().trim());
+            }
             paymentSearchLicences.put(String.valueOf(payment.getId()), String.join(" ", new ArrayList<>(licences)));
             paymentSearchNames.put(String.valueOf(payment.getId()), String.join(" ", new ArrayList<>(names)));
         }
@@ -184,14 +199,38 @@ public class PaymentApi {
     @GET
     @Path("new")
     @RequireRole(RoleCode.TRESORIER)
-    public JteHtml newPayment() {
-        return editPayment(null);
+    public JteHtml newPayment(
+            @QueryParam("donation") @DefaultValue("false") boolean donation,
+            @QueryParam("membershipId") Integer membershipId) {
+        if (membershipId != null && !donation) {
+            Membership membership = membershipDao.find(membershipId);
+            if (membership == null) {
+                throw new WebApplicationException(Response.Status.NOT_FOUND);
+            }
+            if (membership.getPayment() != null && membership.getPayment().getId() != null) {
+                return editPayment(membership.getPayment().getId().intValue(), false, "");
+            }
+        }
+        return editPayment(null, donation, "", membershipId);
     }
 
     @GET
     @Path("{id:\\d+}/edit")
     @RequireRole(RoleCode.TRESORIER)
-    public JteHtml editPayment(@PathParam("id") Integer id) {
+    public JteHtml editPayment(
+            @PathParam("id") Integer id, @QueryParam("success") @DefaultValue("") String success) {
+        return editPayment(id, false, success);
+    }
+
+    private JteHtml editPayment(Integer id, boolean donationMode) {
+        return editPayment(id, donationMode, "");
+    }
+
+    private JteHtml editPayment(Integer id, boolean donationMode, String success) {
+        return editPayment(id, donationMode, success, null);
+    }
+
+    private JteHtml editPayment(Integer id, boolean donationMode, String success, Integer membershipId) {
         Payment payment;
         List<PlayerSubscription> currentSubs = List.of();
         List<PlayerSubscriptionOption> currentOptions = List.of();
@@ -204,11 +243,27 @@ public class PaymentApi {
             currentSubs = playerSubscriptionService.findByPaymentId(id);
             currentOptions = playerSubscriptionOptionService.findByPaymentId(id);
             currentMemberships = membershipDao.findByPaymentId(id);
+            donationMode = payment.isDonation();
         } else {
             payment = new Payment();
-            payment.setStatus(PaymentStatus.PENDING);
-            payment.setType(PaymentType.CARD);
+            payment.setStatus(donationMode ? PaymentStatus.PAID : PaymentStatus.PENDING);
+            payment.setType(donationMode ? PaymentType.CHEQUE : PaymentType.CARD);
             payment.setAmount(0d);
+            payment.setDonation(donationMode);
+
+            if (membershipId != null && !donationMode) {
+                Membership membership = membershipDao.find(membershipId);
+                if (membership == null) {
+                    throw new WebApplicationException(Response.Status.NOT_FOUND);
+                }
+                payment.setUserEmail(membership.getUser());
+                payment.setAmount(ServiceUtils.toEuros(membership.getAmountCents()));
+                if (membership.getStatus() == MembershipStatus.PAID) {
+                    payment.setStatus(PaymentStatus.PAID);
+                    payment.setType(PaymentType.CHEQUE);
+                }
+                currentMemberships = List.of(membership);
+            }
         }
 
         List<Integer> currentSubscriptionIds =
@@ -271,12 +326,20 @@ public class PaymentApi {
 
         Map<String, Object> model = new HashMap<>();
         model.put("payment", payment);
+        model.put("donationMode", donationMode);
         model.put("paymentStatuses", PaymentStatus.values());
-        model.put("paymentTypes", PaymentType.values());
+        model.put(
+                "paymentTypes",
+                donationMode
+                        ? new PaymentType[] {
+                            PaymentType.CHEQUE, PaymentType.CASH, PaymentType.BANK_TRANSFER, PaymentType.CARD
+                        }
+                        : PaymentType.values());
         model.put("selectedSubscriptionIds", currentSubscriptionIds);
         model.put("subscriptionDisplays", subscriptionDisplays);
         model.put("optionDisplays", optionDisplays);
         model.put("membershipDisplays", membershipDisplays);
+        model.put("success", success == null ? "" : success);
         return new JteHtml(model, "payment/paymentEdit.jte");
     }
 
@@ -319,6 +382,9 @@ public class PaymentApi {
             @FormParam("id") Integer id,
             @FormParam("toRemove") @DefaultValue("false") String toRemove,
             @FormParam("userEmail") String userEmail,
+            @FormParam("payerName") String payerName,
+            @FormParam("payerAddress") String payerAddress,
+            @FormParam("donation") @DefaultValue("false") String donationRaw,
             @FormParam("status") String status,
             @FormParam("type") String type,
             @FormParam("amount") Double amount,
@@ -350,25 +416,50 @@ public class PaymentApi {
                     .build();
         }
 
+        boolean donation = "true".equalsIgnoreCase(donationRaw) || "on".equalsIgnoreCase(donationRaw);
+        if (donation) {
+            if (payerName == null || payerName.isBlank()) {
+                throw new WebApplicationException("payerName is required for donations", Response.Status.BAD_REQUEST);
+            }
+            if (payerAddress == null || payerAddress.isBlank()) {
+                throw new WebApplicationException(
+                        "payerAddress is required for donations", Response.Status.BAD_REQUEST);
+            }
+            if (amount == null || amount <= 0) {
+                throw new WebApplicationException(
+                        "amount must be greater than 0 for donations", Response.Status.BAD_REQUEST);
+            }
+            if (hasAnyId(subscriptionIdsRaw) || hasAnyId(optionIdsRaw) || hasAnyId(membershipIdsRaw)) {
+                throw new WebApplicationException(
+                        "donations cannot be linked to memberships or subscriptions", Response.Status.BAD_REQUEST);
+            }
+        }
+
         Payment payment;
         if (id != null) {
             payment = paymentService.find(id);
             if (payment == null) {
                 throw new WebApplicationException(Response.Status.NOT_FOUND);
             }
+            if (payment.isDonation()) {
+                donation = true;
+            }
         } else {
             payment = new Payment();
         }
 
         payment.setUserEmail(userEmail);
+        payment.setPayerName(payerName == null || payerName.isBlank() ? null : payerName.trim());
+        payment.setPayerAddress(payerAddress == null || payerAddress.isBlank() ? null : payerAddress.trim());
+        payment.setDonation(donation);
         payment.setStatus(PaymentStatus.valueOf(status));
         payment.setType(PaymentType.valueOf(type));
         payment.setAmount(amount);
-        if (stripeSessionId.isEmpty()) {
+        if (stripeSessionId == null || stripeSessionId.isEmpty()) {
             stripeSessionId = null;
         }
         payment.setStripeSessionId(stripeSessionId);
-        if (stripeIntent.isEmpty()) {
+        if (stripeIntent == null || stripeIntent.isEmpty()) {
             stripeIntent = null;
         }
         payment.setStripeIntent(stripeIntent);
@@ -386,7 +477,7 @@ public class PaymentApi {
             playerSubscriptionService.persist(sub);
         }
 
-        if (subscriptionIdsRaw != null) {
+        if (!donation && subscriptionIdsRaw != null) {
             for (String subscriptionIdRaw : subscriptionIdsRaw) {
                 if (subscriptionIdRaw == null || subscriptionIdRaw.isBlank()) {
                     continue;
@@ -417,7 +508,7 @@ public class PaymentApi {
             playerSubscriptionOptionService.merge(option);
         }
 
-        if (optionIdsRaw != null) {
+        if (!donation && optionIdsRaw != null) {
             for (String optionIdRaw : optionIdsRaw) {
                 if (optionIdRaw == null || optionIdRaw.isBlank()) {
                     continue;
@@ -444,7 +535,7 @@ public class PaymentApi {
             membershipDao.merge(membership);
         }
 
-        if (membershipIdsRaw != null) {
+        if (!donation && membershipIdsRaw != null) {
             for (String membershipIdRaw : membershipIdsRaw) {
                 if (membershipIdRaw == null || membershipIdRaw.isBlank()) {
                     continue;
@@ -472,6 +563,18 @@ public class PaymentApi {
                 .build();
 
         return Response.seeOther(redirect).build();
+    }
+
+    private static boolean hasAnyId(List<String> ids) {
+        if (ids == null) {
+            return false;
+        }
+        for (String id : ids) {
+            if (id != null && !id.isBlank()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @POST
@@ -883,7 +986,11 @@ public class PaymentApi {
                 writer.append(String.valueOf(p.getType())).append(";");
                 writer.append(String.valueOf(p.getStatus())).append(";");
                 writer.append(p.getAmountCents() == null ? "null" : String.valueOf(ServiceUtils.toEuros(p.getAmountCents())))
-                        .append(";;;;;;").append("\n");
+                        .append(";");
+                writer.append(p.isDonation() ? "donation" : "").append(";");
+                writer.append(";");
+                writer.append(p.isDonation() && p.getPayerName() != null ? safe(p.getPayerName()) : "").append(";");
+                writer.append(";;;").append("\n");
             } else {
                 for (PlayerSubscription sub : subs) {
                     appendCsvDetailLine(writer, p, "event", sub.getEvent() != null ? sub.getEvent().getName() : "",
@@ -1047,6 +1154,91 @@ public class PaymentApi {
     }
 
     @GET
+    @Path("{id:\\d+}/payer")
+    @LoggedOnly
+    public JteHtml editPayer(
+            @PathParam("id") Integer id,
+            @QueryParam("returnTo") String returnTo,
+            @QueryParam("success") String success) {
+        Payment payment = requireOwnedPaidPayment(id);
+        List<PlayerSubscription> subs = playerSubscriptionService.findByPaymentId(id);
+        List<Membership> memberships = membershipDao.findByPaymentId(id);
+
+        Map<String, Object> model = new HashMap<>();
+        model.put("payment", payment);
+        model.put(
+                "suggestedPayerName",
+                paymentReceiptPdfService.suggestPayerName(
+                        payment, subs, memberships, find, loggerUser.getUsername()));
+        model.put("returnTo", defaultPayerReturnTo(returnTo, memberships));
+        model.put("success", success == null ? "" : success);
+        return new JteHtml(model, "payment/paymentPayer.jte");
+    }
+
+    @POST
+    @Path("{id:\\d+}/payer")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
+    @LoggedOnly
+    @Transactional
+    public Response savePayer(
+            @PathParam("id") Integer id,
+            @FormParam("payerName") String payerName,
+            @FormParam("returnTo") String returnTo) {
+        Payment payment = requireOwnedPaidPayment(id);
+        payment.setPayerName(payerName == null || payerName.isBlank() ? null : payerName.trim());
+        paymentService.merge(payment);
+
+        List<Membership> memberships = membershipDao.findByPaymentId(id);
+        String target = defaultPayerReturnTo(returnTo, memberships);
+        URI redirect = Redirects.safeRedirect(
+                withSuccessQuery(target, "payerUpdated"),
+                uriInfo.getBaseUriBuilder()
+                        .path(target.startsWith("/") ? target.substring(1) : target)
+                        .queryParam("success", "payerUpdated")
+                        .build(),
+                uriInfo);
+        return Response.seeOther(Redirects.toSameOriginRelative(redirect)).build();
+    }
+
+    private static String withSuccessQuery(String path, String success) {
+        if (!Redirects.isSafeRelativeRedirect(path)) {
+            return path;
+        }
+        String trimmed = path.trim();
+        int hash = trimmed.indexOf('#');
+        String beforeHash = hash >= 0 ? trimmed.substring(0, hash) : trimmed;
+        String fragment = hash >= 0 ? trimmed.substring(hash) : "";
+        if (beforeHash.contains("?")) {
+            return beforeHash + "&success=" + success + fragment;
+        }
+        return beforeHash + "?success=" + success + fragment;
+    }
+
+    private Payment requireOwnedPaidPayment(Integer id) {
+        Payment payment = paymentService.find(id);
+        if (payment == null || payment.getStatus() != PaymentStatus.PAID) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        boolean isOwner = loggerUser.getEmail() != null
+                && payment.getUserEmail() != null
+                && loggerUser.getEmail().equalsIgnoreCase(payment.getUserEmail());
+        if (!isOwner) {
+            throw new WebApplicationException(Response.Status.FORBIDDEN);
+        }
+        return payment;
+    }
+
+    private static String defaultPayerReturnTo(String returnTo, List<Membership> memberships) {
+        if (Redirects.isSafeRelativeRedirect(returnTo)) {
+            return returnTo.trim();
+        }
+        if (memberships != null && !memberships.isEmpty()) {
+            return "/club-register";
+        }
+        return "/event/my";
+    }
+
+    @GET
     @Path("{id:\\d+}/invoice")
     @Produces("application/pdf")
     @LoggedOnly
@@ -1066,6 +1258,71 @@ public class PaymentApi {
             throw new WebApplicationException(Response.Status.NOT_FOUND);
         }
 
+        try {
+            GeneratedReceipt receipt = generateReceipt(payment, id);
+            return Response.ok(receipt.pdf())
+                    .header("Content-Disposition", "attachment; filename=" + receipt.filename())
+                    .build();
+        } catch (Exception e) {
+            logger.error("Error generating invoice PDF for payment " + id, e);
+            throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @POST
+    @Path("{id:\\d+}/send-receipt")
+    @RequireRole(RoleCode.TRESORIER)
+    public Response sendReceipt(@PathParam("id") Integer id) {
+        Payment payment = paymentService.find(id);
+        if (payment == null || payment.getStatus() != PaymentStatus.PAID) {
+            throw new WebApplicationException(Response.Status.NOT_FOUND);
+        }
+        if (payment.getUserEmail() == null || payment.getUserEmail().isBlank()) {
+            throw new WebApplicationException("payment email is required", Response.Status.BAD_REQUEST);
+        }
+
+        try {
+            GeneratedReceipt receipt = generateReceipt(payment, id);
+            PaymentReceiptMail mail = new PaymentReceiptMail();
+            mail.setDonation(payment.isDonation());
+            mail.setName(resolveReceiptMailName(payment));
+            mail.setDocumentLabel(
+                    payment.isDonation() ? "Attestation de don" : "Reçu de paiement");
+            mail.setReference(String.valueOf(payment.getId()));
+            if (payment.getAmountCents() != null) {
+                mail.setAmount(String.format(java.util.Locale.FRANCE, "%.2f €", ServiceUtils.toEuros(payment.getAmountCents())));
+            } else if (payment.getAmount() != null) {
+                mail.setAmount(String.format(java.util.Locale.FRANCE, "%.2f €", payment.getAmount()));
+            }
+            String subject = payment.isDonation()
+                    ? "Votre attestation fiscale"
+                    : "Votre reçu de paiement";
+            sendMail.send(
+                    mail,
+                    payment.getUserEmail().trim(),
+                    subject,
+                    new MailAttachment(receipt.filename(), "application/pdf", receipt.pdf()));
+        } catch (WebApplicationException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error sending receipt email for payment " + id, e);
+            throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
+        }
+
+        URI redirect = uriInfo.getBaseUriBuilder()
+                .path("payment")
+                .path(String.valueOf(id))
+                .path("edit")
+                .queryParam("success", "receiptSent")
+                .build();
+        return Response.seeOther(Redirects.toSameOriginRelative(redirect)).build();
+    }
+
+    private GeneratedReceipt generateReceipt(Payment payment, Integer id) throws Exception {
+        if (payment.isDonation()) {
+            byte[] pdf = paymentReceiptPdfService.generateDonationAttestation(payment);
+            return new GeneratedReceipt(pdf, "attestation-fiscale-" + id + ".pdf", true);
+        }
         List<PlayerSubscription> subs = playerSubscriptionService.findByPaymentId(id);
         List<Membership> memberships = membershipDao.findByPaymentId(id);
         Map<Integer, List<MembershipOptionSubscription>> optionSubscriptions = memberships.isEmpty()
@@ -1074,17 +1331,22 @@ public class PaymentApi {
                         .findByMembershipIds(memberships.stream().map(Membership::getId).toList())
                         .stream()
                         .collect(Collectors.groupingBy(s -> s.getMembership().getId()));
-
-        try {
-            byte[] pdf = generateInvoicePdf(payment, subs, memberships, optionSubscriptions);
-            return Response.ok(pdf)
-                    .header("Content-Disposition", "attachment; filename=facture-" + id + ".pdf")
-                    .build();
-        } catch (Exception e) {
-            logger.error("Error generating invoice PDF for payment " + id, e);
-            throw new WebApplicationException(Response.Status.INTERNAL_SERVER_ERROR);
-        }
+        String fallbackName = payment.getPayerName() != null && !payment.getPayerName().isBlank()
+                ? payment.getPayerName()
+                : (loggerUser.getUsername() != null ? loggerUser.getUsername() : "");
+        byte[] pdf = paymentReceiptPdfService.generatePaymentReceipt(
+                payment, subs, memberships, optionSubscriptions, find, fallbackName);
+        return new GeneratedReceipt(pdf, "facture-" + id + ".pdf", false);
     }
+
+    private String resolveReceiptMailName(Payment payment) {
+        if (payment.getPayerName() != null && !payment.getPayerName().isBlank()) {
+            return payment.getPayerName().trim();
+        }
+        return payment.getUserEmail();
+    }
+
+    private record GeneratedReceipt(byte[] pdf, String filename, boolean donation) {}
 
     private void appendCsvDetailLine(
             StringWriter writer,
@@ -1155,15 +1417,19 @@ public class PaymentApi {
             List<PlayerSubscription> subs =
                     playerSubscriptionService.findByPaymentId(payment.getId().intValue());
             List<Membership> memberships = membershipDao.findByPaymentId(payment.getId().intValue());
-            if (subs.isEmpty() && memberships.isEmpty()) {
+            if (payment.isDonation() || (subs.isEmpty() && memberships.isEmpty())) {
+                String nature = payment.isDonation() ? "donation" : "";
+                String label = payment.isDonation()
+                        ? (payment.getPayerName() != null ? payment.getPayerName() : "")
+                        : "";
                 rows.add(new EventPaymentsReportService.AccountingDetailRow(
                         paymentAt,
                         payment.getId(),
                         paymentType,
                         payment.getUserEmail(),
                         ServiceUtils.toEuros(payment.getAmountCents()),
-                        "",
-                        ""));
+                        nature,
+                        label));
                 continue;
             }
             for (PlayerSubscription sub : subs) {
@@ -1193,241 +1459,5 @@ public class PaymentApi {
                         EventPaymentsReportService.AccountingDetailRow::id,
                         java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())));
         return rows;
-    }
-
-    private byte[] generateInvoicePdf(
-            Payment payment,
-            List<PlayerSubscription> subs,
-            List<Membership> memberships,
-            Map<Integer, List<MembershipOptionSubscription>> optionSubscriptions)
-            throws Exception {
-        org.openpdf.text.Document document =
-                new org.openpdf.text.Document(org.openpdf.text.PageSize.A4, 50, 50, 60, 60);
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        org.openpdf.text.pdf.PdfWriter.getInstance(document, baos);
-        document.open();
-
-        org.openpdf.text.Font titleFont =
-                new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 18, org.openpdf.text.Font.BOLD);
-        org.openpdf.text.Font headerFont =
-                new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 11, org.openpdf.text.Font.BOLD);
-        org.openpdf.text.Font normalFont = new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 10);
-        org.openpdf.text.Font smallFont = new org.openpdf.text.Font(org.openpdf.text.Font.HELVETICA, 9);
-
-        String sellerName = Config.configured(properties, "invoice.seller.name", "org.name");
-        String sellerAddress1 = Config.configured(properties, "invoice.seller.address1", "org.address");
-        String sellerAddress2 = Config.configured(properties, "invoice.seller.address2", null);
-        String sellerZip = Config.configured(properties, "invoice.seller.zip", null);
-        String sellerCity = Config.configured(properties, "invoice.seller.city", null);
-        String sellerCountry = Config.configured(properties, "invoice.seller.country", null);
-        String sellerEmail = Config.configured(properties, "invoice.seller.email", "org.email");
-        String sellerPhone = Config.configured(properties, "invoice.seller.phone", null);
-        String sellerWebsite = Config.configured(properties, "invoice.seller.website", "contact.url");
-        String sellerSiret = Config.configured(properties, "invoice.seller.siret", null);
-        String sellerRna = Config.configured(properties, "invoice.seller.rna", null);
-        String sellerPrefecture = Config.configured(properties, "invoice.seller.prefecture", null);
-
-        String invoicePrefix = Config.configured(properties, "invoice.number.prefix", null);
-        if (invoicePrefix.isBlank()) {
-            invoicePrefix = "FAC-";
-        }
-        String invoiceNumber = invoicePrefix + payment.getId();
-
-        String paymentMethodLabel = "Mode de paiement";
-        String paymentStatusLabel = Config.configured(properties, "invoice.payment.status.label", null);
-        if (paymentStatusLabel.isBlank()) {
-            paymentStatusLabel = "Payé";
-        }
-        String vatNotice = Config.configured(properties, "invoice.vat.notice", null);
-        String footerContact = Config.configured(properties, "invoice.footer", "org.name");
-
-        document.add(new org.openpdf.text.Paragraph("Reçu n° " + invoiceNumber, titleFont));
-        document.add(new org.openpdf.text.Paragraph(" "));
-
-        addLineIfNotBlank(document, normalFont, sellerName);
-        addLineIfNotBlank(document, normalFont, sellerAddress1);
-        addLineIfNotBlank(document, normalFont, sellerAddress2);
-        addLineIfNotBlank(document, normalFont, joinNotBlank(" ", sellerZip, sellerCity));
-        addLineIfNotBlank(document, normalFont, sellerCountry);
-        addLineIfNotBlank(
-                document,
-                smallFont,
-                joinNotBlank(
-                        " | ",
-                        isBlank(sellerEmail) ? "" : "Email: " + sellerEmail,
-                        isBlank(sellerPhone) ? "" : "Tel: " + sellerPhone,
-                        sellerWebsite));
-        addLineIfNotBlank(
-                document,
-                smallFont,
-                joinNotBlank(
-                        " | ",
-                        isBlank(sellerSiret) ? "" : "SIRET: " + sellerSiret,
-                        isBlank(sellerRna) ? "" : "RNA: " + sellerRna));
-        addLineIfNotBlank(document, smallFont, sellerPrefecture);
-        document.add(new org.openpdf.text.Paragraph(" "));
-
-        String client = loggerUser.getUsername();
-        if (!subs.isEmpty()) {
-            PlayerSubscription sub = subs.get(0);
-            IPlayer player = find.player(sub.getNrFfe(), null);
-            if (player != null) {
-                client = buildFullName(player);
-            }
-        } else if (!memberships.isEmpty()) {
-            String membershipName = buildMembershipFullName(memberships.get(0));
-            if (!membershipName.isBlank()) {
-                client = membershipName;
-            }
-        }
-
-        document.add(new org.openpdf.text.Paragraph("Client : " + client, normalFont));
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        document.add(new org.openpdf.text.Paragraph(
-                "Date : "
-                        + (payment.getUpdatedAt() != null
-                                ? payment.getUpdatedAt().toLocalDate().format(formatter)
-                                : payment.getCreatedAt() != null
-                                        ? payment.getCreatedAt().toLocalDate().format(formatter)
-                                        : "-"),
-                normalFont));
-        document.add(new org.openpdf.text.Paragraph("Email : " + payment.getUserEmail(), normalFont));
-        document.add(new org.openpdf.text.Paragraph(
-                paymentMethodLabel + " : " + translatePaymentType(payment.getType()), normalFont));
-        document.add(new org.openpdf.text.Paragraph("Statut : " + paymentStatusLabel, normalFont));
-        document.add(new org.openpdf.text.Paragraph(" "));
-
-        if (!subs.isEmpty()) {
-            org.openpdf.text.pdf.PdfPTable table = new org.openpdf.text.pdf.PdfPTable(3);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[] {40f, 40f, 20f});
-
-            org.openpdf.text.pdf.PdfPCell c1 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Tournoi", headerFont));
-            org.openpdf.text.pdf.PdfPCell c2 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Joueur", headerFont));
-            org.openpdf.text.pdf.PdfPCell c3 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Montant", headerFont));
-            c1.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            c2.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            c3.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            table.addCell(c1);
-            table.addCell(c2);
-            table.addCell(c3);
-
-            for (PlayerSubscription sub : subs) {
-                String eventName = sub.getEvent() != null ? sub.getEvent().getName() : "-";
-                String playerInfo = sub.getNrFfe() != null ? sub.getNrFfe() : "-";
-                IPlayer player = find.player(sub.getNrFfe(), null);
-                if (player != null) {
-                    playerInfo = (player.getFirstname() != null ? player.getFirstname() + " " : "")
-                            + (player.getName() != null ? player.getName() : "");
-                }
-                String price = sub.getAmountCents() != null
-                        ? String.format("%.2f €", ServiceUtils.toEuros(sub.getAmountCents()))
-                        : "-";
-                table.addCell(new org.openpdf.text.Phrase(eventName, normalFont));
-                table.addCell(new org.openpdf.text.Phrase(playerInfo, normalFont));
-                table.addCell(new org.openpdf.text.Phrase(price, normalFont));
-            }
-            document.add(table);
-            document.add(new org.openpdf.text.Paragraph(" "));
-        }
-
-        if (!memberships.isEmpty()) {
-            org.openpdf.text.pdf.PdfPTable table = new org.openpdf.text.pdf.PdfPTable(4);
-            table.setWidthPercentage(100);
-            table.setWidths(new float[] {30f, 15f, 35f, 20f});
-
-            org.openpdf.text.pdf.PdfPCell c1 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Adherent", headerFont));
-            org.openpdf.text.pdf.PdfPCell c2 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Licence", headerFont));
-            org.openpdf.text.pdf.PdfPCell c3 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Options", headerFont));
-            org.openpdf.text.pdf.PdfPCell c4 =
-                    new org.openpdf.text.pdf.PdfPCell(new org.openpdf.text.Phrase("Montant", headerFont));
-            c1.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            c2.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            c3.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            c4.setBackgroundColor(new java.awt.Color(220, 220, 220));
-            table.addCell(c1);
-            table.addCell(c2);
-            table.addCell(c3);
-            table.addCell(c4);
-
-            for (Membership membership : memberships) {
-                String memberInfo = buildMembershipFullName(membership);
-                if (membership.getNrFfe() != null && !membership.getNrFfe().isBlank()) {
-                    memberInfo = memberInfo + " (" + membership.getNrFfe() + ")";
-                }
-                String license = membership.getLicenseType() != null ? membership.getLicenseType() : "-";
-                List<MembershipOptionSubscription> subscriptions =
-                        optionSubscriptions.getOrDefault(membership.getId(), List.of());
-                String options = subscriptions.stream()
-                        .map(MembershipOptionSubscription::getMembershipOption)
-                        .filter(java.util.Objects::nonNull)
-                        .map(option -> option.getOptionValue())
-                        .filter(value -> value != null && !value.isBlank())
-                        .collect(Collectors.joining(", "));
-                if (options.isBlank()) {
-                    options = "-";
-                }
-                String price = String.format("%.2f €", membership.getAmountCents() / 100d);
-                table.addCell(new org.openpdf.text.Phrase(memberInfo, normalFont));
-                table.addCell(new org.openpdf.text.Phrase(license, normalFont));
-                table.addCell(new org.openpdf.text.Phrase(options, normalFont));
-                table.addCell(new org.openpdf.text.Phrase(price, normalFont));
-            }
-            document.add(table);
-            document.add(new org.openpdf.text.Paragraph(" "));
-        }
-
-        String totalStr = payment.getAmountCents() != null
-                ? String.format("%.2f €", ServiceUtils.toEuros(payment.getAmountCents()))
-                : (payment.getAmount() != null ? String.format("%.2f €", payment.getAmount()) : "-");
-        document.add(new org.openpdf.text.Paragraph("Montant payé : " + totalStr, headerFont));
-        addLineIfNotBlank(document, smallFont, vatNotice);
-        addLineIfNotBlank(document, smallFont, footerContact);
-
-        document.close();
-        return baos.toByteArray();
-    }
-
-    private static void addLineIfNotBlank(org.openpdf.text.Document document, org.openpdf.text.Font font, String value)
-            throws org.openpdf.text.DocumentException {
-        if (!isBlank(value)) {
-            document.add(new org.openpdf.text.Paragraph(value, font));
-        }
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
-
-    private static String translatePaymentType(PaymentType type) {
-        if (type == null) {
-            return "-";
-        }
-        return switch (type) {
-            case CARD -> "Carte bancaire";
-            case BANK_TRANSFER -> "Virement bancaire";
-            case FREE -> "Gratuit";
-            case CASH -> "Espèces";
-        };
-    }
-
-    private static String joinNotBlank(String separator, String... values) {
-        StringBuilder sb = new StringBuilder();
-        for (String value : values) {
-            if (isBlank(value)) {
-                continue;
-            }
-            if (!sb.isEmpty()) {
-                sb.append(separator);
-            }
-            sb.append(value.trim());
-        }
-        return sb.toString();
     }
 }
