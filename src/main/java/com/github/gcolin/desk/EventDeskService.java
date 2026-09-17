@@ -321,12 +321,23 @@ public class EventDeskService {
             if (sub.getStatus() == PlayerSubscriptionStatus.CANCELLED) {
                 continue;
             }
-            IPlayer p = RequestContext.require().find().player(sub.getNrFfe(), event.getEventType());
+            IPlayer p = null;
+            try {
+                p = RequestContext.require().find().player(sub.getNrFfe(), event.getEventType());
+            } catch (RuntimeException e) {
+                logger.error("cannot resolve player with code {}", sub.getNrFfe(), e);
+            }
             if (p == null) {
                 logger.error("cannot find player with code {}", sub.getNrFfe());
                 continue;
             }
-            DisplayPlayer player = new DisplayPlayer(p);
+            DisplayPlayer player;
+            try {
+                player = new DisplayPlayer(p);
+            } catch (RuntimeException e) {
+                logger.error("cannot map player with code {}", sub.getNrFfe(), e);
+                continue;
+            }
             player.setStatus(sub.getStatus());
             player.setAttendanceAt(sub.getAttendanceAt());
             player.setSubId(sub.getId());

@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import com.github.gcolin.player.DisplayPlayer;
 import com.github.gcolin.player.LuceneDb;
-import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.registration.PlayerSubscriptionDao;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
 import java.time.LocalDateTime;
@@ -23,7 +22,6 @@ class ChessEventServiceTest {
     private EventDao eventDao;
     private EventCollectionDao eventCollectionDao;
     private EventCollectionOptionDao eventCollectionOptionDao;
-    private EventOptionDao eventOptionDao;
     private PlayerSubscriptionDao playerSubscriptionDao;
     private ChessEventService service;
 
@@ -32,38 +30,33 @@ class ChessEventServiceTest {
         eventDao = mock(EventDao.class);
         eventCollectionDao = mock(EventCollectionDao.class);
         eventCollectionOptionDao = mock(EventCollectionOptionDao.class);
-        eventOptionDao = mock(EventOptionDao.class);
         playerSubscriptionDao = mock(PlayerSubscriptionDao.class);
         service = new ChessEventService(
                 eventDao,
                 eventCollectionDao,
                 eventCollectionOptionDao,
-                eventOptionDao,
                 playerSubscriptionDao,
                 mock(LuceneDb.class));
     }
 
     @Test
-    void listTournamentsReturnsNamesForCollection() throws ChessEventException {
+    void listTournamentsWithSharlyTokenReturnsNamesForCollection() throws ChessEventException {
         Event eventA = event(1, "Tournoi A");
         Event eventB = event(2, "Tournoi B");
         EventCollection collection = new EventCollection();
         collection.setId(10);
         collection.setEvents(new ArrayList<>(List.of(eventA, eventB)));
 
-        when(eventOptionDao.findEventIdsByChessEventCredentials("C69548", "secret"))
-                .thenReturn(List.of(1));
         when(eventCollectionOptionDao.findByOptionValue(EventCollectionOptionType.CHESS_EVENT_ID, "fest"))
                 .thenReturn(collection);
-        when(eventDao.find(1)).thenReturn(eventA);
 
-        List<String> tournaments = service.listTournaments("C69548", "secret", "fest");
+        List<String> tournaments = service.listTournamentsWithSharlyToken("fest", "fest");
 
         assertEquals(List.of("Tournoi A", "Tournoi B"), tournaments);
     }
 
     @Test
-    void downloadFiltersCheckedInPlayersWhenPointageEnabled() throws ChessEventException {
+    void downloadIncludesAllNonCancelledPlayersAndMapsCheckIn() throws ChessEventException {
         Event event = event(3, "Open");
         event.setEventOptions(Map.of(EventOptionType.POINTAGE, option(EventOptionType.POINTAGE, "1")));
 
@@ -73,49 +66,40 @@ class ChessEventServiceTest {
         cache.event = event;
         cache.players = List.of(present, absent);
 
-        when(eventOptionDao.findEventIdsByChessEventCredentials("arb", "pwd")).thenReturn(List.of(3));
         when(eventDao.find(3)).thenReturn(event);
         when(eventDao.buildCache(3)).thenReturn(cache);
         when(playerSubscriptionDao.findByEvent(event)).thenReturn(List.of());
 
-        Map<String, Object> tournament = service.downloadTournament("arb", "pwd", "3", "Open");
+        Map<String, Object> tournament =
+                service.downloadTournamentWithSharlyToken("3", "3", "Open");
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> players = (List<Map<String, Object>>) tournament.get("players");
-        assertEquals(1, players.size());
+        assertEquals(2, players.size());
         assertEquals("Present", players.get(0).get("last_name"));
+        assertEquals(true, players.get(0).get("check_in"));
+        assertEquals("Absent", players.get(1).get("last_name"));
+        assertEquals(false, players.get(1).get("check_in"));
         verify(eventDao).fillSubscriptionLimits(event);
-    }
-
-    @Test
-    void unauthorizedWhenPasswordWrong() {
-        when(eventOptionDao.findEventIdsByChessEventCredentials("arb", "bad")).thenReturn(List.of());
-        when(eventOptionDao.chessEventUserExists("arb")).thenReturn(true);
-
-        ChessEventException ex =
-                assertThrows(ChessEventException.class, () -> service.listTournaments("arb", "bad", "1"));
-        assertEquals(401, ex.getStatus());
-    }
-
-    @Test
-    void userNotFoundWhenUnknownUser() {
-        when(eventOptionDao.findEventIdsByChessEventCredentials("unknown", "pwd")).thenReturn(List.of());
-        when(eventOptionDao.chessEventUserExists("unknown")).thenReturn(false);
-
-        ChessEventException ex =
-                assertThrows(ChessEventException.class, () -> service.listTournaments("unknown", "pwd", "1"));
-        assertEquals(497, ex.getStatus());
     }
 
     @Test
     void tournamentNotFoundReturns498() {
         Event event = event(5, "Open");
-        when(eventOptionDao.findEventIdsByChessEventCredentials("arb", "pwd")).thenReturn(List.of(5));
         when(eventDao.find(5)).thenReturn(event);
 
         ChessEventException ex = assertThrows(
-                ChessEventException.class, () -> service.downloadTournament("arb", "pwd", "5", "Missing"));
+                ChessEventException.class,
+                () -> service.downloadTournamentWithSharlyToken("5", "5", "Missing"));
         assertEquals(498, ex.getStatus());
+    }
+
+    @Test
+    void sharlyTokenRejectsMismatchedEventId() {
+        ChessEventException ex = assertThrows(
+                ChessEventException.class,
+                () -> service.listTournamentsWithSharlyToken("fest", "other"));
+        assertEquals(403, ex.getStatus());
     }
 
     private static Event event(int id, String name) {

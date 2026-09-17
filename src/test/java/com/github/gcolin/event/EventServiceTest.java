@@ -255,7 +255,11 @@ class EventServiceTest {
 
         EventCache cache = eventService.buildCache(1);
 
-        Assertions.assertEquals(1, cache.players.size());
+        // Missing FFE codes are still exported as placeholders (for Sharly) and listed separately.
+        Assertions.assertEquals(2, cache.players.size());
+        Assertions.assertEquals("Doe", cache.players.get(0).getName());
+        Assertions.assertEquals("MISSING", cache.players.get(1).getName());
+        Assertions.assertEquals("MISSING", cache.players.get(1).getNrffe());
         Assertions.assertEquals(List.of("MISSING"), cache.missingPlayerCodes);
     }
 }

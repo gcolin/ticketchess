@@ -77,10 +77,12 @@ public class PapiService {
             row.put("Sexe", extractSexe(player.getCategory()));
             row.put("NeLe", formatBirthDate(player.getBirthDate()));
             row.put("Cat", extractCat(player.getCategory()));
+            String category = player.getCategory();
             String tournamentRating = tournamentRating(player, event.getEventType());
-            row.put("Elo", extractRating(tournamentRating));
-            row.put("Rapide", extractRating(player.getRapidRating()));
-            row.put("Blitz", extractRating(player.getBlitzRating()));
+            EloCadence tournamentCadence = toEloCadence(event.getEventType());
+            row.put("Elo", extractRating(tournamentRating, category, tournamentCadence));
+            row.put("Rapide", extractRating(player.getRapidRating(), category, EloCadence.RAPID));
+            row.put("Blitz", extractRating(player.getBlitzRating(), category, EloCadence.BLITZ));
             if (player.getFederation() == null || player.getFederation().isEmpty()) {
                 row.put("Federation", "FRA");
             } else {
@@ -301,23 +303,82 @@ public class PapiService {
         return value.substring(0, maxLength);
     }
 
-    private Integer extractRating(String rating) {
+    enum EloCadence {
+        STANDARD,
+        RAPID,
+        BLITZ
+    }
+
+    private EloCadence toEloCadence(EventType eventType) {
+        if (eventType == EventType.RAPID) {
+            return EloCadence.RAPID;
+        }
+        if (eventType == EventType.BLITZ) {
+            return EloCadence.BLITZ;
+        }
+        return EloCadence.STANDARD;
+    }
+
+    /**
+     * FFE estimated Elo for never-rated players (Règles générales des compétitions fédérales).
+     * Blitz uses the same floors as rapid when no dedicated table is published.
+     */
+    static int defaultFfeElo(String category, EloCadence cadence) {
+        String cat = normalizeCategoryPrefix(category);
+        if (cadence == EloCadence.STANDARD) {
+            return switch (cat) {
+                case "Ppo", "Pou", "Pup", "Ben", "Min", "Cad", "Jun", "U8", "U10", "U12", "U14", "U16", "U18", "U20" ->
+                    1299;
+                default -> 1399;
+            };
+        }
+        return switch (cat) {
+            case "Ppo", "Pou", "U8", "U10" -> 799;
+            case "Pup", "Ben", "U12", "U14" -> 999;
+            default -> 1199;
+        };
+    }
+
+    private static String normalizeCategoryPrefix(String category) {
+        if (category == null || category.isBlank()) {
+            return "";
+        }
+        String cat = category.trim();
+        char last = cat.charAt(cat.length() - 1);
+        if (last == 'M' || last == 'F') {
+            cat = cat.substring(0, cat.length() - 1);
+        }
+        return cat;
+    }
+
+    private Integer parseRating(String rating) {
         if (rating == null || rating.isEmpty()) {
-            return 0;
+            return null;
         }
         try {
+            int value;
             if (rating.length() > 1 && Character.isLetter(rating.charAt(rating.length() - 1))) {
-                return Integer.parseInt(rating.substring(0, rating.length() - 1));
+                value = Integer.parseInt(rating.substring(0, rating.length() - 1));
+            } else {
+                value = Integer.parseInt(rating);
             }
-            return Integer.parseInt(rating);
+            return value > 0 ? value : null;
         } catch (NumberFormatException e) {
-            return 0;
+            return null;
         }
     }
 
+    private Integer extractRating(String rating, String category, EloCadence cadence) {
+        Integer value = parseRating(rating);
+        if (value != null) {
+            return value;
+        }
+        return defaultFfeElo(category, cadence);
+    }
+
     private String extractFideFlag(String rating) {
-        if (rating == null || rating.isEmpty()) {
-            return "N";
+        if (parseRating(rating) == null) {
+            return "E";
         }
         if (rating.length() > 1 && Character.isLetter(rating.charAt(rating.length() - 1))) {
             return String.valueOf(rating.charAt(rating.length() - 1));

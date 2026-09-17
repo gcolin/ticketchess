@@ -42,8 +42,8 @@ Cette liste de contrôle concerne le **jour J** : accueillir les joueurs sur pla
 
 ## Avant la synchronisation avec SharlyChess
 
-- [ ] Si le **pointage** est activé : tous les joueurs présents doivent être **pointés** ici.
-- [ ] Informer l'arbitre que seuls les joueurs pointés seront envoyés à SharlyChess.
+- [ ] Si le **pointage** est activé : tous les joueurs présents doivent être **pointés** ici (transmis comme check-in dans SharlyChess).
+- [ ] Informer l'arbitre que tous les inscrits non annulés seront importés ; le pointage correspond au check-in SharlyChess.
 
 Voir [Synchronisation SharlyChess](SYNCHRO_SHARLYCHESS.md).
 

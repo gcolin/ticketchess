@@ -10,7 +10,6 @@ import com.github.gcolin.registration.PlayerSubscription;
 import com.github.gcolin.platform.Transactional;
 import com.github.gcolin.player.LuceneDb;
 import com.github.gcolin.player.DisplayPlayer;
-import com.github.gcolin.event.EventType;
 import com.github.gcolin.player.IPlayer;
 import com.github.gcolin.player.Player;
 import com.github.gcolin.registration.PlayerSubscriptionStatus;
@@ -134,14 +133,7 @@ public class EventRegisterApi {
                 DisplayPlayer p = new DisplayPlayer(player);
                 if (!subscriptionsRefs.contains(player.getNrffe())) {
                     p.setPrice(ServiceUtils.toEuros(ServiceUtils.calculatePrice(player, event)));
-                    if (event.getEventType() == EventType.RAPID) {
-                        p.setRating(player.getRapidRating());
-                    }
-                    if (event.getEventType() == EventType.BLITZ) {
-                        p.setRating(player.getBlitzRating());
-                    } else {
-                        p.setRating(player.getRating());
-                    }
+                    p.setRating(player, event.getEventType());
                     playersFiltered.add(p);
                 }
             }
@@ -170,14 +162,7 @@ public class EventRegisterApi {
                 if (player != null) {
                     DisplayPlayer p = new DisplayPlayer(player);
                     p.setPrice(ServiceUtils.toEuros(ServiceUtils.calculatePrice(player, event)));
-                    if (event.getEventType() == EventType.RAPID) {
-                        p.setRating(player.getRapidRating());
-                    }
-                    if (event.getEventType() == EventType.BLITZ) {
-                        p.setRating(player.getBlitzRating());
-                    } else {
-                        p.setRating(player.getRating());
-                    }
+                    p.setRating(player, event.getEventType());
                     favoritePlayers.add(p);
                 }
             }

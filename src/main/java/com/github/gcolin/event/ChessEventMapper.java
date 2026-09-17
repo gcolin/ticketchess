@@ -18,6 +18,7 @@ import java.util.Map;
 public class ChessEventMapper {
 
     private final LuceneDb luceneDb;
+    private final Map<String, Club> clubCache = new HashMap<>();
 
     public ChessEventMapper(LuceneDb luceneDb) {
         this.luceneDb = luceneDb;
@@ -25,6 +26,7 @@ public class ChessEventMapper {
 
     public Map<String, Object> mapTournament(
             Event event, List<DisplayPlayer> players, Map<Integer, PlayerSubscription> subscriptionsBySubId) {
+        clubCache.clear();
         Map<String, Object> tournament = new LinkedHashMap<>();
         tournament.put("name", event.getName());
         tournament.put("type", 1);
@@ -278,15 +280,8 @@ public class ChessEventMapper {
     }
 
     private String mapLeague(DisplayPlayer player) {
-        if (player.getClubRef() == null || player.getClubRef().isBlank()) {
-            return "";
-        }
-        try {
-            Club club = luceneDb.searchClub(player.getClubRef());
-            return club == null || club.getLigue() == null ? "" : club.getLigue();
-        } catch (Exception e) {
-            return "";
-        }
+        Club club = resolveClub(player);
+        return club == null || club.getLigue() == null ? "" : club.getLigue();
     }
 
     static int parseClubRef(String clubRef) {
@@ -304,15 +299,26 @@ public class ChessEventMapper {
         if (player.getClub() != null && !player.getClub().isBlank()) {
             return player.getClub();
         }
+        Club club = resolveClub(player);
+        return club == null || club.getNom() == null ? "" : club.getNom();
+    }
+
+    private Club resolveClub(DisplayPlayer player) {
         if (player.getClubRef() == null || player.getClubRef().isBlank()) {
-            return "";
+            return null;
         }
+        String clubRef = player.getClubRef().trim();
+        if (clubCache.containsKey(clubRef)) {
+            return clubCache.get(clubRef);
+        }
+        Club club = null;
         try {
-            Club club = luceneDb.searchClub(player.getClubRef());
-            return club == null || club.getNom() == null ? "" : club.getNom();
-        } catch (Exception e) {
-            return "";
+            club = luceneDb.searchClub(clubRef);
+        } catch (Exception ignored) {
+            // keep null
         }
+        clubCache.put(clubRef, club);
+        return club;
     }
 
     static int mapCategory(String category) {

@@ -75,6 +75,15 @@ public class EventDao extends AbstractDao<Event> {
         return findByStatus(status, SeasonScope.all());
     }
 
+    /** All events with the given status, including those in an event group. */
+    public List<Event> findAllByStatus(EventStatus status) {
+        TypedQuery<Event> query = em.createQuery(
+                "SELECT e FROM Event e WHERE e.status = :status ORDER BY e.startDate ASC, e.name ASC",
+                Event.class);
+        query.setParameter("status", status);
+        return query.getResultList();
+    }
+
     public List<Event> findByStatus(EventStatus status, SeasonScope scope) {
         String jpql =
                 "SELECT e FROM Event e where e.status = :status and e.eventGroup is null";
@@ -149,19 +158,8 @@ public class EventDao extends AbstractDao<Event> {
             if (sub.getStatus() == com.github.gcolin.registration.PlayerSubscriptionStatus.CANCELLED) {
                 continue;
             }
-            IPlayer p = finder.player(sub.getNrFfe(), event.getEventType());
-            if (p == null) {
-                String code = sub.getNrFfe();
-                logger.error("cannot find player with code {}", code);
-                missingPlayerCodes.add(code);
-            } else {
-                DisplayPlayer player = new DisplayPlayer(p);
-                player.setStatus(sub.getStatus());
-                player.setAttendanceAt(sub.getAttendanceAt());
-                player.setSubId(sub.getId());
-                player.setBirthDate(p.getBirthDate());
-                player.setClubRef(p.getClubRef());
-                player.setRating(p, event.getEventType());
+            DisplayPlayer player = resolveDisplayPlayer(sub, event, missingPlayerCodes);
+            if (player != null) {
                 players.add(player);
             }
         }
@@ -189,6 +187,80 @@ public class EventDao extends AbstractDao<Event> {
         event.setSubscriptions(new ArrayList<>());
 
         return cached;
+    }
+
+    /**
+     * Resolves a subscription to a DisplayPlayer. Custom / amical players (@id) and FFE
+     * licences missing from Lucene are still exported so Sharly receives every registration.
+     */
+    private DisplayPlayer resolveDisplayPlayer(
+            PlayerSubscription sub, Event event, List<String> missingPlayerCodes) {
+        String code = sub.getNrFfe();
+        IPlayer p = null;
+        try {
+            p = finder.player(code, event.getEventType());
+        } catch (RuntimeException e) {
+            logger.error("cannot resolve player with code {}", code, e);
+        }
+        if (p == null) {
+            logger.error("cannot find player with code {} — exporting placeholder", code);
+            if (code != null) {
+                missingPlayerCodes.add(code);
+            }
+            return finalizeDisplayPlayer(placeholderPlayer(sub), sub, event, null);
+        }
+        try {
+            DisplayPlayer player = new DisplayPlayer(p);
+            return finalizeDisplayPlayer(player, sub, event, p);
+        } catch (RuntimeException e) {
+            logger.error("cannot map player with code {} — exporting placeholder", code, e);
+            if (code != null) {
+                missingPlayerCodes.add(code);
+            }
+            return finalizeDisplayPlayer(placeholderPlayer(sub), sub, event, null);
+        }
+    }
+
+    private static DisplayPlayer finalizeDisplayPlayer(
+            DisplayPlayer player, PlayerSubscription sub, Event event, IPlayer source) {
+        player.setStatus(sub.getStatus());
+        player.setAttendanceAt(sub.getAttendanceAt());
+        player.setSubId(sub.getId());
+        if (source != null) {
+            player.setBirthDate(source.getBirthDate());
+            player.setClubRef(source.getClubRef());
+            player.setRating(source, event.getEventType());
+        }
+        if (player.getFederation() == null || player.getFederation().isBlank()) {
+            player.setFederation("FRA");
+        }
+        return player;
+    }
+
+    private static DisplayPlayer placeholderPlayer(PlayerSubscription sub) {
+        DisplayPlayer player = new DisplayPlayer();
+        String ref = sub.getNrFfe() == null ? "" : sub.getNrFfe().trim();
+        if (ref.startsWith("@") && ref.length() > 1) {
+            player.setName("JOUEUR");
+            player.setFirstname(ref.substring(1));
+        } else if (!ref.isEmpty()) {
+            player.setName(ref);
+            player.setFirstname("");
+        } else {
+            player.setName("JOUEUR");
+            player.setFirstname(String.valueOf(sub.getId()));
+        }
+        player.setNrffe(ref);
+        player.setNrffeId(ref);
+        player.setFederation("FRA");
+        player.setCategory("SenM");
+        player.setRating("1199E");
+        player.setStandardRating("1199E");
+        player.setRapidRating("1199E");
+        player.setBlitzRating("1199E");
+        player.setBirthDate("1990-01-01T00:00:00");
+        player.setEditable(true);
+        return player;
     }
 
     public Integer saveEvent(

@@ -77,5 +77,9 @@ db.h2.loadPostgresDump=false
 
 pendingQueueOffset=0
 
+# Origins autorisées pour le retour Sharly Chess (en plus de localhost / 127.0.0.1)
+# Liste séparée par des virgules, sans chemin (ex. https://arbitre.monclub.fr)
+#sharly.callback.origins=
+
 # Index FFE : exclure les joueurs AffType=N (non affiliés) lors du chargement Lucene
 ffe.excludeAffTypeN=false

@@ -593,8 +593,6 @@ public class EventApi {
             Map<String, String> eventOptions = loadEventOptions(id);
             if (!canEdit) {
                 eventOptions.remove(EventOptionType.FFE_PASSWORD.name());
-                eventOptions.remove(EventOptionType.CHESS_EVENT_PASSWORD.name());
-                eventOptions.remove(EventOptionType.CHESS_EVENT_USER.name());
             }
             model.put("eventOptions", eventOptions);
             model.put("event", event);
@@ -632,8 +630,6 @@ public class EventApi {
             @FormParam("minElo") String minElo,
             @FormParam("maxElo") String maxElo,
             @FormParam("ffePassword") String ffePassword,
-            @FormParam("chessEventUser") String chessEventUser,
-            @FormParam("chessEventPassword") String chessEventPassword,
             @FormParam("name") String name,
             @FormParam("startDate") String startDate,
             @FormParam("endDate") String endDate,
@@ -659,14 +655,6 @@ public class EventApi {
                 eventOptionService.setOption(eventId, EventOptionType.MAX_ELO, maxElo != null ? maxElo : "");
                 eventOptionService.setOption(
                         eventId, EventOptionType.FFE_PASSWORD, ffePassword != null ? ffePassword : "");
-                eventOptionService.setOption(
-                        eventId,
-                        EventOptionType.CHESS_EVENT_USER,
-                        chessEventUser != null ? chessEventUser : "");
-                eventOptionService.setOption(
-                        eventId,
-                        EventOptionType.CHESS_EVENT_PASSWORD,
-                        chessEventPassword != null ? chessEventPassword : "");
                 eventOptionService.setOption(
                         eventId, EventOptionType.POINTAGE, "1".equals(pointage) ? "1" : "0");
             }

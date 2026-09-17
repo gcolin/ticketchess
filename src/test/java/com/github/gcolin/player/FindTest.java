@@ -26,6 +26,21 @@ class FindTest {
     }
 
     @Test
+    void customPlayerWithBlankLicenceReturnsCustomWhenEventTypeSet() throws Exception {
+        CustomPlayer customPlayer = new CustomPlayer();
+        customPlayer.setId(7);
+        customPlayer.setLicence(null);
+        customPlayer.setName("AMICAL");
+        customPlayer.setFirstname("Jean");
+        when(customPlayerService.find(7)).thenReturn(customPlayer);
+
+        IPlayer result = find.player("@7", com.github.gcolin.event.EventType.RAPID);
+
+        Assertions.assertSame(customPlayer, result);
+        verify(customPlayerService).detach(customPlayer);
+    }
+
+    @Test
     void testPlayerWithCustomPlayerId() {
         CustomPlayer customPlayer = new CustomPlayer();
         customPlayer.setId(42);

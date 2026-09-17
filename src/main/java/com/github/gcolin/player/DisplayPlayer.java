@@ -40,10 +40,17 @@ public class DisplayPlayer implements IPlayer {
         name = player.getName();
         firstname = player.getFirstname();
         setCategory(player.getCategory());
-        setNrffe(player.getLicence());
+        // Prefer FFE licence when present; keep custom "@id" refs otherwise.
+        String licence = player.getLicence();
+        String nrffeRef = player.getNrffe();
+        if (licence != null && !licence.isBlank()) {
+            setNrffe(licence);
+        } else {
+            setNrffe(nrffeRef);
+        }
         setId(player.getId());
-        setNrffeId(player.getNrffe());
-        if (player.getNrffe().isEmpty()) {
+        setNrffeId(nrffeRef);
+        if (nrffeRef == null || nrffeRef.isEmpty()) {
             setNrffeId(player.getFide());
         }
         setAffType(player.getAffType());

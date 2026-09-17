@@ -8,10 +8,8 @@ import com.github.gcolin.registration.PlayerSubscriptionStatus;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ChessEventService {
@@ -19,7 +17,6 @@ public class ChessEventService {
     private final EventDao eventDao;
     private final EventCollectionDao eventCollectionDao;
     private final EventCollectionOptionDao eventCollectionOptionDao;
-    private final EventOptionDao eventOptionDao;
     private final PlayerSubscriptionDao playerSubscriptionDao;
     private final ChessEventMapper mapper;
 
@@ -27,26 +24,29 @@ public class ChessEventService {
             EventDao eventDao,
             EventCollectionDao eventCollectionDao,
             EventCollectionOptionDao eventCollectionOptionDao,
-            EventOptionDao eventOptionDao,
             PlayerSubscriptionDao playerSubscriptionDao,
             LuceneDb luceneDb) {
         this.eventDao = eventDao;
         this.eventCollectionDao = eventCollectionDao;
         this.eventCollectionOptionDao = eventCollectionOptionDao;
-        this.eventOptionDao = eventOptionDao;
         this.playerSubscriptionDao = playerSubscriptionDao;
         this.mapper = new ChessEventMapper(luceneDb);
     }
 
-    public List<String> listTournaments(String userId, String password, String eventId)
+    public List<String> listTournamentsWithSharlyToken(String tokenEventId, String requestedEventId)
             throws ChessEventException {
-        ResolvedScope scope = resolveAuthorizedScope(userId, password, eventId);
+        ResolvedScope scope = resolveSharlyTokenScope(tokenEventId, requestedEventId);
         return scope.events().stream().map(Event::getName).toList();
     }
 
-    public Map<String, Object> downloadTournament(
-            String userId, String password, String eventId, String tournamentName) throws ChessEventException {
-        ResolvedScope scope = resolveAuthorizedScope(userId, password, eventId);
+    public Map<String, Object> downloadTournamentWithSharlyToken(
+            String tokenEventId, String requestedEventId, String tournamentName) throws ChessEventException {
+        ResolvedScope scope = resolveSharlyTokenScope(tokenEventId, requestedEventId);
+        return downloadFromScope(scope, tournamentName);
+    }
+
+    private Map<String, Object> downloadFromScope(ResolvedScope scope, String tournamentName)
+            throws ChessEventException {
         if (tournamentName == null || tournamentName.isBlank()) {
             throw new ChessEventException(498, "Tournament not found");
         }
@@ -60,62 +60,22 @@ public class ChessEventService {
         }
         eventDao.fillSubscriptionLimits(event);
         EventCache cache = eventDao.buildCache(event.getId());
-        List<DisplayPlayer> players = filterPlayers(cache.players, cache.event);
-        Map<Integer, PlayerSubscription> subscriptions = loadSubscriptions(event);
+        List<DisplayPlayer> players = filterPlayers(cache.players);
+        Map<Integer, PlayerSubscription> subscriptions = subscriptionsById(cache.event);
         return mapper.mapTournament(cache.event, players, subscriptions);
     }
 
-    private ResolvedScope resolveAuthorizedScope(String userId, String password, String eventId)
+    private ResolvedScope resolveSharlyTokenScope(String tokenEventId, String requestedEventId)
             throws ChessEventException {
-        if (userId == null || userId.isBlank()) {
-            throw new ChessEventException(497, "User not found");
-        }
-        if (password == null) {
+        if (tokenEventId == null || tokenEventId.isBlank()) {
             throw new ChessEventException(401, "Unauthorized");
         }
-
-        List<Integer> authenticatedEventIds =
-                eventOptionDao.findEventIdsByChessEventCredentials(userId.trim(), password);
-        if (authenticatedEventIds.isEmpty()) {
-            if (eventOptionDao.chessEventUserExists(userId.trim())) {
-                throw new ChessEventException(401, "Unauthorized");
-            }
-            throw new ChessEventException(497, "User not found");
-        }
-
-        ResolvedScope scope = resolveEventId(eventId);
-        if (!hasAccess(authenticatedEventIds, scope)) {
+        String effectiveEventId = tokenEventId.trim();
+        if (requestedEventId != null && !requestedEventId.isBlank()
+                && !effectiveEventId.equals(requestedEventId.trim())) {
             throw new ChessEventException(403, "Access forbidden");
         }
-        return scope;
-    }
-
-    private boolean hasAccess(List<Integer> authenticatedEventIds, ResolvedScope scope) {
-        Set<Integer> allowed = expandAccessibleEventIds(authenticatedEventIds);
-        for (Event event : scope.events()) {
-            if (allowed.contains(event.getId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Set<Integer> expandAccessibleEventIds(List<Integer> authenticatedEventIds) {
-        Set<Integer> allowed = new HashSet<>(authenticatedEventIds);
-        for (Integer eventId : authenticatedEventIds) {
-            Event event = eventDao.find(eventId);
-            if (event == null) {
-                continue;
-            }
-            EventCollection collection = event.getEventCollection();
-            if (collection != null) {
-                collection.getEvents().size();
-                for (Event sibling : collection.getEvents()) {
-                    allowed.add(sibling.getId());
-                }
-            }
-        }
-        return allowed;
+        return resolveEventId(effectiveEventId);
     }
 
     private ResolvedScope resolveEventId(String eventId) throws ChessEventException {
@@ -158,19 +118,24 @@ public class ChessEventService {
         return new ResolvedScope(events);
     }
 
-    private List<DisplayPlayer> filterPlayers(List<DisplayPlayer> players, Event event) {
+    private List<DisplayPlayer> filterPlayers(List<DisplayPlayer> players) {
         if (players == null) {
             return List.of();
         }
+        // Always export all non-cancelled registrations. Attendance (pointage) is
+        // mapped to Sharly check_in, so organizers keep the full list.
         return players.stream()
                 .filter(player -> player.getStatus() != PlayerSubscriptionStatus.CANCELLED)
-                .filter(player -> !event.isPointageEnabled() || player.getAttendanceAt() != null)
                 .collect(Collectors.toList());
     }
 
-    private Map<Integer, PlayerSubscription> loadSubscriptions(Event event) {
+    private Map<Integer, PlayerSubscription> subscriptionsById(Event event) {
         Map<Integer, PlayerSubscription> map = new HashMap<>();
-        for (PlayerSubscription sub : playerSubscriptionDao.findByEvent(event)) {
+        List<PlayerSubscription> subscriptions = event.getSubscriptions();
+        if (subscriptions == null) {
+            subscriptions = playerSubscriptionDao.findByEvent(event);
+        }
+        for (PlayerSubscription sub : subscriptions) {
             if (sub.getId() != null) {
                 map.put(sub.getId(), sub);
             }

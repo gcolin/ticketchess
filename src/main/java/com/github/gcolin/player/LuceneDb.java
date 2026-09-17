@@ -348,14 +348,20 @@ public class LuceneDb {
 
     public synchronized Player searchJoueur(String nrFFE) throws ParseException, IOException {
         ensureLoaded();
-        Query nrffeQuery;
-        if (decimal.matcher(nrFFE).matches()) {
-            nrffeQuery = new TermQuery(new Term("fide", nrFFE));
-        } else {
-            nrffeQuery = new TermQuery(new Term("nrffe", nrFFE));
+        if (nrFFE == null || nrFFE.isBlank()) {
+            return null;
         }
+        String ref = nrFFE.trim();
+        if (decimal.matcher(ref).matches()) {
+            // Numeric refs are usually FIDE ids; fall back to nrffe for odd licence formats.
+            Player byFide = searchJoueurByField("fide", ref);
+            if (byFide != null) {
+                return byFide;
+            }
+            return searchJoueurByField("nrffe", ref);
+        }
+        Query nrffeQuery = new TermQuery(new Term("nrffe", ref));
         TopDocs hits = searcher.search(nrffeQuery, 1);
-
         if (hits.scoreDocs.length > 0) {
             Document doc = searcher.storedFields().document(hits.scoreDocs[0].doc);
             return docToJoueur(doc, hits.scoreDocs[0].score);

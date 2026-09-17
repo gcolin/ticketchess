@@ -297,7 +297,7 @@
                   <td>${mem.getLastname() != null ? mem.getLastname() : ""}</td>
                   <td>${mem.getFirstname() != null ? mem.getFirstname() : ""}</td>
                   <td>${String.format(java.util.Locale.FRANCE, "%.2f", mem.getAmountCents() / 100.0)} €</td>
-                  <td class="d-none d-md-table-cell">@if(mem.getCreatedAt() != null)${mem.getCreatedAt().toString()}@endif</td>
+                  <td class="d-none d-md-table-cell">@if(mem.getCreatedAt() != null)${msg.formatDate(mem.getCreatedAt())}@endif</td>
                   <td>
                     @if(membershipSubscriptions != null && membershipSubscriptions.get(String.valueOf(mem.getId())) != null)
                       @for(var mos : membershipSubscriptions.get(String.valueOf(mem.getId())))

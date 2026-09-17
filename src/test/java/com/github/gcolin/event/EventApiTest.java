@@ -232,8 +232,8 @@ class EventApiTest {
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/event/9/edit?success=save")));
 
         Response response = api.postEventEdit(
-                true, false, 9, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                true, false, 9, "desc", null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null);
 
         assertEquals(303, response.getStatus());
         assertEquals(URI.create("http://localhost:8080/event/9/edit?success=save"), response.getLocation());
@@ -261,15 +261,13 @@ class EventApiTest {
         inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/event/11/edit?success=save")));
 
         Response response = api.postEventEdit(
-                false, true, 11, null, "login", null, null, "pwd", "ceUser", "cePwd", null, null, null, null, null, null, null,
+                false, true, 11, null, "login", null, null, "pwd", null, null, null, null, null, null, null,
                 null, null, null, null, null, null, "1");
 
         assertEquals(303, response.getStatus());
         assertEquals(URI.create("http://localhost:8080/event/11/edit?success=save"), response.getLocation());
         verify(optionDao).setOption(11, EventOptionType.FFE_ID, "login");
         verify(optionDao).setOption(11, EventOptionType.FFE_PASSWORD, "pwd");
-        verify(optionDao).setOption(11, EventOptionType.CHESS_EVENT_USER, "ceUser");
-        verify(optionDao).setOption(11, EventOptionType.CHESS_EVENT_PASSWORD, "cePwd");
         verify(optionDao).setOption(11, EventOptionType.POINTAGE, "1");
     }
 

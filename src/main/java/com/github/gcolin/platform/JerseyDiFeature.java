@@ -16,6 +16,9 @@ import com.github.gcolin.event.EventPaymentsReportService;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.PapiUlploadService;
 import com.github.gcolin.event.ChessEventService;
+import com.github.gcolin.event.SharlyCallbackAllowlist;
+import com.github.gcolin.event.SharlyImportTokenService;
+import com.github.gcolin.event.SharlySelectService;
 import com.github.gcolin.event.StatisticsReportService;
 import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
@@ -75,6 +78,10 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(app(AppContext.get().membershipOptionFileService()))
                         .to(MembershipOptionFileService.class);
                 bindFactory(app(AppContext.get().config().getProperties())).to(Properties.class);
+                bindFactory(app(new SharlyImportTokenService(AppContext.get().config())))
+                        .to(SharlyImportTokenService.class);
+                bindFactory(app(new SharlyCallbackAllowlist(AppContext.get().config())))
+                        .to(SharlyCallbackAllowlist.class);
 
                 bindFactory(req(RequestContext::clubSeasonDao)).to(ClubSeasonDao.class);
                 bindFactory(req(RequestContext::clubSeasonFilter)).to(ClubSeasonFilter.class);
@@ -107,6 +114,7 @@ public class JerseyDiFeature implements Feature {
                 bindFactory(req(RequestContext::papiService)).to(PapiService.class);
                 bindFactory(req(RequestContext::papiUlploadService)).to(PapiUlploadService.class);
                 bindFactory(req(RequestContext::chessEventService)).to(ChessEventService.class);
+                bindFactory(req(RequestContext::sharlySelectService)).to(SharlySelectService.class);
                 bindFactory(req(RequestContext::loggedUser)).to(LoggedUser.class);
             }
         });

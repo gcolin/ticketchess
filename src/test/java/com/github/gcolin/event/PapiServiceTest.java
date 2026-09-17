@@ -32,14 +32,41 @@ class PapiServiceTest {
     @Test
     void testExtractRating() throws Exception {
         PapiService service = new PapiService();
-        Method method = PapiService.class.getDeclaredMethod("extractRating", String.class);
+        Method method = PapiService.class.getDeclaredMethod(
+                "extractRating", String.class, String.class, PapiService.EloCadence.class);
         method.setAccessible(true);
 
-        Assertions.assertEquals(0, method.invoke(service, (String) null));
-        Assertions.assertEquals(0, method.invoke(service, ""));
-        Assertions.assertEquals(1234, method.invoke(service, "1234"));
-        Assertions.assertEquals(1234, method.invoke(service, "1234N"));
-        Assertions.assertEquals(0, method.invoke(service, "abcd"));
+        Assertions.assertEquals(
+                1399, method.invoke(service, null, "SenM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(
+                1399, method.invoke(service, "", "SenM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(
+                1234, method.invoke(service, "1234", "SenM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(
+                1234, method.invoke(service, "1234N", "SenM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(
+                1299, method.invoke(service, "abcd", "PouM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(
+                799, method.invoke(service, "0", "PpoM", PapiService.EloCadence.RAPID));
+        Assertions.assertEquals(
+                999, method.invoke(service, null, "BenF", PapiService.EloCadence.BLITZ));
+        Assertions.assertEquals(
+                1199, method.invoke(service, null, "JunM", PapiService.EloCadence.RAPID));
+    }
+
+    @Test
+    void testDefaultFfeEloByCategory() {
+        Assertions.assertEquals(1399, PapiService.defaultFfeElo("SenM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(1399, PapiService.defaultFfeElo("SepF", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(1399, PapiService.defaultFfeElo("VetM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(1299, PapiService.defaultFfeElo("JunM", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(1299, PapiService.defaultFfeElo("PpoF", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(1199, PapiService.defaultFfeElo("SenM", PapiService.EloCadence.RAPID));
+        Assertions.assertEquals(1199, PapiService.defaultFfeElo("MinM", PapiService.EloCadence.RAPID));
+        Assertions.assertEquals(999, PapiService.defaultFfeElo("PupM", PapiService.EloCadence.RAPID));
+        Assertions.assertEquals(799, PapiService.defaultFfeElo("PouM", PapiService.EloCadence.BLITZ));
+        Assertions.assertEquals(1299, PapiService.defaultFfeElo("U12", PapiService.EloCadence.STANDARD));
+        Assertions.assertEquals(799, PapiService.defaultFfeElo("U8F", PapiService.EloCadence.RAPID));
     }
 
     @Test
@@ -48,8 +75,9 @@ class PapiServiceTest {
         Method method = PapiService.class.getDeclaredMethod("extractFideFlag", String.class);
         method.setAccessible(true);
 
-        Assertions.assertEquals("N", method.invoke(service, (String) null));
-        Assertions.assertEquals("N", method.invoke(service, ""));
+        Assertions.assertEquals("E", method.invoke(service, (String) null));
+        Assertions.assertEquals("E", method.invoke(service, ""));
+        Assertions.assertEquals("E", method.invoke(service, "0"));
         Assertions.assertEquals("N", method.invoke(service, "1800"));
         Assertions.assertEquals("F", method.invoke(service, "1800F"));
     }

@@ -15,6 +15,7 @@ import com.github.gcolin.event.EventOptionDao;
 import com.github.gcolin.event.PapiService;
 import com.github.gcolin.event.PapiUlploadService;
 import com.github.gcolin.event.ChessEventService;
+import com.github.gcolin.event.SharlySelectService;
 import com.github.gcolin.club.ClubSeasonDao;
 import com.github.gcolin.club.ClubSeasonFilter;
 import com.github.gcolin.membership.LicenseDao;
@@ -79,6 +80,7 @@ public final class RequestContext {
     private PapiService papiService;
     private PapiUlploadService papiUlploadService;
     private ChessEventService chessEventService;
+    private SharlySelectService sharlySelectService;
 
     private RequestContext() {}
 
@@ -554,10 +556,16 @@ public final class RequestContext {
                     eventDao(),
                     eventCollectionDao(),
                     eventCollectionOptionDao(),
-                    eventOptionDao(),
                     playerSubscriptionDao(),
                     AppContext.get().luceneDb());
         }
         return chessEventService;
+    }
+
+    public SharlySelectService sharlySelectService() {
+        if (sharlySelectService == null) {
+            sharlySelectService = new SharlySelectService(eventDao(), eventCollectionOptionDao());
+        }
+        return sharlySelectService;
     }
 }

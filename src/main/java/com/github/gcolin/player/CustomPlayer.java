@@ -128,8 +128,16 @@ public class CustomPlayer implements IPlayer {
     }
 
     public String getCategory() {
-        int year = Integer.parseInt(birthDate.substring(0, 4));
-        return ModelUtils.getCategory(LocalDate.now(), year, gender);
+        Boolean female = Boolean.FALSE.equals(gender);
+        if (birthDate == null || birthDate.length() < 4) {
+            return female ? "SenF" : "SenM";
+        }
+        try {
+            int year = Integer.parseInt(birthDate.substring(0, 4));
+            return ModelUtils.getCategory(LocalDate.now(), year, gender);
+        } catch (RuntimeException e) {
+            return female ? "SenF" : "SenM";
+        }
     }
 
     @Override
@@ -172,8 +180,7 @@ public class CustomPlayer implements IPlayer {
 
     @Override
     public String getFederation() {
-        // TODO Auto-generated method stub
-        return null;
+        return "FRA";
     }
 
     @Override

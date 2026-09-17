@@ -54,15 +54,15 @@ public class PersistenceService {
 
     public void init() {
         initDatasource();
-        applySchemaPatches();
+        //applySchemaPatches();
         Map<String, Object> props = new HashMap<>();
         props.put("jakarta.persistence.nonJtaDataSource", dataSource);
         props.put("hibernate.hbm2ddl.auto", "update");
 
         emf = Persistence.createEntityManagerFactory("myPU", props);
-        backfillMembershipTimestamps();
+        //backfillMembershipTimestamps();
         initH2FromPostgresDumpIfNeeded();
-        backfillMembershipSeasonIdsAfterBootstrap();
+        //backfillMembershipSeasonIdsAfterBootstrap();
     }
 
     private void backfillMembershipSeasonIdsAfterBootstrap() {
