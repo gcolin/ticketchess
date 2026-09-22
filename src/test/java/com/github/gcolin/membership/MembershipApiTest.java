@@ -296,6 +296,34 @@ class MembershipApiTest {
     }
 
     @Test
+    void updateShouldSetAmountToZeroWhenStatusIsFree() throws Exception {
+        MembershipApi api = new MembershipApi();
+
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        Membership m = new Membership();
+        m.setId(55);
+        m.setAmountCents(17300);
+        m.setStatus(MembershipStatus.PAID);
+        when(membershipDao.find(55)).thenReturn(m);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", mock(MembershipOptionSubscriptionDao.class));
+        inject(api, "membershipOptionDao", mock(MembershipOptionDao.class));
+        inject(api, "licensePriceService", mockLicensePriceService());
+        inject(api, "clubSeasonDao", mockClubSeasonDao());
+        inject(api, "clubSeasonFilter", mockClubSeasonFilter());
+        inject(api, "caches", mockCaches());
+        inject(api, "uriInfo", mockUriInfo(URI.create("http://localhost:8080/membership")));
+
+        Response response = api.update(55, "user@test.com", "Y69643", "LARGE", "Gary", "2016-06-03", "FREE", 17300, "A", null);
+
+        assertEquals(303, response.getStatus());
+        assertEquals(MembershipStatus.FREE, m.getStatus());
+        assertEquals(0, m.getAmountCents());
+        verify(membershipDao).merge(m);
+    }
+
+    @Test
     void updateShouldRecalculateAmountFromFfeCategoryWhenBirthDateMissing() throws Exception {
         MembershipApi api = new MembershipApi();
 
@@ -575,7 +603,7 @@ class MembershipApiTest {
         when(membershipDao.all(scope)).thenReturn(List.of());
         when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
         when(licenseDao.all()).thenReturn(List.of());
-        when(reportService.generate(List.of(), Map.of(), Map.of(), scope)).thenReturn(pdf);
+        when(reportService.generate(List.of(), Map.of(), List.of(), scope)).thenReturn(pdf);
 
         inject(api, "membershipDao", membershipDao);
         inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
@@ -590,7 +618,7 @@ class MembershipApiTest {
         assertSame(pdf, response.getEntity());
         assertTrue(response.getHeaderString("Content-Disposition").startsWith("attachment; filename=adhesions-"));
         verify(membershipDao).all(scope);
-        verify(reportService).generate(List.of(), Map.of(), Map.of(), scope);
+        verify(reportService).generate(List.of(), Map.of(), List.of(), scope);
     }
 
     @Test
@@ -632,18 +660,18 @@ class MembershipApiTest {
         Response response = api.exportPdf(null);
 
         assertEquals(200, response.getStatus());
-        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
-                org.mockito.ArgumentCaptor.forClass(Map.class);
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
         verify(reportService)
                 .generate(
                         eq(List.of(membership)),
                         eq(Map.of()),
                         summaryCaptor.capture(),
                         eq(scope));
-        assertEquals(1, summaryCaptor.getValue().get("Licence A").count());
-        assertEquals(1, summaryCaptor.getValue().get("Licence A").approvedCount());
-        assertEquals(4000, summaryCaptor.getValue().get("Licence A").amountCents());
-        assertEquals(4000, summaryCaptor.getValue().get("Licence A").approvedAmountCents());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence A").count());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence A").approvedCount());
+        assertEquals(4000, licenseLine(summaryCaptor.getValue(), "Licence A").amountCents());
+        assertEquals(4000, licenseLine(summaryCaptor.getValue(), "Licence A").approvedAmountCents());
     }
 
     @Test
@@ -684,18 +712,18 @@ class MembershipApiTest {
 
         api.exportPdf(null);
 
-        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
-                org.mockito.ArgumentCaptor.forClass(Map.class);
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
         verify(reportService)
                 .generate(
                         eq(List.of(membership)),
                         eq(Map.of()),
                         summaryCaptor.capture(),
                         eq(scope));
-        assertEquals(1, summaryCaptor.getValue().get("Licence B").count());
-        assertEquals(1, summaryCaptor.getValue().get("Licence B").approvedCount());
-        assertEquals(2500, summaryCaptor.getValue().get("Licence B").amountCents());
-        assertEquals(2500, summaryCaptor.getValue().get("Licence B").approvedAmountCents());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence B").count());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence B").approvedCount());
+        assertEquals(2500, licenseLine(summaryCaptor.getValue(), "Licence B").amountCents());
+        assertEquals(2500, licenseLine(summaryCaptor.getValue(), "Licence B").approvedAmountCents());
     }
 
     @Test
@@ -737,15 +765,15 @@ class MembershipApiTest {
 
         api.exportPdf(null);
 
-        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
-                org.mockito.ArgumentCaptor.forClass(Map.class);
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
         verify(reportService)
                 .generate(
                         eq(List.of(membership)),
                         eq(Map.of()),
                         summaryCaptor.capture(),
                         eq(scope));
-        assertEquals(1, summaryCaptor.getValue().get("Licence B").count());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence B").count());
     }
 
     @Test
@@ -785,17 +813,17 @@ class MembershipApiTest {
 
         api.exportPdf(null);
 
-        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
-                org.mockito.ArgumentCaptor.forClass(Map.class);
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
         verify(reportService)
                 .generate(
                         eq(List.of(membership)),
                         eq(Map.of()),
                         summaryCaptor.capture(),
                         eq(scope));
-        assertEquals(1, summaryCaptor.getValue().get("Licence A").count());
-        assertEquals(16400, summaryCaptor.getValue().get("Licence A").amountCents());
-        assertEquals(0, summaryCaptor.getValue().get("Licence A").approvedAmountCents());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence A").count());
+        assertEquals(16400, licenseLine(summaryCaptor.getValue(), "Licence A").amountCents());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence A").approvedAmountCents());
     }
 
     @Test
@@ -843,22 +871,153 @@ class MembershipApiTest {
 
         api.exportPdf(null);
 
-        org.mockito.ArgumentCaptor<Map<String, MembershipSummaryLine>> summaryCaptor =
-                org.mockito.ArgumentCaptor.forClass(Map.class);
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
         verify(reportService)
                 .generate(
                         eq(List.of(approved, pending)),
                         eq(Map.of()),
                         summaryCaptor.capture(),
                         eq(scope));
-        assertEquals(4000, summaryCaptor.getValue().get("Licence A").approvedAmountCents());
-        assertEquals(1, summaryCaptor.getValue().get("Licence A").approvedCount());
-        assertEquals(2500, summaryCaptor.getValue().get("Licence B").amountCents());
-        assertEquals(0, summaryCaptor.getValue().get("Licence B").approvedAmountCents());
-        assertEquals(0, summaryCaptor.getValue().get("Licence B").approvedCount());
+        assertEquals(4000, licenseLine(summaryCaptor.getValue(), "Licence A").approvedAmountCents());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence A").paidAmountCents());
+        assertEquals(1, licenseLine(summaryCaptor.getValue(), "Licence A").approvedCount());
+        assertEquals(2500, licenseLine(summaryCaptor.getValue(), "Licence B").amountCents());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence B").approvedAmountCents());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence B").approvedCount());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence B").paidAmountCents());
+    }
+
+    @Test
+    void exportPdfShouldSumPaidAmountOnly() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership paid = new Membership();
+        paid.setId(1);
+        paid.setLicenseType("A");
+        paid.setAmountCents(4000);
+        paid.setBirthDate("2000-01-01");
+        paid.setStatus(MembershipStatus.PAID);
+
+        Membership approved = new Membership();
+        approved.setId(2);
+        approved.setLicenseType("B");
+        approved.setAmountCents(2500);
+        approved.setBirthDate("2000-01-01");
+        approved.setStatus(MembershipStatus.APPROVED);
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(paid, approved));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A"), new License("B")));
+        when(reportService.generate(
+                        eq(List.of(paid, approved)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", mock(LicensePriceService.class));
+
+        api.exportPdf(null);
+
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(paid, approved)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        assertEquals(4000, licenseLine(summaryCaptor.getValue(), "Licence A").paidAmountCents());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence A").approvedAmountCents());
+        assertEquals(2500, licenseLine(summaryCaptor.getValue(), "Licence B").approvedAmountCents());
+        assertEquals(0, licenseLine(summaryCaptor.getValue(), "Licence B").paidAmountCents());
+    }
+
+    @Test
+    void exportPdfShouldExcludeFreeAmountsFromSummary() throws Exception {
+        MembershipApi api = new MembershipApi();
+        MembershipDao membershipDao = mock(MembershipDao.class);
+        MembershipOptionSubscriptionDao subscriptionDao = mock(MembershipOptionSubscriptionDao.class);
+        LicenseDao licenseDao = mock(LicenseDao.class);
+        ClubSeasonFilter seasonFilter = mockClubSeasonFilter();
+        MembershipReportService reportService = mock(MembershipReportService.class);
+        SeasonScope scope = SeasonScope.all();
+        byte[] pdf = "%PDF-test".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        Membership free = new Membership();
+        free.setId(1);
+        free.setLicenseType("A");
+        free.setAmountCents(17300);
+        free.setBirthDate("2000-01-01");
+        free.setStatus(MembershipStatus.FREE);
+
+        Membership paid = new Membership();
+        paid.setId(2);
+        paid.setLicenseType("A");
+        paid.setAmountCents(4000);
+        paid.setBirthDate("2000-01-01");
+        paid.setStatus(MembershipStatus.PAID);
+
+        when(seasonFilter.resolve(null)).thenReturn(scope);
+        when(membershipDao.all(scope)).thenReturn(List.of(free, paid));
+        when(subscriptionDao.findByMembershipIds(any())).thenReturn(List.of());
+        when(licenseDao.all()).thenReturn(List.of(new License("A")));
+        when(reportService.generate(
+                        eq(List.of(free, paid)),
+                        eq(Map.of()),
+                        org.mockito.ArgumentMatchers.any(),
+                        eq(scope)))
+                .thenReturn(pdf);
+
+        inject(api, "membershipDao", membershipDao);
+        inject(api, "membershipOptionSubscriptionDao", subscriptionDao);
+        inject(api, "licenseDao", licenseDao);
+        inject(api, "clubSeasonFilter", seasonFilter);
+        inject(api, "membershipReportService", reportService);
+        inject(api, "licensePriceService", mock(LicensePriceService.class));
+
+        api.exportPdf(null);
+
+        org.mockito.ArgumentCaptor<List<MembershipSummarySection>> summaryCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(reportService)
+                .generate(
+                        eq(List.of(free, paid)),
+                        eq(Map.of()),
+                        summaryCaptor.capture(),
+                        eq(scope));
+        MembershipSummaryLine licenceA = licenseLine(summaryCaptor.getValue(), "Licence A");
+        assertEquals(2, licenceA.count());
+        assertEquals(4000, licenceA.amountCents());
+        assertEquals(0, licenceA.approvedAmountCents());
+        assertEquals(4000, licenceA.paidAmountCents());
     }
 
     // --- helpers ---
+
+    private static MembershipSummaryLine licenseLine(List<MembershipSummarySection> sections, String label) {
+        return sections.stream()
+                .filter(section -> MembershipSummarySection.LICENSES_KEY.equals(section.sectionKey()))
+                .map(MembershipSummarySection::lines)
+                .map(lines -> lines.get(label))
+                .filter(line -> line != null)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Missing license line: " + label));
+    }
 
     private static ClubSeasonFilter mockClubSeasonFilter() {
         ClubSeasonFilter filter = mock(ClubSeasonFilter.class);

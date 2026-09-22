@@ -41,6 +41,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -162,8 +163,8 @@ public class MembershipApi {
         SeasonScope scope = clubSeasonFilter.resolve(seasonId);
         List<Membership> memberships = membershipDao.all(scope);
         Map<Integer, List<String>> optionsByMembership = buildOptionsByMembership(memberships);
-        Map<String, MembershipSummaryLine> summaryByName = buildSummaryByName(memberships, optionsByMembership);
-        byte[] pdf = membershipReportService.generate(memberships, optionsByMembership, summaryByName, scope);
+        List<MembershipSummarySection> summarySections = buildSummarySections(memberships);
+        byte[] pdf = membershipReportService.generate(memberships, optionsByMembership, summarySections, scope);
         return Response.ok(pdf)
                 .header(
                         "Content-Disposition",
@@ -208,57 +209,77 @@ public class MembershipApi {
         return optionsByMembership;
     }
 
-    private Map<String, MembershipSummaryLine> buildSummaryByName(
-            List<Membership> memberships, Map<Integer, List<String>> optionsByMembership) {
-        Map<String, int[]> totals = new HashMap<>();
+    private List<MembershipSummarySection> buildSummarySections(List<Membership> memberships) {
         Map<Integer, Integer> optionSumByMembership = buildOptionSumByMembershipId(memberships);
-        Map<String, Integer> optionAmountCentsByName = buildOptionAmountCentsByName(memberships, false);
-        Map<String, Integer> optionApprovedAmountCentsByName = buildOptionAmountCentsByName(memberships, true);
+        Map<String, Integer> optionAmountCentsByName = buildOptionAmountCentsByName(memberships, null);
+        Map<String, Integer> optionApprovedAmountCentsByName =
+                buildOptionAmountCentsByName(memberships, MembershipStatus.APPROVED);
+        Map<String, Integer> optionPaidAmountCentsByName =
+                buildOptionAmountCentsByName(memberships, MembershipStatus.PAID);
 
-        Map<String, List<Membership>> membersByOption = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        for (Membership membership : memberships) {
-            List<String> options = membership.getId() == null
-                    ? List.of()
-                    : optionsByMembership.getOrDefault(membership.getId(), List.of());
-            for (String option : options) {
-                if (option == null || option.isBlank()) {
-                    continue;
-                }
-                membersByOption.computeIfAbsent(option.trim(), key -> new ArrayList<>()).add(membership);
+        Map<MembershipOptionType, Map<String, List<Membership>>> membersByTypeAndOption = new EnumMap<>(MembershipOptionType.class);
+        for (MembershipOptionSubscription sub : findSubscriptionsForMemberships(memberships)) {
+            if (sub.getMembership() == null || sub.getMembershipOption() == null) {
+                continue;
             }
+            MembershipOptionType optionType = sub.getMembershipOption().getOptionType();
+            String optionValue = sub.getMembershipOption().getOptionValue();
+            if (optionType == null || optionValue == null || optionValue.isBlank()) {
+                continue;
+            }
+            membersByTypeAndOption
+                    .computeIfAbsent(optionType, key -> new TreeMap<>(String.CASE_INSENSITIVE_ORDER))
+                    .computeIfAbsent(optionValue.trim(), key -> new ArrayList<>())
+                    .add(sub.getMembership());
         }
 
-        for (Map.Entry<String, List<Membership>> entry : membersByOption.entrySet()) {
-            String optionName = entry.getKey();
-            List<Membership> members = entry.getValue();
-            int approvedCount = (int) members.stream()
-                    .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
-                    .count();
-            mergeSummaryLine(
-                    totals,
-                    optionName,
-                    members.size(),
-                    approvedCount,
-                    optionAmountCentsByName.getOrDefault(optionName, 0),
-                    optionApprovedAmountCentsByName.getOrDefault(optionName, 0));
-        }
+        List<MembershipSummarySection> sections = new ArrayList<>();
 
+        Map<String, int[]> licenseTotals = new HashMap<>();
         for (Membership membership : memberships) {
             int optionSum = membership.getId() == null
                     ? 0
                     : optionSumByMembership.getOrDefault(membership.getId(), 0);
-            addLicenseToSummary(totals, membership, optionSum);
+            addLicenseToSummary(licenseTotals, membership, optionSum);
+        }
+        LinkedHashMap<String, MembershipSummaryLine> licenseLines = new LinkedHashMap<>();
+        for (License license : licenseDao.all()) {
+            addSummaryLineIfPresent(licenseLines, licenseTotals, formatLicenseLabel(license.getName()));
+        }
+        if (!licenseLines.isEmpty()) {
+            sections.add(new MembershipSummarySection(MembershipSummarySection.LICENSES_KEY, licenseLines));
         }
 
-        LinkedHashMap<String, MembershipSummaryLine> ordered = new LinkedHashMap<>();
-        for (License license : licenseDao.all()) {
-            String label = formatLicenseLabel(license.getName());
-            addSummaryLineIfPresent(ordered, totals, label);
+        for (MembershipOptionType optionType : MembershipOptionType.values()) {
+            Map<String, List<Membership>> membersByOption = membersByTypeAndOption.get(optionType);
+            if (membersByOption == null || membersByOption.isEmpty()) {
+                continue;
+            }
+            Map<String, int[]> optionTotals = new HashMap<>();
+            for (Map.Entry<String, List<Membership>> entry : membersByOption.entrySet()) {
+                String optionName = entry.getKey();
+                List<Membership> members = entry.getValue();
+                int approvedCount = (int) members.stream()
+                        .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
+                        .count();
+                mergeSummaryLine(
+                        optionTotals,
+                        optionName,
+                        members.size(),
+                        approvedCount,
+                        optionAmountCentsByName.getOrDefault(optionName, 0),
+                        optionApprovedAmountCentsByName.getOrDefault(optionName, 0),
+                        optionPaidAmountCentsByName.getOrDefault(optionName, 0));
+            }
+            LinkedHashMap<String, MembershipSummaryLine> optionLines = new LinkedHashMap<>();
+            membersByOption.keySet().stream()
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .forEach(name -> addSummaryLineIfPresent(optionLines, optionTotals, name));
+            if (!optionLines.isEmpty()) {
+                sections.add(new MembershipSummarySection(optionType.name(), optionLines));
+            }
         }
-        membersByOption.keySet().stream()
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .forEach(name -> addSummaryLineIfPresent(ordered, totals, name));
-        return ordered;
+        return sections;
     }
 
     private static void mergeSummaryLine(
@@ -267,16 +288,18 @@ public class MembershipApi {
             int count,
             int approvedCount,
             int amountCents,
-            int approvedAmountCents) {
+            int approvedAmountCents,
+            int paidAmountCents) {
         totals.compute(
                 label,
                 (key, existing) -> existing == null
-                        ? new int[] {count, approvedCount, amountCents, approvedAmountCents}
+                        ? new int[] {count, approvedCount, amountCents, approvedAmountCents, paidAmountCents}
                         : new int[] {
                             existing[0] + count,
                             existing[1] + approvedCount,
                             existing[2] + amountCents,
-                            existing[3] + approvedAmountCents
+                            existing[3] + approvedAmountCents,
+                            existing[4] + paidAmountCents
                         });
     }
 
@@ -284,7 +307,8 @@ public class MembershipApi {
             Map<String, MembershipSummaryLine> ordered, Map<String, int[]> totals, String label) {
         int[] values = totals.get(label);
         if (values != null) {
-            ordered.put(label, new MembershipSummaryLine(values[0], values[1], values[2], values[3]));
+            ordered.put(
+                    label, new MembershipSummaryLine(values[0], values[1], values[2], values[3], values[4]));
         }
     }
 
@@ -310,9 +334,13 @@ public class MembershipApi {
         }
         String label = formatLicenseLabel(licenseType);
         int amount = licenseCents > 0 ? licenseCents : licenseAmountFromGrid(membership, licenseType);
+        if (membership.getStatus() == MembershipStatus.FREE) {
+            amount = 0;
+        }
         int approvedAmount = membership.getStatus() == MembershipStatus.APPROVED ? amount : 0;
+        int paidAmount = membership.getStatus() == MembershipStatus.PAID ? amount : 0;
         int approvedCount = membership.getStatus() == MembershipStatus.APPROVED ? 1 : 0;
-        mergeSummaryLine(totals, label, 1, approvedCount, amount, approvedAmount);
+        mergeSummaryLine(totals, label, 1, approvedCount, amount, approvedAmount, paidAmount);
     }
 
     private String resolveLicenseType(Membership membership, int licenseCents) {
@@ -423,21 +451,20 @@ public class MembershipApi {
         return Integer.valueOf(first4);
     }
 
-    private Map<String, Integer> buildOptionAmountCentsByName(List<Membership> memberships, boolean approvedOnly) {
-        Set<Integer> approvedIds = null;
-        if (approvedOnly) {
-            approvedIds = memberships.stream()
-                    .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
-                    .map(Membership::getId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
-        }
+    private Map<String, Integer> buildOptionAmountCentsByName(
+            List<Membership> memberships, MembershipStatus requiredStatus) {
+        Set<Integer> matchingIds = memberships.stream()
+                .filter(m -> m.getStatus() != MembershipStatus.FREE)
+                .filter(m -> requiredStatus == null || m.getStatus() == requiredStatus)
+                .map(Membership::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         Map<String, Integer> amountsByOption = new HashMap<>();
         for (MembershipOptionSubscription sub : findSubscriptionsForMemberships(memberships)) {
             if (sub.getMembership() == null || sub.getMembership().getId() == null || sub.getMembershipOption() == null) {
                 continue;
             }
-            if (approvedOnly && !approvedIds.contains(sub.getMembership().getId())) {
+            if (!matchingIds.contains(sub.getMembership().getId())) {
                 continue;
             }
             String optionValue = sub.getMembershipOption().getOptionValue();
@@ -697,6 +724,11 @@ public class MembershipApi {
 
     private void recalculateMembershipAmount(Membership membership) {
         if (membership == null || membership.getId() == null) {
+            return;
+        }
+        if (membership.getStatus() == MembershipStatus.FREE) {
+            membership.setAmountCents(0);
+            membershipDao.merge(membership);
             return;
         }
         int optionSum = findSubscriptionsForMembershipId(membership.getId()).stream()

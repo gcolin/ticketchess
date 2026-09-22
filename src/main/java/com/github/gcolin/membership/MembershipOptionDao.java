@@ -23,7 +23,7 @@ public class MembershipOptionDao extends AbstractDao<MembershipOption> {
         } else if (scope.isFiltered()) {
             jpql += " WHERE o.createdAt >= :seasonStart AND o.createdAt <= :seasonEnd";
         }
-        jpql += " ORDER BY o.id DESC";
+        jpql += " ORDER BY o.id ASC";
         TypedQuery<MembershipOption> query = em.createQuery(jpql, MembershipOption.class);
         bindSeasonScope(query, scope);
         return query.getResultList();

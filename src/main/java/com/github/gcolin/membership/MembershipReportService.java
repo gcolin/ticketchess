@@ -47,15 +47,18 @@ public class MembershipReportService {
     public byte[] generate(
             List<Membership> memberships,
             Map<Integer, List<String>> optionsByMembership,
-            Map<String, MembershipSummaryLine> summaryByName,
+            List<MembershipSummarySection> summarySections,
             SeasonScope scope) {
         List<Membership> sorted = memberships.stream()
                 .sorted(Comparator.comparing(Membership::getId, Comparator.nullsLast(Integer::compareTo))
                         .reversed())
                 .toList();
-        int totalCents = sorted.stream().mapToInt(Membership::getAmountCents).sum();
         int approvedTotalCents = sorted.stream()
                 .filter(m -> m.getStatus() == MembershipStatus.APPROVED)
+                .mapToInt(Membership::getAmountCents)
+                .sum();
+        int paidTotalCents = sorted.stream()
+                .filter(m -> m.getStatus() == MembershipStatus.PAID)
                 .mapToInt(Membership::getAmountCents)
                 .sum();
         String reportNumber = "ADH-"
@@ -105,19 +108,19 @@ public class MembershipReportService {
             document.add(new Paragraph(
                     formatMessage(
                             locale,
-                            bundle.getString("membership.report.totalAmount"),
-                            formatEuros(ServiceUtils.toEuros((long) totalCents))),
+                            bundle.getString("membership.report.totalApprovedAmount"),
+                            formatEuros(ServiceUtils.toEuros((long) approvedTotalCents))),
                     normalFont));
             document.add(new Paragraph(
                     formatMessage(
                             locale,
-                            bundle.getString("membership.report.totalApprovedAmount"),
-                            formatEuros(ServiceUtils.toEuros((long) approvedTotalCents))),
+                            bundle.getString("membership.report.totalPaidAmount"),
+                            formatEuros(ServiceUtils.toEuros((long) paidTotalCents))),
                     normalFont));
             document.add(new Paragraph(" "));
             document.add(new Paragraph(bundle.getString("membership.report.detail"), sectionFont));
             document.add(new Paragraph(" "));
-            document.add(buildOptionSummaryTable(bundle, summaryByName, headerFont, normalFont));
+            addSummarySections(document, bundle, summarySections, sectionFont, headerFont, normalFont);
             document.add(new Paragraph(" "));
             document.add(buildTable(bundle, sorted, optionsByMembership, headerFont, normalFont));
             addOptionSections(document, bundle, locale, sorted, optionsByMembership, sectionFont, headerFont, normalFont);
@@ -159,8 +162,10 @@ public class MembershipReportService {
             table.addCell(new Phrase(nullToEmpty(membership.getFirstname()), normalFont));
             table.addCell(new Phrase(nullToEmpty(membership.getBirthDate()), normalFont));
             table.addCell(new Phrase(statusLabel(bundle, membership.getStatus()), normalFont));
-            PdfPCell amountCell =
-                    new PdfPCell(new Phrase(formatEuros(ServiceUtils.toEuros((long) membership.getAmountCents())), normalFont));
+            String amountText = membership.getStatus() == MembershipStatus.FREE
+                    ? ""
+                    : formatEuros(ServiceUtils.toEuros((long) membership.getAmountCents()));
+            PdfPCell amountCell = new PdfPCell(new Phrase(amountText, normalFont));
             amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
             table.addCell(amountCell);
             List<String> options = membership.getId() == null
@@ -171,44 +176,101 @@ public class MembershipReportService {
         return table;
     }
 
+    private void addSummarySections(
+            Document document,
+            ResourceBundle bundle,
+            List<MembershipSummarySection> summarySections,
+            Font sectionFont,
+            Font headerFont,
+            Font normalFont)
+            throws DocumentException {
+        if (summarySections == null || summarySections.isEmpty()) {
+            return;
+        }
+        for (MembershipSummarySection section : summarySections) {
+            if (section == null || section.lines() == null || section.lines().isEmpty()) {
+                continue;
+            }
+            document.add(new Paragraph(sectionTitle(bundle, section.sectionKey()), sectionFont));
+            document.add(new Paragraph(" "));
+            document.add(buildOptionSummaryTable(bundle, section.lines(), headerFont, normalFont));
+            document.add(new Paragraph(" "));
+        }
+    }
+
+    private static String sectionTitle(ResourceBundle bundle, String sectionKey) {
+        if (MembershipSummarySection.LICENSES_KEY.equals(sectionKey)) {
+            return bundle.getString("membership.report.licenses");
+        }
+        String optionTypeKey = "membershipOptionType." + sectionKey;
+        if (bundle.containsKey(optionTypeKey)) {
+            return bundle.getString(optionTypeKey);
+        }
+        return sectionKey == null ? "" : sectionKey;
+    }
+
     private PdfPTable buildOptionSummaryTable(
             ResourceBundle bundle,
             Map<String, MembershipSummaryLine> summaryByName,
             Font headerFont,
             Font normalFont)
             throws DocumentException {
+        Font totalFont = new Font(Font.HELVETICA, 9, Font.BOLD);
         PdfPTable table = new PdfPTable(5);
-        table.setWidthPercentage(80);
+        table.setWidthPercentage(85);
         table.setHorizontalAlignment(Element.ALIGN_LEFT);
-        table.setWidths(new float[] {34f, 10f, 12f, 22f, 22f});
+        table.setWidths(new float[] {30f, 10f, 20f, 20f, 20f});
 
         addHeaderCell(table, bundle.getString("membership.report.optionOrLicense"), headerFont);
         addHeaderCell(table, bundle.getString("membership.report.optionCount"), headerFont);
-        addHeaderCell(table, bundle.getString("membership.report.approvedCount"), headerFont);
-        addHeaderCell(table, bundle.getString("admin.membership.amount"), headerFont);
         addHeaderCell(table, bundle.getString("membership.report.approvedAmount"), headerFont);
+        addHeaderCell(table, bundle.getString("membership.report.paidAmount"), headerFont);
+        addHeaderCell(table, bundle.getString("membership.report.estimatedAmount"), headerFont);
 
         Map<String, MembershipSummaryLine> lines = summaryByName == null ? Map.of() : summaryByName;
+        int totalCount = 0;
+        int totalApprovedAmountCents = 0;
+        int totalPaidAmountCents = 0;
+        int totalEstimatedAmountCents = 0;
         for (Map.Entry<String, MembershipSummaryLine> entry : lines.entrySet()) {
             MembershipSummaryLine line = entry.getValue();
+            int estimatedAmountCents = line.approvedAmountCents() + line.paidAmountCents();
+            totalCount += line.count();
+            totalApprovedAmountCents += line.approvedAmountCents();
+            totalPaidAmountCents += line.paidAmountCents();
+            totalEstimatedAmountCents += estimatedAmountCents;
             table.addCell(new Phrase(entry.getKey(), normalFont));
             PdfPCell countCell = new PdfPCell(new Phrase(String.valueOf(line.count()), normalFont));
             countCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
             table.addCell(countCell);
-            PdfPCell approvedCountCell =
-                    new PdfPCell(new Phrase(String.valueOf(line.approvedCount()), normalFont));
-            approvedCountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(approvedCountCell);
-            PdfPCell amountCell =
-                    new PdfPCell(new Phrase(formatEuros(ServiceUtils.toEuros((long) line.amountCents())), normalFont));
-            amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
-            table.addCell(amountCell);
             PdfPCell approvedAmountCell = new PdfPCell(
                     new Phrase(formatEuros(ServiceUtils.toEuros((long) line.approvedAmountCents())), normalFont));
             approvedAmountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
             table.addCell(approvedAmountCell);
+            PdfPCell paidAmountCell = new PdfPCell(
+                    new Phrase(formatEuros(ServiceUtils.toEuros((long) line.paidAmountCents())), normalFont));
+            paidAmountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(paidAmountCell);
+            PdfPCell estimatedAmountCell = new PdfPCell(
+                    new Phrase(formatEuros(ServiceUtils.toEuros((long) estimatedAmountCents)), normalFont));
+            estimatedAmountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            table.addCell(estimatedAmountCell);
         }
+        PdfPCell totalLabelCell = new PdfPCell(new Phrase(bundle.getString("membership.report.totals"), totalFont));
+        totalLabelCell.setBackgroundColor(HEADER_BG);
+        table.addCell(totalLabelCell);
+        addTotalCell(table, String.valueOf(totalCount), totalFont);
+        addTotalCell(table, formatEuros(ServiceUtils.toEuros((long) totalApprovedAmountCents)), totalFont);
+        addTotalCell(table, formatEuros(ServiceUtils.toEuros((long) totalPaidAmountCents)), totalFont);
+        addTotalCell(table, formatEuros(ServiceUtils.toEuros((long) totalEstimatedAmountCents)), totalFont);
         return table;
+    }
+
+    private static void addTotalCell(PdfPTable table, String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(text, font));
+        cell.setBackgroundColor(HEADER_BG);
+        cell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.addCell(cell);
     }
 
     private void addOptionSections(

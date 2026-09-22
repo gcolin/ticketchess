@@ -29,7 +29,9 @@ class MembershipReportServiceTest {
         byte[] pdf = service.generate(
                 List.of(membership),
                 Map.of(1, List.of("Licence B")),
-                Map.of("Licence B", new MembershipSummaryLine(1, 1, 4000, 4000)),
+                List.of(new MembershipSummarySection(
+                        MembershipSummarySection.LICENSES_KEY,
+                        new java.util.LinkedHashMap<>(Map.of("Licence B", new MembershipSummaryLine(1, 1, 4000, 4000, 0))))),
                 SeasonScope.all());
 
         assertNotNull(pdf);
@@ -63,14 +65,27 @@ class MembershipReportServiceTest {
         withoutOption.setStatus(MembershipStatus.APPROVED);
         withoutOption.setAmountCents(1000);
 
+        Membership free = new Membership();
+        free.setId(4);
+        free.setLastname("Free");
+        free.setFirstname("Member");
+        free.setStatus(MembershipStatus.FREE);
+        free.setAmountCents(17300);
+
         byte[] pdf = service.generate(
-                List.of(withTwoOptions, withOneOption, withoutOption),
+                List.of(withTwoOptions, withOneOption, withoutOption, free),
                 Map.of(
                         1, List.of("Licence B", "Cours du mercredi"),
                         2, List.of("Licence B")),
-                Map.of(
-                        "Licence B", new MembershipSummaryLine(2, 2, 6000, 6000),
-                        "Cours du mercredi", new MembershipSummaryLine(1, 1, 1500, 1500)),
+                List.of(
+                        new MembershipSummarySection(
+                                MembershipSummarySection.LICENSES_KEY,
+                                new java.util.LinkedHashMap<>(
+                                        Map.of("Licence B", new MembershipSummaryLine(2, 2, 6000, 6000, 0)))),
+                        new MembershipSummarySection(
+                                MembershipOptionType.COURSES.name(),
+                                new java.util.LinkedHashMap<>(Map.of(
+                                        "Cours du mercredi", new MembershipSummaryLine(1, 1, 1500, 1500, 0))))),
                 SeasonScope.all());
 
         assertNotNull(pdf);
@@ -100,7 +115,7 @@ class MembershipReportServiceTest {
         byte[] pdf = service.generate(
                 List.of(withOption, withoutOption),
                 Map.of(1, List.of("Licence B", "Cours du mercredi")),
-                Map.of(),
+                List.of(),
                 SeasonScope.all());
 
         assertNotNull(pdf);

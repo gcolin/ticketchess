@@ -37,13 +37,19 @@
         <form method="get" action="${contextPath}/membership" class="d-flex align-items-center mb-0">
           @template.platform.seasonFilter(msg=msg, seasons=safeSeasons, seasonId=seasonId, selectId="membership_season", autoSubmit=true, inline=true)
         </form>
+        @if(safeMemberships.size() > 0)
+          <div class="input-group input-group-sm" style="max-width: 280px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input id="membership-filter" class="form-control" type="search" placeholder="${msg.get("membership.filterPlaceholder")}" aria-label="${msg.get("membership.filterPlaceholder")}" autocomplete="off">
+          </div>
+        @endif
         <div class="d-flex align-items-center gap-2 ms-md-auto">
           <a class="btn btn-success" href="${contextPath}/membership/new${seasonId != null ? "?seasonId=" + seasonId : ""}">${msg.get("action.addMembership")}</a>
           @template.membership.membershipPageActionsMenu(contextPath=contextPath, msg=msg, seasonId=seasonId)
         </div>
       `)
       <div class="admin-table-scroll mt-3">
-        <table class="table table-striped align-middle mb-0">
+        <table id="membership-table" class="table table-striped align-middle mb-0">
           <thead>
             <tr>
               <th scope="col">#</th>
@@ -62,7 +68,8 @@
           </thead>
           <tbody>
             @for(var mem : safeMemberships)
-              <tr>
+              !{String searchName = ((mem.getLastname() != null ? mem.getLastname() : "") + " " + (mem.getFirstname() != null ? mem.getFirstname() : "")).trim();}
+              <tr data-search="${searchName}">
                 <td>${mem.getId()}</td>
                 <td>${mem.getUser() != null ? mem.getUser() : ""}</td>
                 <td>${mem.getNrFfe() != null ? mem.getNrFfe() : ""}</td>
@@ -103,5 +110,37 @@
         </table>
       </div>
     `)
+  `,
+  scripts = @`
+    @if(safeMemberships.size() > 0)
+    <script type="text/javascript">
+      (function () {
+        const input = document.getElementById('membership-filter');
+        const table = document.getElementById('membership-table');
+        if (!input || !table) {
+          return;
+        }
+        const rows = Array.from(table.querySelectorAll('tbody tr[data-search]'));
+
+        function normalize(value) {
+          return (value || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function applyFilter() {
+          const terms = normalize(input.value).split(/\s+/).filter(Boolean);
+          rows.forEach((row) => {
+            const text = normalize(row.getAttribute('data-search'));
+            const match = terms.every((term) => text.includes(term));
+            row.classList.toggle('d-none', !match);
+          });
+        }
+
+        input.addEventListener('input', applyFilter);
+      })();
+    </script>
+    @endif
   `
 )

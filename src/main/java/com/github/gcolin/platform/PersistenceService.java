@@ -3,6 +3,7 @@ package com.github.gcolin.platform;
 import com.github.gcolin.auth.RoleCode;
 import com.github.gcolin.event.EventCollectionOptionType;
 import com.github.gcolin.event.EventOptionType;
+import com.github.gcolin.membership.MembershipOptionType;
 import com.github.gcolin.payment.PaymentType;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.persistence.EntityManagerFactory;
@@ -185,11 +186,15 @@ public class PersistenceService {
                 applyH2EnumColumnPatch(connection, "eventoption", "option_type", EventOptionType.class, true);
                 applyH2EnumColumnPatch(
                         connection, "eventcollectionoption", "option_type", EventCollectionOptionType.class, true);
+                applyH2EnumColumnPatch(
+                        connection, "membership_option", "option_type", MembershipOptionType.class, true);
                 applyH2EnumColumnPatch(connection, "payment", "type", PaymentType.class, false);
             } else {
                 applyPostgresEnumCheckConstraintPatch(connection, "eventoption", "option_type", EventOptionType.class);
                 applyPostgresEnumCheckConstraintPatch(
                         connection, "eventcollectionoption", "option_type", EventCollectionOptionType.class);
+                applyPostgresEnumCheckConstraintPatch(
+                        connection, "membership_option", "option_type", MembershipOptionType.class);
                 applyPostgresEnumCheckConstraintPatch(connection, "payment", "type", PaymentType.class);
             }
         } catch (SQLException e) {

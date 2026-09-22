@@ -383,7 +383,9 @@ public class MembershipOptionFileAdminApi {
     }
 
     private static boolean isPaidOrApproved(MembershipStatus status) {
-        return status == MembershipStatus.APPROVED || status == MembershipStatus.PAID;
+        return status == MembershipStatus.APPROVED
+                || status == MembershipStatus.PAID
+                || status == MembershipStatus.FREE;
     }
 
     private MembershipOptionFile requireFile(Integer fileId) {
